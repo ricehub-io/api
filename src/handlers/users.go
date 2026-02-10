@@ -187,7 +187,7 @@ func UploadAvatar(c *gin.Context) {
 	// update avatar path in database
 	repository.UpdateUserAvatarPath(userId, &avatarPath)
 
-	c.Status(http.StatusCreated)
+	c.JSON(http.StatusCreated, gin.H{"avatarUrl": utils.Config.CDNUrl + avatarPath})
 }
 
 func DeleteAvatar(c *gin.Context) {

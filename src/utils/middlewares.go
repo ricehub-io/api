@@ -123,6 +123,11 @@ func PathRateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Ha
 	logger := zap.L()
 
 	return func(c *gin.Context) {
+		if Config.DisableRateLimits {
+			c.Next()
+			return
+		}
+
 		clientId := getClientId(c)
 		path := c.Request.URL.Path
 

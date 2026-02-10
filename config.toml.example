@@ -3,6 +3,7 @@ redis_url = "redis://host:port"
 cdn_url = "http://127.0.0.1:3000/public"
 multipart_limit = 2097152
 default_avatar = "/avatars/default.png"
+disable_rate_limits = false
 
 [jwt]
 access_exp = "5m"

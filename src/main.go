@@ -28,6 +28,10 @@ func main() {
 	utils.InitValidator()
 	utils.InitJWT(keysDir)
 
+	if utils.Config.DisableRateLimits {
+		logger.Warn("Rate limits disabled in config! Is it intentional?")
+	}
+
 	utils.InitCache(utils.Config.RedisUrl)
 	defer utils.CloseCache()
 
