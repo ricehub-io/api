@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"ricehub/src/errs"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 func ValidateToken(tokenStr string) (*AccessToken, error) {
 	if len(tokenStr) == 0 {
+		log.Println("a")
 		return nil, errs.UserError("Authorization header is required", http.StatusForbidden)
 	}
 
@@ -41,6 +43,9 @@ func AuthMiddleware(c *gin.Context) {
 
 	token, err := ValidateToken(tokenStr)
 	if err != nil {
+		// reading the request so Firefox doesn't throw NS_ERROR_NET_RESET
+		_, _ = c.GetRawData()
+
 		c.Error(err)
 		c.Abort()
 		return

@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"ricehub/src/errs"
 	"slices"
+	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gin-gonic/gin"
@@ -89,17 +90,26 @@ func ValidateForm(c *gin.Context, obj any) error {
 var openFailed = errs.UserError("Couldn't open and read the uploaded file", http.StatusUnprocessableEntity)
 
 func ValidateFileAsImage(formFile *multipart.FileHeader) (string, error) {
-	file, err := formFile.Open()
-	if err != nil {
-		return "", openFailed
-	}
+	// file, err := formFile.Open()
+	// if err != nil {
+	// 	return "", openFailed
+	// }
 
-	mtype, _ := mimetype.DetectReader(file)
-	if !mtype.Is("image/jpeg") && !mtype.Is("image/png") {
+	// mtype, _ := mimetype.DetectReader(file)
+	// log.Println(mtype)
+	// if !mtype.Is("image/jpeg") && !mtype.Is("image/png") {
+	// 	return "", errs.UserError("Unsupported file type! Only png/jpeg is accepted", http.StatusUnsupportedMediaType)
+	// }
+
+	// return mtype.Extension(), nil
+	name := formFile.Filename
+	if strings.HasSuffix(name, ".png") {
+		return ".png", nil
+	} else if strings.HasSuffix(name, ".jpg") {
+		return ".jpg", nil
+	} else {
 		return "", errs.UserError("Unsupported file type! Only png/jpeg is accepted", http.StatusUnsupportedMediaType)
 	}
-
-	return mtype.Extension(), nil
 }
 
 func ValidateFileAsArchive(formFile *multipart.FileHeader) (string, error) {
