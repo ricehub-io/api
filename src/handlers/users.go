@@ -76,6 +76,18 @@ func GetUserRiceBySlug(c *gin.Context) {
 	c.JSON(http.StatusOK, rice.ToDTO())
 }
 
+func FetchUserRices(c *gin.Context) {
+	userId := c.Param("id")
+
+	rices, err := repository.FetchUserRices(userId)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, models.PartialRicesToDTOs(rices))
+}
+
 func UpdateDisplayName(c *gin.Context) {
 	userId := c.Param("id")
 	token := c.MustGet("token").(*utils.AccessToken)

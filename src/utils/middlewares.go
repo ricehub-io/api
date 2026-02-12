@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"ricehub/src/errs"
 	"strings"
@@ -15,7 +14,6 @@ import (
 
 func ValidateToken(tokenStr string) (*AccessToken, error) {
 	if len(tokenStr) == 0 {
-		log.Println("a")
 		return nil, errs.UserError("Authorization header is required", http.StatusForbidden)
 	}
 

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"log"
 	"ricehub/src/models"
 	"time"
 
@@ -88,10 +89,14 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool) string {
 	return baseSelect + userSelect + base + where + " GROUP BY r.id, r.slug, r.title, r.created_at, df.download_count, u.display_name, u.username, p.file_path " + order + " LIMIT 20"
 }
 
-// byId == true -> Returned SQL uses WHERE r.id = $1
-// byId == false -> Returned SQL uses WHERE r.slug = $1 AND u.username = $2
-// No enum because I dont feel like creating it for only two possible states
-func buildFindRiceSql(byId bool) string {
+type FindRiceBy uint8
+
+const (
+	RiceId FindRiceBy = iota
+	SlugAndUsername
+)
+
+func buildFindRiceSql(findBy FindRiceBy) string {
 	suffix := `
 	SELECT
 		to_jsonb(base) AS rice,
@@ -105,15 +110,8 @@ func buildFindRiceSql(byId bool) string {
 	GROUP BY base.*, df.*
 	`
 
-	if byId {
-		return `
-		WITH base AS (
-			SELECT r.*
-			FROM rices r
-			WHERE r.id = $1
-		)
-		` + suffix
-	} else {
+	switch findBy {
+	case SlugAndUsername:
 		return `
 		WITH base AS (
 			SELECT r.*
@@ -122,11 +120,48 @@ func buildFindRiceSql(byId bool) string {
 			WHERE r.slug = $1 AND u.username = $2
 		)
 		` + suffix
+	default: // fallback to find by rice id
+		return `
+		WITH base AS (
+			SELECT r.*
+			FROM rices r
+			WHERE r.id = $1
+		)
+		` + suffix
 	}
 }
 
-var findRiceSql = buildFindRiceSql(true)
-var findRiceBySlugSql = buildFindRiceSql(false)
+var findRiceSql = buildFindRiceSql(RiceId)
+var findRiceBySlugSql = buildFindRiceSql(SlugAndUsername)
+
+const fetchUserRicesSql = `
+SELECT
+        r.id, r.title, r.slug, r.created_at,
+        u.display_name, u.username,
+        p.file_path AS thumbnail,
+        count(DISTINCT s.user_id) AS star_count,
+        df.download_count, EXISTS (
+			SELECT 1
+			FROM rice_stars rs
+			WHERE rs.rice_id = r.id AND rs.user_id = $1
+		) AS is_starred
+FROM rices r
+JOIN users u ON u.id = r.author_id
+LEFT JOIN rice_stars s ON s.rice_id = r.id
+JOIN rice_dotfiles df ON df.rice_id = r.id
+JOIN LATERAL (
+        SELECT p.file_path
+        FROM rice_previews p
+        WHERE p.rice_id = r.id
+        ORDER BY p.created_at
+        LIMIT 1
+) p ON TRUE
+WHERE u.id = $1
+GROUP BY
+    r.id, r.slug, r.title, r.created_at, df.download_count,
+    u.display_name, u.username, p.file_path
+ORDER BY r.created_at DESC, r.id DESC
+`
 
 const insertRiceSql = `
 INSERT INTO rices (author_id, title, slug, description)
@@ -195,6 +230,7 @@ func FetchTrendingRices(pag *Pagination, userId string) (r []models.PartialRice,
 
 func FetchRecentRices(pag *Pagination, userId string) (r []models.PartialRice, err error) {
 	query := buildFetchRicesSql("recent", false, userId != "")
+	log.Println(query)
 
 	args := []any{}
 	if userId != "" {
@@ -260,6 +296,11 @@ func FindRiceById(riceId string) (r models.RiceWithRelations, err error) {
 
 func FindRiceBySlug(slug string, username string) (r models.RiceWithRelations, err error) {
 	r, err = rowToStruct[models.RiceWithRelations](findRiceBySlugSql, slug, username)
+	return
+}
+
+func FetchUserRices(userId string) (r []models.PartialRice, err error) {
+	r, err = rowsToStruct[models.PartialRice](fetchUserRicesSql, userId)
 	return
 }
 
