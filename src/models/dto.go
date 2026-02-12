@@ -147,13 +147,38 @@ func (r Rice) ToDTO() RiceDTO {
 	}
 }
 
-func (r RiceWithRelations) ToDTO() RiceDTO {
-	previews := make([]string, len(r.Previews))
+type RicePreviewDTO struct {
+	Id  uuid.UUID `json:"id"`
+	Url string    `json:"url"`
+}
+
+func (p RicePreview) ToDTO() RicePreviewDTO {
+	return RicePreviewDTO{
+		Id:  p.Id,
+		Url: utils.Config.CDNUrl + p.FilePath,
+	}
+}
+
+type RiceWithRelationsDTO struct {
+	Id          uuid.UUID        `json:"id"`
+	Title       string           `json:"title"`
+	Slug        string           `json:"slug"`
+	Description string           `json:"description"`
+	Downloads   uint             `json:"downloads"`
+	Stars       uint             `json:"stars"`
+	Previews    []RicePreviewDTO `json:"previews"`
+	Dotfiles    RiceDotfilesDTO  `json:"dotfiles"`
+	CreatedAt   time.Time        `json:"createdAt"`
+	UpdatedAt   time.Time        `json:"updatedAt"`
+}
+
+func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
+	previews := make([]RicePreviewDTO, len(r.Previews))
 	for i, preview := range r.Previews {
-		previews[i] = utils.Config.CDNUrl + preview.FilePath
+		previews[i] = preview.ToDTO()
 	}
 
-	return RiceDTO{
+	return RiceWithRelationsDTO{
 		Id:          r.Rice.Id,
 		Title:       r.Rice.Title,
 		Slug:        r.Rice.Slug,
