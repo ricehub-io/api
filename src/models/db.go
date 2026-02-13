@@ -9,7 +9,7 @@ import (
 type User struct {
 	Id          uuid.UUID
 	Username    string
-	DisplayName string
+	DisplayName string `json:"display_name"`
 	Password    string
 	AvatarPath  *string
 	IsAdmin     bool
@@ -72,6 +72,7 @@ type CommentWithUser struct {
 
 type RiceWithRelations struct {
 	Rice      Rice
+	User      User
 	Dotfiles  RiceDotfiles
 	Previews  []RicePreview
 	StarCount uint

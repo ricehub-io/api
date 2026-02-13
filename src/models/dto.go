@@ -168,6 +168,7 @@ type RiceWithRelationsDTO struct {
 	Stars       uint             `json:"stars"`
 	Previews    []RicePreviewDTO `json:"previews"`
 	Dotfiles    RiceDotfilesDTO  `json:"dotfiles"`
+	Author      UserDTO          `json:"author"`
 	CreatedAt   time.Time        `json:"createdAt"`
 	UpdatedAt   time.Time        `json:"updatedAt"`
 }
@@ -187,6 +188,7 @@ func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
 		Stars:       r.StarCount,
 		Previews:    previews,
 		Dotfiles:    r.Dotfiles.ToDTO(),
+		Author:      r.User.ToDTO(),
 		CreatedAt:   r.Rice.CreatedAt,
 		UpdatedAt:   r.Rice.UpdatedAt,
 	}

@@ -100,14 +100,16 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 	suffix := `
 	SELECT
 		to_jsonb(base) AS rice,
+		to_jsonb(u) AS "user",
 		to_jsonb(df) AS dotfiles,
 		jsonb_agg(to_jsonb(p) ORDER BY p.id) AS previews,
 		count(DISTINCT s.user_id) AS star_count
 	FROM base
+	JOIN users u ON u.id = base.author_id
 	JOIN rice_dotfiles df ON df.rice_id = base.id
 	JOIN rice_previews p ON p.rice_id = base.id
 	LEFT JOIN rice_stars s ON s.rice_id = base.id
-	GROUP BY base.*, df.*
+	GROUP BY base.*, df.*, u.*
 	`
 
 	switch findBy {
@@ -136,25 +138,25 @@ var findRiceBySlugSql = buildFindRiceSql(SlugAndUsername)
 
 const fetchUserRicesSql = `
 SELECT
-        r.id, r.title, r.slug, r.created_at,
-        u.display_name, u.username,
-        p.file_path AS thumbnail,
-        count(DISTINCT s.user_id) AS star_count,
-        df.download_count, EXISTS (
-			SELECT 1
-			FROM rice_stars rs
-			WHERE rs.rice_id = r.id AND rs.user_id = $1
-		) AS is_starred
+	r.id, r.title, r.slug, r.created_at,
+	u.display_name, u.username,
+	p.file_path AS thumbnail,
+	count(DISTINCT s.user_id) AS star_count,
+	df.download_count, EXISTS (
+		SELECT 1
+		FROM rice_stars rs
+		WHERE rs.rice_id = r.id AND rs.user_id = $1
+	) AS is_starred
 FROM rices r
 JOIN users u ON u.id = r.author_id
 LEFT JOIN rice_stars s ON s.rice_id = r.id
 JOIN rice_dotfiles df ON df.rice_id = r.id
 JOIN LATERAL (
-        SELECT p.file_path
-        FROM rice_previews p
-        WHERE p.rice_id = r.id
-        ORDER BY p.created_at
-        LIMIT 1
+	SELECT p.file_path
+	FROM rice_previews p
+	WHERE p.rice_id = r.id
+	ORDER BY p.created_at
+	LIMIT 1
 ) p ON TRUE
 WHERE u.id = $1
 GROUP BY
