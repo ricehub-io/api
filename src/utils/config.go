@@ -17,7 +17,6 @@ type (
 		DatabaseUrl       string `toml:"database_url"`
 		RedisUrl          string `toml:"redis_url"`
 		CDNUrl            string `toml:"cdn_url"`
-		MultipartLimit    int64  `toml:"multipart_limit"`
 		DefaultAvatar     string `toml:"default_avatar"`
 		JWT               jwtConfig
 		DisableRateLimits bool `toml:"disable_rate_limits"`

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"ricehub/src/errs"
 	"strings"
@@ -145,6 +146,27 @@ func PathRateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Ha
 
 		if count > maxRequests {
 			c.Error(errs.UserError("You are sending too many requests to this path!", http.StatusTooManyRequests))
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func FileSizeLimitMiddleware(maxBytes int64) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)
+
+		// try to parse the request form
+		if err := c.Request.ParseMultipartForm(1024); err != nil {
+			if _, ok := err.(*http.MaxBytesError); ok {
+				c.Error(errs.UserError(fmt.Sprintf("Uploaded file(s) exceed(s) the size limit of %v bytes!", maxBytes), http.StatusRequestEntityTooLarge))
+				c.Abort()
+				return
+			}
+
+			c.Error(errs.UserError(fmt.Sprintf("Failed to parse multipart form: %v", err), http.StatusBadRequest))
 			c.Abort()
 			return
 		}

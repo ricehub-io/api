@@ -192,6 +192,7 @@ func CreateRice(c *gin.Context) {
 		c.Error(errs.UserError("Dotfiles are required", http.StatusBadRequest))
 		return
 	}
+	dotfilesFile := formDotfiles[0]
 
 	validPreviews := make(map[string]*multipart.FileHeader, len(previews))
 	for _, preview := range previews {
@@ -205,7 +206,7 @@ func CreateRice(c *gin.Context) {
 		validPreviews[previewPath] = preview
 	}
 
-	dotfilesExt, err := utils.ValidateFileAsArchive(formDotfiles[0])
+	dotfilesExt, err := utils.ValidateFileAsArchive(dotfilesFile)
 	if err != nil {
 		c.Error(err)
 		return
@@ -247,9 +248,10 @@ func CreateRice(c *gin.Context) {
 
 	// save dotfiles on the disk
 	dotfilesPath := fmt.Sprintf("/dotfiles/%v%v", uuid.New(), dotfilesExt)
-	c.SaveUploadedFile(formDotfiles[0], "./public"+dotfilesPath)
+	c.SaveUploadedFile(dotfilesFile, "./public"+dotfilesPath)
 
-	dotfiles, err := repository.InsertRiceDotfiles(tx, rice.Id, dotfilesPath)
+	dotfilesSize := dotfilesFile.Size
+	dotfiles, err := repository.InsertRiceDotfiles(tx, rice.Id, dotfilesPath, dotfilesSize)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -331,7 +333,8 @@ func UpdateDotfiles(c *gin.Context) {
 	path := fmt.Sprintf("/dotfiles/%v%v", uuid.New(), ext)
 	c.SaveUploadedFile(file, "./public"+path)
 
-	df, err := repository.UpdateRiceDotfiles(riceId, path)
+	fileSize := file.Size
+	df, err := repository.UpdateRiceDotfiles(riceId, path, fileSize)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return

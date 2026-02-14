@@ -176,8 +176,8 @@ VALUES ($1, $2)
 RETURNING *
 `
 const insertDotfilesSql = `
-INSERT INTO rice_dotfiles (rice_id, file_path)
-VALUES ($1, $2)
+INSERT INTO rice_dotfiles (rice_id, file_path, file_size)
+VALUES ($1, $2, $3)
 RETURNING *
 `
 const insertStarSql = `
@@ -186,8 +186,8 @@ VALUES ($1, $2)
 `
 const updateDotfilesSql = `
 UPDATE rice_dotfiles
-SET file_path = $1
-WHERE rice_id = $2
+SET file_path = $2, file_size = $3
+WHERE rice_id = $1
 RETURNING *
 `
 const incrementDownloadsSql = `
@@ -321,8 +321,8 @@ func InsertRicePreviewTx(tx pgx.Tx, riceId uuid.UUID, previewPath string) error 
 	return err
 }
 
-func InsertRiceDotfiles(tx pgx.Tx, riceId uuid.UUID, dotfilesPath string) (df models.RiceDotfiles, err error) {
-	df, err = txRowToStruct[models.RiceDotfiles](tx, insertDotfilesSql, riceId, dotfilesPath)
+func InsertRiceDotfiles(tx pgx.Tx, riceId uuid.UUID, dotfilesPath string, dotfilesSize int64) (df models.RiceDotfiles, err error) {
+	df, err = txRowToStruct[models.RiceDotfiles](tx, insertDotfilesSql, riceId, dotfilesPath, dotfilesSize)
 	return
 }
 
@@ -354,8 +354,8 @@ func UpdateRice(riceId string, title *string, description *string) (rice models.
 	return
 }
 
-func UpdateRiceDotfiles(riceId string, dotfilesPath string) (df models.RiceDotfiles, err error) {
-	df, err = rowToStruct[models.RiceDotfiles](updateDotfilesSql, dotfilesPath, riceId)
+func UpdateRiceDotfiles(riceId string, filePath string, fileSize int64) (df models.RiceDotfiles, err error) {
+	df, err = rowToStruct[models.RiceDotfiles](updateDotfilesSql, riceId, filePath, fileSize)
 	return
 }
 

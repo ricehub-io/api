@@ -107,6 +107,7 @@ func (t Tag) ToDTO() TagDTO {
 
 type RiceDotfilesDTO struct {
 	FilePath  string    `json:"filePath"`
+	FileSize  int64     `json:"fileSize"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -114,6 +115,7 @@ type RiceDotfilesDTO struct {
 func (df RiceDotfiles) ToDTO() RiceDotfilesDTO {
 	return RiceDotfilesDTO{
 		FilePath:  utils.Config.CDNUrl + df.FilePath,
+		FileSize:  df.FileSize,
 		CreatedAt: df.CreatedAt,
 		UpdatedAt: df.UpdatedAt,
 	}

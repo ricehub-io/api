@@ -119,6 +119,10 @@ CREATE TRIGGER update_rice_comments_updated_at
     BEFORE UPDATE ON rice_comments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- insert development data
+-- insert test data
 INSERT INTO tags (name)
 VALUES ('AwesomeWM'), ('Arch Linux'), ('KDE'), ('Hyprland'), ('i3'), ('bspwm');
+
+-- add dotfiles size column
+ALTER TABLE rice_dotfiles
+ADD COLUMN file_size BIGINT NOT NULL CHECK (file_size > 0);

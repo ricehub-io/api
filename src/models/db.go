@@ -39,6 +39,7 @@ type Rice struct {
 type RiceDotfiles struct {
 	RiceId        uuid.UUID `json:"rice_id"`
 	FilePath      string    `json:"file_path"`
+	FileSize      int64     `json:"file_size"`
 	DownloadCount uint      `json:"download_count"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`

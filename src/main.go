@@ -20,6 +20,13 @@ import (
 const configPath = "config.toml"
 const keysDir = "keys"
 
+// TODO: replace these values with config entries
+const corsOrigin = "http://127.0.0.1:5173"
+const UserAvatarSizeLimit = 15000000 // 15MB
+const dotfilesSizeLimit = 500000000  // 500MB
+const previewSizeLimit = 1000000     // 1MB
+const previewsPerRiceLimit = 10      // used for calculating `POST /rices` max body size
+
 func main() {
 	logger := setupLogger()
 	defer logger.Sync()
@@ -41,9 +48,8 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
-	// TODO: use config values
 	corsConfig := cors.Config{
-		AllowOrigins:     []string{"http://127.0.0.1:5173"},
+		AllowOrigins:     []string{corsOrigin},
 		AllowMethods:     []string{"GET", "POST", "DELETE", "PATCH"},
 		AllowHeaders:     []string{"Origin", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length", "Set-Cookie"},
@@ -52,7 +58,6 @@ func main() {
 
 	r.Use(gin.Recovery(), cors.New(corsConfig), utils.LoggerMiddleware(logger), errs.ErrorHandler(logger), utils.RateLimitMiddleware(100, time.Minute))
 
-	r.MaxMultipartMemory = utils.Config.MultipartLimit
 	if err := r.SetTrustedProxies(nil); err != nil {
 		log.Fatalf("Failed to set trusted proxies: %v", err)
 	}
@@ -124,7 +129,7 @@ func setupRoutes(r *gin.Engine) {
 		authedOnly.DELETE("/:id", handlers.DeleteUser)
 		authedOnly.PATCH("/:id/displayName", utils.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UpdateDisplayName)
 		authedOnly.PATCH("/:id/password", utils.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UpdatePassword)
-		authedOnly.POST("/:id/avatar", utils.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UploadAvatar)
+		authedOnly.POST("/:id/avatar", utils.FileSizeLimitMiddleware(UserAvatarSizeLimit), utils.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UploadAvatar)
 		authedOnly.DELETE("/:id/avatar", utils.PathRateLimitMiddleware(10, 24*time.Hour), handlers.DeleteAvatar)
 	}
 
@@ -146,10 +151,10 @@ func setupRoutes(r *gin.Engine) {
 		rices.GET("/:id/dotfiles", handlers.DownloadDotfiles)
 
 		auth := rices.Use(utils.AuthMiddleware)
-		auth.POST("", utils.PathRateLimitMiddleware(10, 24*time.Hour), handlers.CreateRice)
+		auth.POST("", utils.FileSizeLimitMiddleware(dotfilesSizeLimit+previewsPerRiceLimit*previewSizeLimit), utils.PathRateLimitMiddleware(5, 24*time.Hour), handlers.CreateRice)
 		auth.PATCH("/:id", utils.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateRiceMetadata)
-		auth.POST("/:id/dotfiles", utils.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateDotfiles)
-		auth.POST("/:id/previews", utils.PathRateLimitMiddleware(25, time.Hour), handlers.AddPreview)
+		auth.POST("/:id/dotfiles", utils.FileSizeLimitMiddleware(dotfilesSizeLimit), utils.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateDotfiles)
+		auth.POST("/:id/previews", utils.FileSizeLimitMiddleware(previewSizeLimit), utils.PathRateLimitMiddleware(25, time.Hour), handlers.AddPreview)
 		auth.POST("/:id/star", handlers.AddRiceStar)
 		auth.DELETE("/:id/star", handlers.DeleteRiceStar)
 		auth.DELETE("/:id/previews/:previewId", handlers.DeletePreview)
