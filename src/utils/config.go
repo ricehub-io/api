@@ -14,6 +14,7 @@ type (
 		CDNUrl            string `toml:"cdn_url"`
 		DefaultAvatar     string `toml:"default_avatar"`
 		CorsOrigin        string `toml:"cors_origin"`
+		CookiesDomain     string `toml:"cookies_domain"`
 		DisableRateLimits bool   `toml:"disable_rate_limits"`
 		JWT               jwtConfig
 		Limits            limitsConfig
