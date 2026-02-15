@@ -44,7 +44,7 @@ func main() {
 	corsConfig := cors.Config{
 		AllowOrigins:     []string{utils.Config.CorsOrigin},
 		AllowMethods:     []string{"GET", "POST", "DELETE", "PATCH"},
-		AllowHeaders:     []string{"Origin", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length", "Set-Cookie"},
 		AllowCredentials: true,
 	}
