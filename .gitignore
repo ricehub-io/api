@@ -1,4 +1,3 @@
-build/
 config.toml
 .idea/
 keys/*.pem
