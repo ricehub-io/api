@@ -17,6 +17,7 @@ SELECT c.id AS comment_id, c.content, c.created_at, c.updated_at, u.display_name
 FROM rice_comments c
 JOIN users u ON u.id = c.author_id
 WHERE rice_id = $1
+ORDER BY created_at DESC
 `
 const insertCommentSql = `
 INSERT INTO rice_comments (rice_id, author_id, content)

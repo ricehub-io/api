@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"log"
 	"ricehub/src/models"
 	"time"
 
@@ -243,7 +242,6 @@ func FetchTrendingRices(pag *Pagination, userId string) (r []models.PartialRice,
 
 func FetchRecentRices(pag *Pagination, userId string) (r []models.PartialRice, err error) {
 	query := buildFetchRicesSql("recent", false, userId != "")
-	log.Println(query)
 
 	args := []any{}
 	if userId != "" {
