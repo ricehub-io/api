@@ -66,7 +66,7 @@ type CommentWithUser struct {
 	Content     string
 	DisplayName string
 	Username    string
-	AvatarPath  string
+	AvatarPath  *string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

@@ -7,6 +7,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// Helpers
+func getUserAvatar(avatarPath *string) string {
+	avatar := utils.Config.CDNUrl + utils.Config.DefaultAvatar
+	if avatarPath != nil {
+		avatar = utils.Config.CDNUrl + *avatarPath
+	}
+	return avatar
+}
+
 // Requests
 // AUTH
 type RegisterDTO struct {
@@ -78,16 +87,11 @@ type UserDTO struct {
 }
 
 func (u User) ToDTO() UserDTO {
-	avatar := utils.Config.CDNUrl + utils.Config.DefaultAvatar
-	if u.AvatarPath != nil {
-		avatar = utils.Config.CDNUrl + *u.AvatarPath
-	}
-
 	return UserDTO{
 		Id:          u.Id,
 		Username:    u.Username,
 		DisplayName: u.DisplayName,
-		AvatarUrl:   avatar,
+		AvatarUrl:   getUserAvatar(u.AvatarPath),
 		CreatedAt:   u.CreatedAt,
 		UpdatedAt:   u.UpdatedAt,
 	}
@@ -228,7 +232,7 @@ func (c CommentWithUser) ToDTO() CommentWithUserDTO {
 		Content:     c.Content,
 		DisplayName: c.DisplayName,
 		Username:    c.Username,
-		Avatar:      utils.Config.CDNUrl + c.AvatarPath,
+		Avatar:      getUserAvatar(c.AvatarPath),
 		CreatedAt:   c.CreatedAt,
 		UpdatedAt:   c.UpdatedAt,
 	}
