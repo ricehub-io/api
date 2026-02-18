@@ -172,6 +172,7 @@ type RiceWithRelationsDTO struct {
 	Description string           `json:"description"`
 	Downloads   uint             `json:"downloads"`
 	Stars       uint             `json:"stars"`
+	IsStarred   bool             `json:"isStarred"`
 	Previews    []RicePreviewDTO `json:"previews"`
 	Dotfiles    RiceDotfilesDTO  `json:"dotfiles"`
 	Author      UserDTO          `json:"author"`
@@ -192,6 +193,7 @@ func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
 		Description: r.Rice.Description,
 		Downloads:   r.Dotfiles.DownloadCount,
 		Stars:       r.StarCount,
+		IsStarred:   r.IsStarred,
 		Previews:    previews,
 		Dotfiles:    r.Dotfiles.ToDTO(),
 		Author:      r.User.ToDTO(),

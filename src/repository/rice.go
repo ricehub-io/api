@@ -102,7 +102,8 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 		to_jsonb(u) AS "user",
 		to_jsonb(df) AS dotfiles,
 		jsonb_agg(to_jsonb(p) ORDER BY p.id) AS previews,
-		count(DISTINCT s.user_id) AS star_count
+		count(DISTINCT s.user_id) AS star_count,
+		coalesce(bool_or(s.user_id = $1), false) AS is_starred
 	FROM base
 	JOIN users u ON u.id = base.author_id
 	JOIN rice_dotfiles df ON df.rice_id = base.id
@@ -118,7 +119,7 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 			SELECT r.*
 			FROM rices r
 			JOIN users u ON u.id = r.author_id
-			WHERE r.slug = $1 AND u.username = $2
+			WHERE r.slug = $2 AND u.username = $3
 		)
 		` + suffix
 	default: // fallback to find by rice id
@@ -126,7 +127,7 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 		WITH base AS (
 			SELECT r.*
 			FROM rices r
-			WHERE r.id = $1
+			WHERE r.id = $2
 		)
 		` + suffix
 	}
@@ -224,11 +225,11 @@ func RicePreviewCount(riceId string) (int64, error) {
 	return count, err
 }
 
-func FetchTrendingRices(pag *Pagination, userId string) (r []models.PartialRice, err error) {
-	query := buildFetchRicesSql("trending", pag.LastId != nil, userId != "")
+func FetchTrendingRices(pag *Pagination, userId *string) (r []models.PartialRice, err error) {
+	query := buildFetchRicesSql("trending", pag.LastId != nil, userId != nil)
 
 	args := []any{}
-	if userId != "" {
+	if userId != nil {
 		args = append(args, userId)
 	}
 
@@ -240,11 +241,11 @@ func FetchTrendingRices(pag *Pagination, userId string) (r []models.PartialRice,
 	return
 }
 
-func FetchRecentRices(pag *Pagination, userId string) (r []models.PartialRice, err error) {
-	query := buildFetchRicesSql("recent", false, userId != "")
+func FetchRecentRices(pag *Pagination, userId *string) (r []models.PartialRice, err error) {
+	query := buildFetchRicesSql("recent", false, userId != nil)
 
 	args := []any{}
-	if userId != "" {
+	if userId != nil {
 		args = append(args, userId)
 	}
 	args = append(args, pag.LastCreatedAt, pag.LastId)
@@ -253,11 +254,11 @@ func FetchRecentRices(pag *Pagination, userId string) (r []models.PartialRice, e
 	return
 }
 
-func FetchMostDownloadedRices(pag *Pagination, userId string) (r []models.PartialRice, err error) {
-	query := buildFetchRicesSql("downloads", pag.LastDownloads != -1, userId != "")
+func FetchMostDownloadedRices(pag *Pagination, userId *string) (r []models.PartialRice, err error) {
+	query := buildFetchRicesSql("downloads", pag.LastDownloads != -1, userId != nil)
 
 	args := []any{}
-	if userId != "" {
+	if userId != nil {
 		args = append(args, userId)
 	}
 	if pag.LastDownloads != -1 {
@@ -268,11 +269,11 @@ func FetchMostDownloadedRices(pag *Pagination, userId string) (r []models.Partia
 	return
 }
 
-func FetchMostStarredRices(pag *Pagination, userId string) (r []models.PartialRice, err error) {
-	query := buildFetchRicesSql("stars", pag.LastId != nil, userId != "")
+func FetchMostStarredRices(pag *Pagination, userId *string) (r []models.PartialRice, err error) {
+	query := buildFetchRicesSql("stars", pag.LastId != nil, userId != nil)
 
 	args := []any{}
-	if userId != "" {
+	if userId != nil {
 		args = append(args, userId)
 	}
 	if pag.LastId != nil {
@@ -300,13 +301,13 @@ func FetchRiceDotfilesPath(riceId string) (*string, error) {
 	return filePath, err
 }
 
-func FindRiceById(riceId string) (r models.RiceWithRelations, err error) {
-	r, err = rowToStruct[models.RiceWithRelations](findRiceSql, riceId)
+func FindRiceById(riceId *string, userId string) (r models.RiceWithRelations, err error) {
+	r, err = rowToStruct[models.RiceWithRelations](findRiceSql, userId, riceId)
 	return
 }
 
-func FindRiceBySlug(slug string, username string) (r models.RiceWithRelations, err error) {
-	r, err = rowToStruct[models.RiceWithRelations](findRiceBySlugSql, slug, username)
+func FindRiceBySlug(userId *string, slug string, username string) (r models.RiceWithRelations, err error) {
+	r, err = rowToStruct[models.RiceWithRelations](findRiceBySlugSql, userId, slug, username)
 	return
 }
 

@@ -96,12 +96,7 @@ func FetchRices(c *gin.Context) {
 	rices := []models.PartialRice{}
 	var err error
 
-	userId := ""
-	tokenStr := strings.TrimSpace(c.GetHeader("Authorization"))
-	token, err := utils.ValidateToken(tokenStr)
-	if err == nil {
-		userId = token.Subject
-	}
+	userId := GetUserIdFromRequest(c)
 
 	switch sort {
 	case "trending":
@@ -125,7 +120,8 @@ func FetchRices(c *gin.Context) {
 func GetRiceById(c *gin.Context) {
 	riceId := c.Param("id")
 
-	rice, err := repository.FindRiceById(riceId)
+	userId := GetUserIdFromRequest(c)
+	rice, err := repository.FindRiceById(userId, riceId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			c.Error(errs.RiceNotFound)

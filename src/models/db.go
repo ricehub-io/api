@@ -77,6 +77,7 @@ type RiceWithRelations struct {
 	Dotfiles  RiceDotfiles
 	Previews  []RicePreview
 	StarCount uint
+	IsStarred bool
 }
 
 type PartialRice struct {

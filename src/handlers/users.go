@@ -45,6 +45,16 @@ func preCheck(token *utils.AccessToken, userId string) (user *models.User, err e
 	return
 }
 
+func GetUserIdFromRequest(c *gin.Context) *string {
+	var userId *string = nil
+	tokenStr := strings.TrimSpace(c.GetHeader("Authorization"))
+	token, err := utils.ValidateToken(tokenStr)
+	if err == nil {
+		userId = &token.Subject
+	}
+	return userId
+}
+
 func GetUser(c *gin.Context) {
 	userId := c.Param("id")
 	token := c.MustGet("token").(*utils.AccessToken)
@@ -63,7 +73,10 @@ func GetUserRiceBySlug(c *gin.Context) {
 	username := c.Param("id") // path param has to be called 'id' because gin is upset otherwise
 	slug := c.Param("slug")
 
-	rice, err := repository.FindRiceBySlug(slug, username)
+	// check if request has been sent by logged in user
+	userId := GetUserIdFromRequest(c)
+
+	rice, err := repository.FindRiceBySlug(userId, slug, username)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			c.Error(errs.RiceNotFound)
