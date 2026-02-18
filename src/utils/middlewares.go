@@ -174,3 +174,16 @@ func FileSizeLimitMiddleware(maxBytes int64) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// middleware that automatically responds with appropriate error if maintenance is toggled in config
+func MaintenanceMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if Config.Maintenance {
+			c.Error(errs.UserError("API is in read-only mode for a maintenance. Please retry later.", http.StatusServiceUnavailable))
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}

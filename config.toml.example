@@ -5,6 +5,7 @@ default_avatar = "/avatars/default.png"
 cors_origin = "http://127.0.0.1:5173"
 cookies_domain = "127.0.0.1"
 disable_rate_limits = false
+maintenance = false
 
 [limits]
 max_previews_per_rice = 10

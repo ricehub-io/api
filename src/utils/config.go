@@ -16,6 +16,7 @@ type (
 		CorsOrigin        string `toml:"cors_origin"`
 		CookiesDomain     string `toml:"cookies_domain"`
 		DisableRateLimits bool   `toml:"disable_rate_limits"`
+		Maintenance       bool   `toml:"maintenance"`
 		JWT               jwtConfig
 		Limits            limitsConfig
 		Blacklist         blacklistConfig
