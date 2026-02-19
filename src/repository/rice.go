@@ -301,7 +301,7 @@ func FetchRiceDotfilesPath(riceId string) (*string, error) {
 	return filePath, err
 }
 
-func FindRiceById(riceId *string, userId string) (r models.RiceWithRelations, err error) {
+func FindRiceById(userId *string, riceId string) (r models.RiceWithRelations, err error) {
 	r, err = rowToStruct[models.RiceWithRelations](findRiceSql, userId, riceId)
 	return
 }

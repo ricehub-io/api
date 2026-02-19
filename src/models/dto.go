@@ -51,12 +51,12 @@ type TagNameDTO struct {
 // RICES
 type CreateRiceDTO struct {
 	Title       string `form:"title" binding:"required,min=4,max=32,ricetitle"`
-	Description string `form:"description" binding:"required,min=4,max=1024"`
+	Description string `form:"description" binding:"required,min=4,max=10240"`
 }
 
 type UpdateRiceDTO struct {
 	Title       *string `json:"title" binding:"omitempty,min=4,max=32,ricetitle"`
-	Description *string `json:"description" binding:"omitempty,min=4,max=1024"`
+	Description *string `json:"description" binding:"omitempty,min=4,max=10240"`
 }
 
 // COMMENTS

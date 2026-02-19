@@ -179,6 +179,8 @@ func FileSizeLimitMiddleware(maxBytes int64) gin.HandlerFunc {
 func MaintenanceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if Config.Maintenance {
+			_, _ = c.GetRawData()
+
 			c.Error(errs.UserError("API is in read-only mode for a maintenance. Please retry later.", http.StatusServiceUnavailable))
 			c.Abort()
 			return
