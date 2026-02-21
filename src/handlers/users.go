@@ -56,14 +56,7 @@ func GetUserIdFromRequest(c *gin.Context) *string {
 }
 
 func FetchUsers(c *gin.Context) {
-	token := c.MustGet("token").(*utils.AccessToken)
-
 	username := c.Query("username")
-	if username == "" && !token.IsAdmin {
-		c.Error(errs.UserError("Username query parameter is required", http.StatusBadRequest))
-		return
-	}
-
 	if username != "" {
 		user, err := repository.FindUserByUsername(username)
 		if err != nil {
@@ -77,21 +70,37 @@ func FetchUsers(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, user.ToDTO())
-	} else {
-		limit, err := utils.ParseLimitQuery(c)
-		if err != nil {
-			c.Error(err)
-			return
-		}
-
-		users, err := repository.FetchRecentUsers(limit)
-		if err != nil {
-			c.Error(errs.InternalError(err))
-			return
-		}
-
-		c.JSON(http.StatusOK, models.UsersToDTOs(users))
+		return
 	}
+
+	// check if user is an admin
+	tokenStr := c.Request.Header.Get("Authorization")
+	tokenStr = strings.TrimSpace(tokenStr)
+
+	token, err := utils.ValidateToken(tokenStr)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	if !token.IsAdmin {
+		c.Error(errs.UserError("Username query parameter is required", http.StatusBadRequest))
+		return
+	}
+
+	limit, err := utils.ParseLimitQuery(c)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	users, err := repository.FetchRecentUsers(limit)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, models.UsersToDTOs(users))
 }
 
 func GetUserById(c *gin.Context) {
