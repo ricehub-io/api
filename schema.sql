@@ -126,3 +126,14 @@ VALUES ('AwesomeWM'), ('Arch Linux'), ('KDE'), ('Hyprland'), ('i3'), ('bspwm');
 -- add dotfiles size column
 ALTER TABLE rice_dotfiles
 ADD COLUMN file_size BIGINT NOT NULL CHECK (file_size > 0);
+
+CREATE TABLE website_variables (
+    key TEXT PRIMARY KEY CHECK (key ~ '^[a-z0-9_]+$'),
+    value TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER update_website_variables_updated_at
+    BEFORE UPDATE ON website_variables
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();

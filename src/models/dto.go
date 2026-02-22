@@ -359,3 +359,15 @@ type ServiceStatisticsDTO struct {
 func (s ServiceStatistics) ToDTO() ServiceStatisticsDTO {
 	return ServiceStatisticsDTO(s)
 }
+
+// Website Variables
+type WebsiteVariableDTO struct {
+	Key       string    `json:"key"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (v WebsiteVariable) ToDTO() WebsiteVariableDTO {
+	return WebsiteVariableDTO(v)
+}

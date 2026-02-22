@@ -126,3 +126,10 @@ type ServiceStatistics struct {
 	ReportCount     int
 	OpenReportCount int
 }
+
+type WebsiteVariable struct {
+	Key       string
+	Value     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
