@@ -139,7 +139,7 @@ CREATE TRIGGER update_website_variables_updated_at
     BEFORE UPDATE ON website_variables
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-CREATE TABLE website_links (
+CREATE TABLE links (
     name TEXT PRIMARY KEY CHECK (name ~ '^[a-z]+$'),
     url TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
