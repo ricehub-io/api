@@ -133,3 +133,10 @@ type WebsiteVariable struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+type Link struct {
+	Name      string
+	URL       string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}

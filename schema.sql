@@ -127,6 +127,7 @@ VALUES ('AwesomeWM'), ('Arch Linux'), ('KDE'), ('Hyprland'), ('i3'), ('bspwm');
 ALTER TABLE rice_dotfiles
 ADD COLUMN file_size BIGINT NOT NULL CHECK (file_size > 0);
 
+-- tables related to website
 CREATE TABLE website_variables (
     key TEXT PRIMARY KEY CHECK (key ~ '^[a-z0-9_]+$'),
     value TEXT NOT NULL,
@@ -137,3 +138,25 @@ CREATE TABLE website_variables (
 CREATE TRIGGER update_website_variables_updated_at
     BEFORE UPDATE ON website_variables
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TABLE website_links (
+    name TEXT PRIMARY KEY CHECK (name ~ '^[a-z]+$'),
+    url TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER update_links_updated_at
+    BEFORE UPDATE ON links
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- default values
+INSERT INTO website_variables (key, value)
+VALUES
+    ('terms_of_service_text', 'Lorem ipsum'),
+    ('privacy_policy_text', 'Lorem ipsum');
+
+INSERT INTO links (name, url)
+VALUES
+    ('discord', 'https://discord.com')
+    ('github', 'https://github.com');

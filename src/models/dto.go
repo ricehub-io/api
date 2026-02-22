@@ -363,14 +363,23 @@ func (s ServiceStatistics) ToDTO() ServiceStatisticsDTO {
 // Website Variables
 type WebsiteVariableDTO struct {
 	Value     string    `json:"value"`
-	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (v WebsiteVariable) ToDTO() WebsiteVariableDTO {
 	return WebsiteVariableDTO{
 		Value:     v.Value,
-		CreatedAt: v.CreatedAt,
 		UpdatedAt: v.UpdatedAt,
+	}
+}
+
+// Links
+type LinkDTO struct {
+	URL string `json:"url"`
+}
+
+func (link Link) ToDTO() LinkDTO {
+	return LinkDTO{
+		URL: link.URL,
 	}
 }

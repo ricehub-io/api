@@ -194,6 +194,10 @@ func setupRoutes(r *gin.Engine) {
 	webVars := r.Group("/vars")
 	{
 		webVars.GET("/:key", utils.PathRateLimitMiddleware(5, 1*time.Minute), handlers.GetWebsiteVariable)
-		// TODO: add endpoint to set variables (admin only)
+	}
+
+	links := r.Group("/links")
+	{
+		links.GET("/:name", utils.PathRateLimitMiddleware(5, 1*time.Minute), handlers.GetLinkByName)
 	}
 }
