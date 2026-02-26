@@ -33,7 +33,10 @@ func DoesUserExistsByUsername(username string) (exists bool, err error) {
 }
 
 func InsertUser(username string, displayName string, password string) error {
-	query := "INSERT INTO users (username, display_name, password) VALUES ($1, $2, $3)"
+	query := `
+	INSERT INTO users (username, display_name, password)
+	VALUES ($1, $2, $3)
+	`
 
 	_, err := db.Exec(context.Background(), query, username, displayName, password)
 	if err != nil {
@@ -46,7 +49,7 @@ func InsertUser(username string, displayName string, password string) error {
 func FetchRecentUsers(limit int64) (users []models.User, err error) {
 	const sql = `
 	SELECT *
-	FROM users
+	FROM users_with_ban_status
 	ORDER BY created_at DESC
 	LIMIT $1
 	`
@@ -56,14 +59,14 @@ func FetchRecentUsers(limit int64) (users []models.User, err error) {
 }
 
 func FindUserByUsername(username string) (*models.User, error) {
-	query := "SELECT * FROM users WHERE username = $1 LIMIT 1"
+	query := "SELECT * FROM users_with_ban_status WHERE username = $1 LIMIT 1"
 	rows, _ := db.Query(context.Background(), query, username)
 	user, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.User])
 	return &user, err
 }
 
 func FindUserById(userID string) (*models.User, error) {
-	query := "SELECT * FROM users WHERE id = $1 LIMIT 1"
+	query := "SELECT * FROM users_with_ban_status WHERE id = $1 LIMIT 1"
 	rows, _ := db.Query(context.Background(), query, userID)
 	user, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.User])
 	return &user, err
@@ -92,6 +95,14 @@ func UpdateUserPassword(userID string, password string) error {
 func UpdateUserAvatarPath(userID string, avatarPath *string) error {
 	query := "UPDATE users SET avatar_path = $1 WHERE id = $2"
 	_, err := db.Exec(context.Background(), query, avatarPath, userID)
+	return err
+}
+
+// I have no idea how to name this function
+// It sets `is_admin` column for provided user ID to false
+func RemoveAdminFromUser(userID string) error {
+	query := "UPDATE users SET is_admin = false WHERE id = $1"
+	_, err := db.Exec(context.Background(), query, userID)
 	return err
 }
 

@@ -7,6 +7,7 @@ import (
 	"ricehub/src/errs"
 	"ricehub/src/models"
 	"ricehub/src/repository"
+	"ricehub/src/security"
 	"ricehub/src/utils"
 	"strings"
 
@@ -92,20 +93,24 @@ func Login(c *gin.Context) {
 		c.Error(errs.InternalError(err))
 		return
 	}
-
 	if !match {
 		c.Error(invalidCredentials)
 		return
 	}
 
+	if err := security.VerifyUser(user); err != nil {
+		c.Error(err)
+		return
+	}
+
 	// create tokens
-	refresh, err := utils.NewRefreshToken(user.ID)
+	refresh, err := security.NewRefreshToken(user.ID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 
-	access, err := utils.NewAccessToken(user.ID, user.IsAdmin)
+	access, err := security.NewAccessToken(user.ID, user.IsAdmin)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -131,7 +136,7 @@ func RefreshToken(c *gin.Context) {
 	}
 
 	// validate refresh claims
-	refresh, err := utils.DecodeRefreshToken(tokenStr)
+	refresh, err := security.DecodeRefreshToken(tokenStr)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			c.Error(errs.UserError("Refresh token is expired! Please authenticate again.", http.StatusForbidden))
@@ -154,8 +159,13 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
+	if err := security.VerifyUser(user); err != nil {
+		c.Error(err)
+		return
+	}
+
 	// generate access token
-	access, err := utils.NewAccessToken(user.ID, user.IsAdmin)
+	access, err := security.NewAccessToken(user.ID, user.IsAdmin)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return

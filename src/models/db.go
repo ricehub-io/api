@@ -13,6 +13,7 @@ type User struct {
 	Password    string
 	AvatarPath  *string
 	IsAdmin     bool
+	IsBanned    bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

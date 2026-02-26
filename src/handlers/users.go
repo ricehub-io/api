@@ -8,6 +8,7 @@ import (
 	"ricehub/src/errs"
 	"ricehub/src/models"
 	"ricehub/src/repository"
+	"ricehub/src/security"
 	"ricehub/src/utils"
 	"strings"
 	"time"
@@ -15,22 +16,23 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
 
-var invalidUserID = errs.UserError("Invalid user ID provided. It must be a valid UUID.", http.StatusBadRequest)
-var userNotFound = errs.UserError("User not found", http.StatusNotFound)
-
-func isUserPermitted(token *utils.AccessToken, userID string) bool {
-	return token.Subject == userID || token.IsAdmin
+type usersPath struct {
+	UserID string `uri:"id" binding:"required,uuid"`
 }
+
+var invalidUserID = errs.UserError("Invalid user ID provided. It must be a valid UUID.", http.StatusBadRequest)
 
 func findUser(userID string) (*models.User, error) {
 	user, err := repository.FindUserById(userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, userNotFound
+			return nil, errs.UserNotFound
 		}
 
 		return nil, errs.InternalError(err)
@@ -39,13 +41,15 @@ func findUser(userID string) (*models.User, error) {
 	return user, nil
 }
 
-func preCheck(token *utils.AccessToken, userID string) (user *models.User, err error) {
-	if !isUserPermitted(token, userID) {
+// Checks if user can modify the resource.
+//
+// It protects user data from being modified by other non-admin users.
+func preCheck(token *security.AccessToken, userID string) (*models.User, error) {
+	if token.Subject != userID && !token.IsAdmin {
 		return nil, errs.UserError("You can't access this resource", http.StatusForbidden)
 	}
 
-	user, err = findUser(userID)
-	return
+	return findUser(userID)
 }
 
 // I chose to not implement custom validator for expiration/duration
@@ -72,7 +76,7 @@ func computeExpiration(duration *string) (*time.Time, error) {
 func GetUserIdFromRequest(c *gin.Context) *string {
 	var userID *string = nil
 	tokenStr := strings.TrimSpace(c.GetHeader("Authorization"))
-	token, err := utils.ValidateToken(tokenStr)
+	token, err := security.ValidateToken(tokenStr)
 	if err == nil {
 		userID = &token.Subject
 	}
@@ -101,7 +105,7 @@ func FetchUsers(c *gin.Context) {
 	tokenStr := c.Request.Header.Get("Authorization")
 	tokenStr = strings.TrimSpace(tokenStr)
 
-	token, err := utils.ValidateToken(tokenStr)
+	token, err := security.ValidateToken(tokenStr)
 	if err != nil {
 		c.Error(err)
 		return
@@ -127,18 +131,14 @@ func FetchUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, models.UsersToDTOs(users))
 }
 
-type PathParams struct {
-	UserID string `uri:"id" binding:"required,uuid"`
-}
-
 func GetUserById(c *gin.Context) {
-	var path PathParams
+	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(invalidUserID)
 		return
 	}
 
-	token := c.MustGet("token").(*utils.AccessToken)
+	token := c.MustGet("token").(*security.AccessToken)
 
 	user, err := preCheck(token, path.UserID)
 	if err != nil {
@@ -164,7 +164,7 @@ func GetUserRiceBySlug(c *gin.Context) {
 		return
 	}
 	if !exists {
-		c.Error(userNotFound)
+		c.Error(errs.UserNotFound)
 		return
 	}
 
@@ -183,7 +183,7 @@ func GetUserRiceBySlug(c *gin.Context) {
 }
 
 func FetchUserRices(c *gin.Context) {
-	var path PathParams
+	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(invalidUserID)
 		return
@@ -199,13 +199,19 @@ func FetchUserRices(c *gin.Context) {
 }
 
 func UpdateDisplayName(c *gin.Context) {
-	var path PathParams
+	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(invalidUserID)
 		return
 	}
 
-	token := c.MustGet("token").(*utils.AccessToken)
+	token := c.MustGet("token").(*security.AccessToken)
+
+	// check if caller is banned
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
 
 	_, err := preCheck(token, path.UserID)
 	if err != nil {
@@ -238,13 +244,17 @@ func UpdateDisplayName(c *gin.Context) {
 }
 
 func UpdatePassword(c *gin.Context) {
-	var path PathParams
+	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(invalidUserID)
 		return
 	}
 
-	token := c.MustGet("token").(*utils.AccessToken)
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
 
 	user, err := preCheck(token, path.UserID)
 	if err != nil {
@@ -286,13 +296,17 @@ func UpdatePassword(c *gin.Context) {
 }
 
 func UploadAvatar(c *gin.Context) {
-	var path PathParams
+	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(invalidUserID)
 		return
 	}
 
-	token := c.MustGet("token").(*utils.AccessToken)
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
 
 	_, err := preCheck(token, path.UserID)
 	if err != nil {
@@ -337,13 +351,13 @@ func UploadAvatar(c *gin.Context) {
 }
 
 func BanUser(c *gin.Context) {
-	var path PathParams
+	token := c.MustGet("token").(*security.AccessToken)
+
+	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(invalidUserID)
 		return
 	}
-
-	token := c.MustGet("token").(*utils.AccessToken)
 
 	// 1. validate DTO
 	var ban *models.BanUserDTO
@@ -366,7 +380,7 @@ func BanUser(c *gin.Context) {
 		return
 	}
 	if !state.UserExists {
-		c.Error(userNotFound)
+		c.Error(errs.UserNotFound)
 		return
 	}
 	if state.UserBanned {
@@ -377,16 +391,33 @@ func BanUser(c *gin.Context) {
 	// 4. insert ban into the database
 	userBan, err := repository.InsertBan(path.UserID, token.Subject, ban.Reason, expiresAt)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.CheckViolation {
+			c.Error(errs.UserError("You cannot ban yourself, dummy.", http.StatusBadRequest))
+			return
+		}
+
 		c.Error(errs.InternalError(err))
 		return
 	}
 
-	// 5. return 201 with ban id in json
+	// 5. remove user permissions (if has any)
+	if err := repository.RemoveAdminFromUser(path.UserID); err != nil {
+		c.Error(errs.InternalError(err))
+		zap.L().Error(
+			"Failed to remove admin role after user ban",
+			zap.String("userID", path.UserID),
+			zap.Error(err),
+		)
+		return
+	}
+
+	// 6. return 201 with ban id in json
 	c.JSON(http.StatusCreated, userBan.ToDTO())
 }
 
 func UnbanUser(c *gin.Context) {
-	var path PathParams
+	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(invalidUserID)
 		return
@@ -399,7 +430,7 @@ func UnbanUser(c *gin.Context) {
 		return
 	}
 	if !state.UserExists {
-		c.Error(userNotFound)
+		c.Error(errs.UserNotFound)
 		return
 	}
 	if !state.UserBanned {
@@ -418,13 +449,17 @@ func UnbanUser(c *gin.Context) {
 }
 
 func DeleteAvatar(c *gin.Context) {
-	var path PathParams
+	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(invalidUserID)
 		return
 	}
 
-	token := c.MustGet("token").(*utils.AccessToken)
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
 
 	_, err := preCheck(token, path.UserID)
 	if err != nil {
@@ -438,13 +473,17 @@ func DeleteAvatar(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
-	var path PathParams
+	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(invalidUserID)
 		return
 	}
 
-	token := c.MustGet("token").(*utils.AccessToken)
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
 
 	user, err := preCheck(token, path.UserID)
 	if err != nil {

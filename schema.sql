@@ -183,3 +183,17 @@ $$ LANGUAGE 'plpgsql';
 CREATE TRIGGER update_user_ban_revoked_at
     BEFORE UPDATE OF is_revoked ON user_bans
     FOR EACH ROW EXECUTE FUNCTION update_revoked_at();
+
+-- create a view for fetching user data + ban info
+CREATE VIEW users_with_ban_status AS
+SELECT
+    u.*,
+    EXISTS (
+        SELECT 1
+        FROM user_bans b
+        WHERE
+            b.user_id = u.id
+            AND (b.expires_at > NOW() OR b.expires_at IS NULL)
+            AND b.is_revoked = false
+    ) AS is_banned
+FROM users u;

@@ -6,6 +6,7 @@ import (
 	"ricehub/src/errs"
 	"ricehub/src/models"
 	"ricehub/src/repository"
+	"ricehub/src/security"
 	"ricehub/src/utils"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,13 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func checkCanUserModifyComment(token *utils.AccessToken, commentID string) error {
+type commentsPath struct {
+	CommentID string `uri:"id" binding:"required,uuid"`
+}
+
+var invalidCommentId = errs.UserError("Invalid comment ID path parameter. It must be a valid UUID.", http.StatusBadRequest)
+
+func checkCanUserModifyComment(token *security.AccessToken, commentID string) error {
 	if token.IsAdmin {
 		return nil
 	}
@@ -28,7 +35,11 @@ func checkCanUserModifyComment(token *utils.AccessToken, commentID string) error
 }
 
 func AddComment(c *gin.Context) {
-	token := c.MustGet("token").(*utils.AccessToken)
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
 
 	var body models.AddCommentDTO
 	if err := utils.ValidateJSON(c, &body); err != nil {
@@ -68,9 +79,13 @@ func GetRecentComments(c *gin.Context) {
 }
 
 func GetCommentById(c *gin.Context) {
-	commentID := c.Param("id")
+	var path commentsPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(invalidCommentId)
+		return
+	}
 
-	comment, err := repository.FindCommentById(commentID)
+	comment, err := repository.FindCommentById(path.CommentID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			c.Error(errs.UserError("Comment with provided ID not found", http.StatusNotFound))
@@ -85,8 +100,17 @@ func GetCommentById(c *gin.Context) {
 }
 
 func UpdateComment(c *gin.Context) {
-	token := c.MustGet("token").(*utils.AccessToken)
-	commentID := c.Param("id")
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
+
+	var path commentsPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(invalidCommentId)
+		return
+	}
 
 	var update models.UpdateCommentDTO
 	if err := utils.ValidateJSON(c, &update); err != nil {
@@ -94,12 +118,12 @@ func UpdateComment(c *gin.Context) {
 		return
 	}
 
-	if err := checkCanUserModifyComment(token, commentID); err != nil {
+	if err := checkCanUserModifyComment(token, path.CommentID); err != nil {
 		c.Error(err)
 		return
 	}
 
-	comment, err := repository.UpdateComment(commentID, update.Content)
+	comment, err := repository.UpdateComment(path.CommentID, update.Content)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -109,15 +133,24 @@ func UpdateComment(c *gin.Context) {
 }
 
 func DeleteComment(c *gin.Context) {
-	token := c.MustGet("token").(*utils.AccessToken)
-	commentID := c.Param("id")
-
-	if err := checkCanUserModifyComment(token, commentID); err != nil {
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
 
-	if err := repository.DeleteComment(commentID); err != nil {
+	var path commentsPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(invalidCommentId)
+		return
+	}
+
+	if err := checkCanUserModifyComment(token, path.CommentID); err != nil {
+		c.Error(err)
+		return
+	}
+
+	if err := repository.DeleteComment(path.CommentID); err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}

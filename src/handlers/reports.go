@@ -6,6 +6,7 @@ import (
 	"ricehub/src/errs"
 	"ricehub/src/models"
 	"ricehub/src/repository"
+	"ricehub/src/security"
 	"ricehub/src/utils"
 
 	"github.com/gin-gonic/gin"
@@ -43,7 +44,7 @@ func GetReportById(c *gin.Context) {
 }
 
 func CreateReport(c *gin.Context) {
-	token := c.MustGet("token").(*utils.AccessToken)
+	token := c.MustGet("token").(*security.AccessToken)
 
 	var report models.CreateReportDTO
 	if err := utils.ValidateJSON(c, &report); err != nil {

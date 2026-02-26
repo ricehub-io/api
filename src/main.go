@@ -7,6 +7,7 @@ import (
 	"ricehub/src/errs"
 	"ricehub/src/handlers"
 	"ricehub/src/repository"
+	"ricehub/src/security"
 	"ricehub/src/utils"
 	"time"
 
@@ -26,7 +27,7 @@ func main() {
 
 	utils.InitConfig(configPath)
 	utils.InitValidator()
-	utils.InitJWT(keysDir)
+	security.InitJWT(keysDir)
 
 	if utils.Config.DisableRateLimits {
 		logger.Warn("Rate limits disabled! Is it intentional?")
@@ -52,7 +53,7 @@ func main() {
 		AllowCredentials: true,
 	}
 
-	r.Use(gin.Recovery(), cors.New(corsConfig), utils.LoggerMiddleware(logger), errs.ErrorHandler(logger), utils.RateLimitMiddleware(100, time.Minute))
+	r.Use(gin.Recovery(), cors.New(corsConfig), security.LoggerMiddleware(logger), errs.ErrorHandler(logger), security.RateLimitMiddleware(100, time.Minute))
 
 	if err := r.SetTrustedProxies(nil); err != nil {
 		log.Fatalf("Failed to set trusted proxies: %v", err)
@@ -115,28 +116,28 @@ func setupRoutes(r *gin.Engine) {
 
 	auth := r.Group("/auth")
 	{
-		auth.POST("/register", utils.MaintenanceMiddleware(), handlers.Register)
+		auth.POST("/register", security.MaintenanceMiddleware(), handlers.Register)
 		auth.POST("/login", handlers.Login)
-		auth.POST("/refresh", utils.PathRateLimitMiddleware(5, 1*time.Minute), handlers.RefreshToken)
+		auth.POST("/refresh", security.PathRateLimitMiddleware(5, 1*time.Minute), handlers.RefreshToken)
 		auth.POST("/logout", handlers.LogOut)
 	}
 
 	users := r.Group("/users")
 	{
-		defaultRL := utils.PathRateLimitMiddleware(5, 1*time.Minute)
+		defaultRL := security.PathRateLimitMiddleware(5, 1*time.Minute)
 		users.GET("", handlers.FetchUsers)
 		users.GET("/:id/rices", defaultRL, handlers.FetchUserRices)
 		users.GET("/:id/rices/:slug", defaultRL, handlers.GetUserRiceBySlug)
 
-		authedOnly := users.Use(utils.AuthMiddleware)
+		authedOnly := users.Use(security.AuthMiddleware)
 		authedOnly.GET("/:id", defaultRL, handlers.GetUserById)
-		authedOnly.DELETE("/:id", utils.MaintenanceMiddleware(), defaultRL, handlers.DeleteUser) // should this be affected by maintenance mode?
-		authedOnly.PATCH("/:id/displayName", utils.MaintenanceMiddleware(), utils.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UpdateDisplayName)
-		authedOnly.PATCH("/:id/password", utils.MaintenanceMiddleware(), utils.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UpdatePassword)
-		authedOnly.POST("/:id/avatar", utils.MaintenanceMiddleware(), utils.FileSizeLimitMiddleware(utils.Config.Limits.UserAvatarSizeLimit), utils.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UploadAvatar)
-		authedOnly.DELETE("/:id/avatar", utils.MaintenanceMiddleware(), utils.PathRateLimitMiddleware(10, 24*time.Hour), handlers.DeleteAvatar)
+		authedOnly.DELETE("/:id", security.MaintenanceMiddleware(), defaultRL, handlers.DeleteUser) // should this be affected by maintenance mode?
+		authedOnly.PATCH("/:id/displayName", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UpdateDisplayName)
+		authedOnly.PATCH("/:id/password", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UpdatePassword)
+		authedOnly.POST("/:id/avatar", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.UserAvatarSizeLimit), security.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UploadAvatar)
+		authedOnly.DELETE("/:id/avatar", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(10, 24*time.Hour), handlers.DeleteAvatar)
 
-		adminOnly := users.Use(utils.AdminMiddleware)
+		adminOnly := users.Use(security.AdminMiddleware)
 		adminOnly.POST("/:id/ban", handlers.BanUser)
 		adminOnly.DELETE("/:id/ban", handlers.UnbanUser)
 	}
@@ -145,7 +146,7 @@ func setupRoutes(r *gin.Engine) {
 	{
 		tags.GET("", handlers.GetAllTags)
 
-		adminOnly := tags.Use(utils.AuthMiddleware, utils.AdminMiddleware)
+		adminOnly := tags.Use(security.AuthMiddleware, security.AdminMiddleware)
 		adminOnly.POST("", handlers.CreateTag)
 		adminOnly.PATCH("/:id", handlers.UpdateTag)
 		adminOnly.DELETE("/:id", handlers.DeleteTag)
@@ -158,50 +159,50 @@ func setupRoutes(r *gin.Engine) {
 		rices.GET("/:id/comments", handlers.GetRiceComments)
 		rices.GET("/:id/dotfiles", handlers.DownloadDotfiles)
 
-		auth := rices.Use(utils.AuthMiddleware)
+		auth := rices.Use(security.AuthMiddleware)
 		// This is actually unreadable, I feel like Im gonna have a seizure trying to compherend this line
-		auth.POST("", utils.MaintenanceMiddleware(), utils.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit+int64(utils.Config.Limits.MaxPreviewsPerRice)*utils.Config.Limits.PreviewSizeLimit), utils.PathRateLimitMiddleware(5, 24*time.Hour), handlers.CreateRice)
-		auth.PATCH("/:id", utils.MaintenanceMiddleware(), utils.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateRiceMetadata)
-		auth.POST("/:id/dotfiles", utils.MaintenanceMiddleware(), utils.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit), utils.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateDotfiles)
-		auth.POST("/:id/previews", utils.MaintenanceMiddleware(), utils.FileSizeLimitMiddleware(utils.Config.Limits.PreviewSizeLimit), utils.PathRateLimitMiddleware(25, time.Hour), handlers.AddPreview)
-		auth.POST("/:id/star", utils.MaintenanceMiddleware(), handlers.AddRiceStar)
-		auth.DELETE("/:id/star", utils.MaintenanceMiddleware(), handlers.DeleteRiceStar)
-		auth.DELETE("/:id/previews/:previewId", utils.MaintenanceMiddleware(), handlers.DeletePreview)
-		auth.DELETE("/:id", utils.MaintenanceMiddleware(), handlers.DeleteRice)
+		auth.POST("", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit+int64(utils.Config.Limits.MaxPreviewsPerRice)*utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(5, 24*time.Hour), handlers.CreateRice)
+		auth.PATCH("/:id", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateRiceMetadata)
+		auth.POST("/:id/dotfiles", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateDotfiles)
+		auth.POST("/:id/previews", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(25, time.Hour), handlers.AddPreview)
+		auth.POST("/:id/star", security.MaintenanceMiddleware(), handlers.AddRiceStar)
+		auth.DELETE("/:id/star", security.MaintenanceMiddleware(), handlers.DeleteRiceStar)
+		auth.DELETE("/:id/previews/:previewId", security.MaintenanceMiddleware(), handlers.DeletePreview)
+		auth.DELETE("/:id", security.MaintenanceMiddleware(), handlers.DeleteRice)
 	}
 
-	comments := r.Group("/comments").Use(utils.AuthMiddleware)
+	comments := r.Group("/comments").Use(security.AuthMiddleware)
 	{
-		comments.GET("", utils.AdminMiddleware, handlers.GetRecentComments)
+		comments.GET("", security.AdminMiddleware, handlers.GetRecentComments)
 
-		comments.POST("", utils.MaintenanceMiddleware(), utils.PathRateLimitMiddleware(10, time.Hour), handlers.AddComment)
-		comments.GET("/:id", utils.PathRateLimitMiddleware(10, time.Minute), handlers.GetCommentById)
-		comments.PATCH("/:id", utils.MaintenanceMiddleware(), utils.PathRateLimitMiddleware(10, time.Hour), handlers.UpdateComment)
-		comments.DELETE("/:id", utils.MaintenanceMiddleware(), handlers.DeleteComment)
+		comments.POST("", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(10, time.Hour), handlers.AddComment)
+		comments.GET("/:id", security.PathRateLimitMiddleware(10, time.Minute), handlers.GetCommentById)
+		comments.PATCH("/:id", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(10, time.Hour), handlers.UpdateComment)
+		comments.DELETE("/:id", security.MaintenanceMiddleware(), handlers.DeleteComment)
 	}
 
-	reports := r.Group("/reports").Use(utils.AuthMiddleware)
+	reports := r.Group("/reports").Use(security.AuthMiddleware)
 	{
-		reports.POST("", utils.PathRateLimitMiddleware(50, 24*time.Hour), handlers.CreateReport)
+		reports.POST("", security.PathRateLimitMiddleware(50, 24*time.Hour), handlers.CreateReport)
 
-		adminOnly := reports.Use(utils.AdminMiddleware)
+		adminOnly := reports.Use(security.AdminMiddleware)
 		adminOnly.GET("", handlers.FetchReports)
 		adminOnly.GET("/:reportId", handlers.GetReportById)
 		adminOnly.POST("/:reportId/close", handlers.CloseReport)
 	}
 
-	admin := r.Group("/admin").Use(utils.AuthMiddleware, utils.AdminMiddleware)
+	admin := r.Group("/admin").Use(security.AuthMiddleware, security.AdminMiddleware)
 	{
 		admin.GET("/stats", handlers.ServiceStatistics)
 	}
 
 	webVars := r.Group("/vars")
 	{
-		webVars.GET("/:key", utils.PathRateLimitMiddleware(5, 1*time.Minute), handlers.GetWebsiteVariable)
+		webVars.GET("/:key", security.PathRateLimitMiddleware(5, 1*time.Minute), handlers.GetWebsiteVariable)
 	}
 
 	links := r.Group("/links")
 	{
-		links.GET("/:name", utils.PathRateLimitMiddleware(5, 1*time.Minute), handlers.GetLinkByName)
+		links.GET("/:name", security.PathRateLimitMiddleware(5, 1*time.Minute), handlers.GetLinkByName)
 	}
 }

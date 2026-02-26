@@ -14,7 +14,11 @@ dotfiles_size_limit = 500000000 # 500MB
 preview_size_limit = 10000000 # 10MB
 
 [jwt]
-access_exp = "5m"
+# if you dont have to then dont change this value
+# shorter access token expiration means user data
+# is fetched from database more often
+# which means if you ban user he will "notice" it sooner
+access_exp = "1m"
 refresh_exp = "168h"
 
 [blacklist]

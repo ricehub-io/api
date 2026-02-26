@@ -1,4 +1,4 @@
-package utils
+package security
 
 import (
 	"crypto/ecdsa"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"ricehub/src/utils"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -96,7 +97,7 @@ func InitJWT(keysDir string) {
 }
 
 func NewAccessToken(userID uuid.UUID, isAdmin bool) (token string, err error) {
-	exp := time.Now().Add(Config.JWT.AccessExpiration)
+	exp := time.Now().Add(utils.Config.JWT.AccessExpiration)
 	claims := AccessToken{
 		IsAdmin: isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -109,7 +110,7 @@ func NewAccessToken(userID uuid.UUID, isAdmin bool) (token string, err error) {
 }
 
 func NewRefreshToken(userID uuid.UUID) (token string, err error) {
-	exp := time.Now().Add(Config.JWT.RefreshExpiration)
+	exp := time.Now().Add(utils.Config.JWT.RefreshExpiration)
 	claims := RefreshToken{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID.String(),

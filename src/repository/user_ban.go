@@ -4,6 +4,8 @@ import (
 	"context"
 	"ricehub/src/models"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func IsUserBanned(userID string) (state models.UserState, err error) {
@@ -33,6 +35,19 @@ func InsertBan(userID string, adminID string, reason string, expiresAt *time.Tim
 	`
 
 	return rowToStruct[models.UserBan](query, userID, adminID, reason, expiresAt)
+}
+
+func FetchUserBan(userID uuid.UUID) (ban models.UserBan, err error) {
+	const query = `
+	SELECT *
+	FROM user_bans
+	WHERE 
+		user_id = $1 AND 
+		(expires_at > NOW() OR expires_at IS NULL) AND
+		is_revoked = false
+	`
+
+	return rowToStruct[models.UserBan](query, userID)
 }
 
 // revoke is an irreversible action therefore no need for generalized 'set is_revoked' function as it can only be updated to one state

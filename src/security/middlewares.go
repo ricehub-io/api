@@ -1,10 +1,11 @@
-package utils
+package security
 
 import (
 	"errors"
 	"fmt"
 	"net/http"
 	"ricehub/src/errs"
+	"ricehub/src/utils"
 	"strings"
 	"time"
 
@@ -57,8 +58,16 @@ func AuthMiddleware(c *gin.Context) {
 func AdminMiddleware(c *gin.Context) {
 	token := c.MustGet("token").(*AccessToken)
 
+	// make sure the user is an admin
 	if !token.IsAdmin {
 		c.Error(errs.NoAccess)
+		c.Abort()
+		return
+	}
+
+	// check if admin is banned
+	if err := VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
 		c.Abort()
 		return
 	}
@@ -105,7 +114,7 @@ func RateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Handle
 	return func(c *gin.Context) {
 		clientID := getClientId(c)
 
-		count, err := IncrementRateLimit(clientID, resetAfter)
+		count, err := utils.IncrementRateLimit(clientID, resetAfter)
 		if err != nil {
 			logger.Error("Failed to increment rate limit for client",
 				zap.String("client_id", clientID),
@@ -127,7 +136,7 @@ func PathRateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Ha
 	logger := zap.L()
 
 	return func(c *gin.Context) {
-		if Config.DisableRateLimits {
+		if utils.Config.DisableRateLimits {
 			c.Next()
 			return
 		}
@@ -135,7 +144,7 @@ func PathRateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Ha
 		clientID := getClientId(c)
 		path := c.Request.URL.Path
 
-		count, err := IncrementPathRateLimit(path, clientID, resetAfter)
+		count, err := utils.IncrementPathRateLimit(path, clientID, resetAfter)
 		if err != nil {
 			logger.Error("Failed to increment path rate limit for client",
 				zap.String("path", path),
@@ -178,7 +187,7 @@ func FileSizeLimitMiddleware(maxBytes int64) gin.HandlerFunc {
 // middleware that automatically responds with appropriate error if maintenance is toggled in config
 func MaintenanceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if Config.Maintenance {
+		if utils.Config.Maintenance {
 			_, _ = c.GetRawData()
 
 			c.Error(errs.UserError("API is in read-only mode for a maintenance. Please retry later.", http.StatusServiceUnavailable))
