@@ -37,8 +37,10 @@ func GetUserProfile(c *gin.Context) {
 		return
 	}
 
+	callerUserID := GetUserIdFromRequest(c)
+
 	// fetch user rices
-	rices, err := repository.FetchUserRices(user.ID)
+	rices, err := repository.FetchUserRices(user.ID.String(), callerUserID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -46,6 +48,6 @@ func GetUserProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"user":  user.ToDTO(),
-		"rices": models.PartialRicesToDTOs(rices),
+		"rices": models.PartialRicesToDTO(rices),
 	})
 }

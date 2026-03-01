@@ -132,9 +132,9 @@ func setupRoutes(r *gin.Engine) {
 		authedOnly := users.Use(security.AuthMiddleware)
 		authedOnly.GET("/:id", defaultRL, handlers.GetUserById)
 		authedOnly.DELETE("/:id", security.MaintenanceMiddleware(), defaultRL, handlers.DeleteUser) // should this be affected by maintenance mode?
-		authedOnly.PATCH("/:id/displayName", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UpdateDisplayName)
-		authedOnly.PATCH("/:id/password", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UpdatePassword)
-		authedOnly.POST("/:id/avatar", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.UserAvatarSizeLimit), security.PathRateLimitMiddleware(5, 24*time.Hour), handlers.UploadAvatar)
+		authedOnly.PATCH("/:id/displayName", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(10, 24*time.Hour), handlers.UpdateDisplayName)
+		authedOnly.PATCH("/:id/password", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(10, 24*time.Hour), handlers.UpdatePassword)
+		authedOnly.POST("/:id/avatar", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.UserAvatarSizeLimit), security.PathRateLimitMiddleware(10, 24*time.Hour), handlers.UploadAvatar)
 		authedOnly.DELETE("/:id/avatar", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(10, 24*time.Hour), handlers.DeleteAvatar)
 
 		adminOnly := users.Use(security.AdminMiddleware)
@@ -165,11 +165,12 @@ func setupRoutes(r *gin.Engine) {
 		rices.GET("/:id/dotfiles", handlers.DownloadDotfiles)
 
 		auth := rices.Use(security.AuthMiddleware)
-		// This is actually unreadable, I feel like Im gonna have a seizure trying to compherend this line
-		auth.POST("", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit+int64(utils.Config.Limits.MaxPreviewsPerRice)*utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(5, 24*time.Hour), handlers.CreateRice)
+		// This is actually unreadable, I feel like Im gonna have a seizure trying to comprehend this line
+		auth.POST("", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit+int64(utils.Config.Limits.MaxPreviewsPerRice)*utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(15, 24*time.Hour), handlers.CreateRice)
 		auth.PATCH("/:id", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateRiceMetadata)
 		auth.POST("/:id/dotfiles", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateDotfiles)
 		auth.POST("/:id/previews", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(25, time.Hour), handlers.AddPreview)
+		auth.PATCH("/:id/state", security.MaintenanceMiddleware(), security.AdminMiddleware, handlers.UpdateRiceState)
 		auth.POST("/:id/star", security.MaintenanceMiddleware(), handlers.AddRiceStar)
 		auth.DELETE("/:id/star", security.MaintenanceMiddleware(), handlers.DeleteRiceStar)
 		auth.DELETE("/:id/previews/:previewId", security.MaintenanceMiddleware(), handlers.DeletePreview)

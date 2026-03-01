@@ -30,6 +30,8 @@ type ricesPath struct {
 	RiceID string `uri:"id" binding:"required,uuid"`
 }
 
+var availableSorts = []string{"trending", "recent", "mostDownloads", "mostStars"}
+
 var invalidRiceID = errs.UserError("Invalid rice ID path parameter. It must be a valid UUID.", http.StatusBadRequest)
 var blacklistedTitle = errs.UserError("Title contains blacklisted words!", http.StatusUnprocessableEntity)
 var blacklistedDescription = errs.UserError("Description contains blacklisted words!", http.StatusUnprocessableEntity)
@@ -47,9 +49,37 @@ func checkCanUserModifyRice(token *security.AccessToken, riceID string) error {
 	return nil
 }
 
-var availableSorts = []string{"trending", "recent", "mostDownloads", "mostStars"}
+// Tries to safely extract access token from request. Nothing happens if its unable to do so.
+func getTokenFromRequest(c *gin.Context) *security.AccessToken {
+	tokenStr := c.Request.Header.Get("Authorization")
+	tokenStr = strings.TrimSpace(tokenStr)
+	token, err := security.ValidateToken(tokenStr)
+	if err == nil {
+		return token
+	}
+	return nil
+}
+
+func fetchWaitingRices(c *gin.Context) {
+	rices, err := repository.FetchWaitingRices()
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, models.PartialRicesToDTO(rices))
+}
 
 func FetchRices(c *gin.Context) {
+	token := getTokenFromRequest(c)
+
+	state := c.Query("state")
+	// check if user is an admin and can filter by state
+	if state != "" && token.IsAdmin {
+		fetchWaitingRices(c)
+		return
+	}
+
 	sort := c.DefaultQuery("sort", "trending")
 	if !slices.Contains(availableSorts, sort) {
 		c.Error(errs.UserError("Unsupported sorting method requested!", http.StatusBadRequest))
@@ -102,7 +132,10 @@ func FetchRices(c *gin.Context) {
 	rices := []models.PartialRice{}
 	var err error
 
-	userID := GetUserIdFromRequest(c)
+	var userID *string = nil
+	if token != nil {
+		userID = &token.Subject
+	}
 
 	switch sort {
 	case "trending":
@@ -120,7 +153,7 @@ func FetchRices(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.PartialRicesToDTOs(rices))
+	c.JSON(http.StatusOK, models.PartialRicesToDTO(rices))
 }
 
 func GetRiceById(c *gin.Context) {
@@ -158,7 +191,7 @@ func GetRiceComments(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.CommentsWithUserToDTOs(comments))
+	c.JSON(http.StatusOK, models.CommentsWithUserToDTO(comments))
 }
 
 func DownloadDotfiles(c *gin.Context) {
@@ -467,6 +500,53 @@ func AddPreview(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"preview": utils.Config.CDNUrl + filePath})
+}
+
+func UpdateRiceState(c *gin.Context) {
+	var path ricesPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(invalidRiceID)
+		return
+	}
+
+	var update *models.UpdateRiceStateDTO
+	if err := utils.ValidateJSON(c, &update); err != nil {
+		c.Error(err)
+		return
+	}
+
+	rice, err := repository.FindRiceById(nil, path.RiceID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.Error(errs.RiceNotFound)
+			return
+		}
+
+		c.Error(errs.InternalError(err))
+		return
+	}
+	if rice.Rice.State == models.Accepted {
+		c.Error(errs.UserError("This rice has been already accepted", http.StatusConflict))
+		return
+	}
+
+	switch update.NewState {
+	case "accepted":
+		err := repository.UpdateRiceState(path.RiceID, models.Accepted)
+		if err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
+		c.Status(http.StatusOK)
+	case "rejected":
+		_, err := repository.DeleteRice(path.RiceID)
+		if err != nil {
+			zap.L().Error("Database error when trying to delete rejected rice", zap.String("riceId", path.RiceID), zap.Error(err))
+			c.Error(errs.InternalError(err))
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
 }
 
 func DeletePreview(c *gin.Context) {

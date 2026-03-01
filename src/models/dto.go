@@ -80,6 +80,10 @@ type UpdateRiceDTO struct {
 	Description *string `json:"description" binding:"omitempty,min=4,max=10240"`
 }
 
+type UpdateRiceStateDTO struct {
+	NewState string `json:"newState" binding:"required,oneof=accepted rejected"`
+}
+
 // COMMENTS
 type AddCommentDTO struct {
 	RiceID  string `json:"riceId" binding:"required,uuid"`
@@ -122,7 +126,7 @@ func (u User) ToDTO() UserDTO {
 	}
 }
 
-func UsersToDTOs(users []User) []UserDTO {
+func UsersToDTO(users []User) []UserDTO {
 	dtos := make([]UserDTO, len(users))
 	for i, u := range users {
 		dtos[i] = u.ToDTO()
@@ -301,7 +305,7 @@ func (c CommentWithUser) ToDTO() CommentWithUserDTO {
 	}
 }
 
-func CommentsWithUserToDTOs(comments []CommentWithUser) []CommentWithUserDTO {
+func CommentsWithUserToDTO(comments []CommentWithUser) []CommentWithUserDTO {
 	dtos := make([]CommentWithUserDTO, len(comments))
 	for i, c := range comments {
 		dtos[i] = c.ToDTO()
@@ -319,6 +323,7 @@ type PartialRiceDTO struct {
 	Stars       uint      `json:"stars"`
 	Downloads   uint      `json:"downloads"`
 	IsStarred   bool      `json:"isStarred"`
+	State       RiceState `json:"state"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
@@ -333,11 +338,12 @@ func (r PartialRice) ToDTO() PartialRiceDTO {
 		Stars:       r.StarCount,
 		Downloads:   r.DownloadCount,
 		IsStarred:   r.IsStarred,
+		State:       r.State,
 		CreatedAt:   r.CreatedAt,
 	}
 }
 
-func PartialRicesToDTOs(rices []PartialRice) []PartialRiceDTO {
+func PartialRicesToDTO(rices []PartialRice) []PartialRiceDTO {
 	dtos := make([]PartialRiceDTO, len(rices))
 	for i, r := range rices {
 		dtos[i] = r.ToDTO()

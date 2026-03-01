@@ -91,7 +91,7 @@ func fetchRecentUsers(c *gin.Context, limit int) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.UsersToDTOs(users))
+	c.JSON(http.StatusOK, models.UsersToDTO(users))
 }
 
 func fetchBannedUsers(c *gin.Context) {
@@ -243,13 +243,15 @@ func FetchUserRices(c *gin.Context) {
 		return
 	}
 
-	rices, err := repository.FetchUserRices(path.UserID)
+	callerUserID := GetUserIdFromRequest(c)
+
+	rices, err := repository.FetchUserRices(path.UserID, callerUserID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 
-	c.JSON(http.StatusOK, models.PartialRicesToDTOs(rices))
+	c.JSON(http.StatusOK, models.PartialRicesToDTO(rices))
 }
 
 func UpdateDisplayName(c *gin.Context) {

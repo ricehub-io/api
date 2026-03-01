@@ -30,14 +30,20 @@ type Tag struct {
 	UpdatedAt time.Time
 }
 
-// some fields contain json struct tag
-// because we're querying it as JSONB
+type RiceState string
+
+const (
+	Waiting  RiceState = "waiting"
+	Accepted RiceState = "accepted"
+)
+
 type Rice struct {
 	ID          uuid.UUID
 	AuthorID    uuid.UUID `json:"author_id"`
 	Title       string
 	Slug        string
 	Description string
+	State       RiceState
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -108,6 +114,7 @@ type PartialRice struct {
 	StarCount     uint
 	DownloadCount uint
 	IsStarred     bool
+	State         RiceState
 	CreatedAt     time.Time
 }
 

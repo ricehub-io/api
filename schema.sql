@@ -197,3 +197,12 @@ SELECT
             AND b.is_revoked = false
     ) AS is_banned
 FROM users u;
+
+-- add state column to rices for manual verification before being publicly visible 
+CREATE TYPE rice_state AS ENUM (
+    'waiting',
+    'accepted'
+);
+
+ALTER TABLE rices
+ADD COLUMN "state" rice_state NOT NULL DEFAULT 'waiting';

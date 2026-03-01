@@ -77,7 +77,7 @@ func GetRecentComments(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.CommentsWithUserToDTOs(comments))
+	c.JSON(http.StatusOK, models.CommentsWithUserToDTO(comments))
 }
 
 func GetCommentById(c *gin.Context) {

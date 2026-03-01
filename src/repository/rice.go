@@ -25,7 +25,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool) string {
 
 	baseSelect := `
 	SELECT
-		r.id, r.title, r.slug, r.created_at,
+		r.id, r.title, r.slug, r.created_at, r.state,
 		u.display_name, u.username,
 		p.file_path AS thumbnail,
 		count(DISTINCT s.user_id) AS star_count,
@@ -57,29 +57,29 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool) string {
 		LIMIT 1
 	) p ON TRUE
 	`
-	where := ""
+	where := "WHERE r.state != 'waiting' "
 	order := ""
 
 	switch sortBy {
 	case "trending":
 		if subsequent {
-			where = fmt.Sprintf("WHERE r.id < $%v", argCount)
+			where += fmt.Sprintf("AND r.id < $%v", argCount)
 			argCount += 1
 		}
 		order = "ORDER BY (df.download_count + count(DISTINCT s.user_id)) / pow(extract(EPOCH FROM (current_timestamp - r.created_at)) / 3600 + 2, 1.5) DESC, r.id DESC"
 	case "recent":
-		where = fmt.Sprintf("WHERE (r.created_at, r.id) < ($%v, $%v)", argCount, argCount+1)
+		where += fmt.Sprintf("AND (r.created_at, r.id) < ($%v, $%v)", argCount, argCount+1)
 		argCount += 2
 		order = "ORDER BY r.created_at DESC, r.id DESC"
 	case "downloads":
 		if subsequent {
-			where = fmt.Sprintf("WHERE (df.download_count, r.id) < ($%v, $%v)", argCount, argCount+1)
+			where += fmt.Sprintf("AND (df.download_count, r.id) < ($%v, $%v)", argCount, argCount+1)
 			argCount += 2
 		}
 		order = "ORDER BY download_count DESC, r.id DESC"
 	case "stars":
 		if subsequent {
-			where = fmt.Sprintf("WHERE r.id < $%v", argCount)
+			where += fmt.Sprintf("AND r.id < $%v", argCount)
 			argCount += 1
 		}
 		order = "ORDER BY star_count DESC, r.id DESC"
@@ -136,35 +136,6 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 var findRiceSql = buildFindRiceSql(RiceID)
 var findRiceBySlugSql = buildFindRiceSql(SlugAndUsername)
 
-const fetchUserRicesSql = `
-SELECT
-	r.id, r.title, r.slug, r.created_at,
-	u.display_name, u.username,
-	p.file_path AS thumbnail,
-	count(DISTINCT s.user_id) AS star_count,
-	df.download_count, EXISTS (
-		SELECT 1
-		FROM rice_stars rs
-		WHERE rs.rice_id = r.id AND rs.user_id = $1
-	) AS is_starred
-FROM rices r
-JOIN users u ON u.id = r.author_id
-LEFT JOIN rice_stars s ON s.rice_id = r.id
-JOIN rice_dotfiles df ON df.rice_id = r.id
-JOIN LATERAL (
-	SELECT p.file_path
-	FROM rice_previews p
-	WHERE p.rice_id = r.id
-	ORDER BY p.created_at
-	LIMIT 1
-) p ON TRUE
-WHERE u.id = $1
-GROUP BY
-    r.id, r.slug, r.title, r.created_at, df.download_count,
-    u.display_name, u.username, p.file_path
-ORDER BY r.created_at DESC, r.id DESC
-`
-
 const insertRiceSql = `
 INSERT INTO rices (author_id, title, slug, description)
 VALUES ($1, $2, $3, $4)
@@ -217,6 +188,15 @@ func HasUserRiceWithId(riceID string, userID string) (bool, error) {
 	var exists bool
 	err := db.QueryRow(context.Background(), hasUserRiceSql, riceID, userID).Scan(&exists)
 	return exists, err
+}
+
+func DoesRiceExist(riceID string) (exists bool, err error) {
+	err = db.QueryRow(
+		context.Background(),
+		"SELECT EXISTS (SELECT 1 FROM rices WHERE id = $1)",
+		riceID,
+	).Scan(&exists)
+	return
 }
 
 func RicePreviewCount(riceID string) (int64, error) {
@@ -284,6 +264,33 @@ func FetchMostStarredRices(pag *Pagination, userID *string) (r []models.PartialR
 	return
 }
 
+func FetchWaitingRices() ([]models.PartialRice, error) {
+	const query = `
+	SELECT
+    	r.id, r.title, r.slug, r.created_at, r.state,
+		u.display_name, u.username,
+		p.file_path AS thumbnail,
+		count(DISTINCT s.user_id) AS star_count,
+		df.download_count,
+		false AS is_starred
+	FROM rices r
+	JOIN users u ON u.id = r.author_id
+	LEFT JOIN rice_stars s ON s.rice_id = r.id
+	JOIN rice_dotfiles df ON df.rice_id = r.id
+	JOIN LATERAL (
+		SELECT p.file_path
+		FROM rice_previews p
+		WHERE p.rice_id = r.id
+		ORDER BY p.created_at
+		LIMIT 1
+	) p ON TRUE
+	GROUP BY r.id, r.slug, r.title, r.created_at, df.download_count, u.display_name, u.username, p.file_path
+	ORDER BY r.created_at DESC
+	`
+
+	return rowsToStruct[models.PartialRice](query)
+}
+
 func FetchRicePreviewCount(riceID string) (int, error) {
 	var count int
 	err := db.QueryRow(
@@ -311,8 +318,43 @@ func FindRiceBySlug(userID *string, slug string, username string) (r models.Rice
 	return
 }
 
-func FetchUserRices[T string | uuid.UUID](userID T) (r []models.PartialRice, err error) {
-	r, err = rowsToStruct[models.PartialRice](fetchUserRicesSql, userID)
+func FetchUserRices(userID string, callerID *string) (r []models.PartialRice, err error) {
+	where := "WHERE u.id = $1"
+	if callerID == nil || userID != *callerID {
+		where += " AND r.state = 'accepted'"
+	}
+
+	query := `
+	SELECT
+		r.id, r.title, r.slug, r.created_at, r.state,
+		u.display_name, u.username,
+		p.file_path AS thumbnail,
+		count(DISTINCT s.user_id) AS star_count,
+		df.download_count,
+		EXISTS (
+			SELECT 1
+			FROM rice_stars rs
+			WHERE rs.rice_id = r.id AND rs.user_id = $2
+		) AS is_starred
+	FROM rices r
+	JOIN users u ON u.id = r.author_id
+	LEFT JOIN rice_stars s ON s.rice_id = r.id
+	JOIN rice_dotfiles df ON df.rice_id = r.id
+	JOIN LATERAL (
+		SELECT p.file_path
+		FROM rice_previews p
+		WHERE p.rice_id = r.id
+		ORDER BY p.created_at
+		LIMIT 1
+	) p ON TRUE
+	` + where + `
+	GROUP BY
+		r.id, r.slug, r.title, r.created_at, df.download_count,
+		u.display_name, u.username, p.file_path
+	ORDER BY r.created_at DESC, r.id DESC
+	`
+
+	r, err = rowsToStruct[models.PartialRice](query, userID, callerID)
 	return
 }
 
@@ -367,6 +409,12 @@ func UpdateRice(riceID string, title *string, description *string) (rice models.
 func UpdateRiceDotfiles(riceID string, filePath string, fileSize int64) (df models.RiceDotfiles, err error) {
 	df, err = rowToStruct[models.RiceDotfiles](updateDotfilesSql, riceID, filePath, fileSize)
 	return
+}
+
+func UpdateRiceState(riceID string, newState models.RiceState) error {
+	query := "UPDATE rices SET state = $1 WHERE id = $2"
+	_, err := db.Exec(context.Background(), query, newState, riceID)
+	return err
 }
 
 func IncrementDotfilesDownloads(riceID string) (string, error) {
