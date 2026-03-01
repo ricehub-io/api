@@ -284,6 +284,7 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 		ORDER BY p.created_at
 		LIMIT 1
 	) p ON TRUE
+	WHERE r.state = 'waiting'
 	GROUP BY r.id, r.slug, r.title, r.created_at, df.download_count, u.display_name, u.username, p.file_path
 	ORDER BY r.created_at DESC
 	`

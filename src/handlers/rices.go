@@ -72,10 +72,11 @@ func fetchWaitingRices(c *gin.Context) {
 
 func FetchRices(c *gin.Context) {
 	token := getTokenFromRequest(c)
+	isAdmin := token != nil && token.IsAdmin
 
 	state := c.Query("state")
 	// check if user is an admin and can filter by state
-	if state != "" && token.IsAdmin {
+	if state != "" && isAdmin {
 		fetchWaitingRices(c)
 		return
 	}
