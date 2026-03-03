@@ -90,10 +90,17 @@ CREATE TABLE rices_tags (
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
+    -- check if we're updating download_count
+    IF to_jsonb(NEW) ? 'download_count' THEN
+        if NEW.download_count > OLD.download_count THEN
+            RETURN NEW;
+        END IF;
+    END IF;
+
     NEW.updated_at = now();
     RETURN NEW;
 END;
-$$ LANGUAGE 'plpgsql'; 
+$$ LANGUAGE 'plpgsql';
 
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users
