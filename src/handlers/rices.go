@@ -353,7 +353,7 @@ func CreateRice(c *gin.Context) {
 		return
 	}
 
-	dto := rice.ToDTO()
+	// dto := rice.ToDTO()
 
 	for path, file := range validPreviews {
 		c.SaveUploadedFile(file, "./public"+path)
@@ -363,7 +363,7 @@ func CreateRice(c *gin.Context) {
 			return
 		}
 
-		dto.Previews = append(dto.Previews, utils.Config.CDNUrl+path)
+		// dto.Previews = append(dto.Previews, utils.Config.CDNUrl+path)
 	}
 
 	// save dotfiles on the disk
@@ -371,12 +371,12 @@ func CreateRice(c *gin.Context) {
 	c.SaveUploadedFile(dotfilesFile, "./public"+dotfilesPath)
 
 	dotfilesSize := dotfilesFile.Size
-	dotfiles, err := repository.InsertRiceDotfiles(tx, rice.ID, dotfilesPath, dotfilesSize)
+	_, err = repository.InsertRiceDotfiles(tx, rice.ID, dotfilesPath, dotfilesSize)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
-	dto.Dotfiles = dotfiles.ToDTO()
+	// dto.Dotfiles = dotfiles.ToDTO()
 
 	// finish the tx
 	if err := tx.Commit(ctx); err != nil {
@@ -384,7 +384,8 @@ func CreateRice(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, dto)
+	// c.JSON(http.StatusCreated, dto)
+	c.Status(http.StatusCreated)
 }
 
 func UpdateRiceMetadata(c *gin.Context) {

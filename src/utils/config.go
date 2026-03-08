@@ -17,6 +17,7 @@ type (
 		CookiesDomain     string `toml:"cookies_domain"`
 		DisableRateLimits bool   `toml:"disable_rate_limits"`
 		Maintenance       bool   `toml:"maintenance"`
+		PaginationLimit   uint   `toml:"pagination_limit"`
 		JWT               jwtConfig
 		Limits            limitsConfig
 		Blacklist         blacklistConfig

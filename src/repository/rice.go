@@ -3,15 +3,13 @@ package repository
 import (
 	"context"
 	"fmt"
-	"log"
 	"ricehub/src/models"
+	"ricehub/src/utils"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
-
-// TODO: add pagination limit to config
 
 // idk if thats how you're supposed to write golang code but whatever
 // let a man be happy after going through Rust horror
@@ -119,7 +117,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 		order = fmt.Sprintf(" ORDER BY star_count %v, id %v", ord, ord)
 	}
 
-	return baseSelect + userSelect + base + mainSelect + where + order + " LIMIT 20"
+	return baseSelect + userSelect + base + mainSelect + where + order + fmt.Sprintf(" LIMIT %v", utils.Config.PaginationLimit)
 }
 
 type FindRiceBy uint8
@@ -276,7 +274,6 @@ func FetchRecentRices(pag *Pagination, userID *string) (r []models.PartialRice, 
 		args = append(args, pag.LastCreatedAt, pag.LastID)
 	}
 
-	log.Println(pag.Reverse)
 	r, err = rowsToStruct[models.PartialRice](query, args...)
 	return
 }

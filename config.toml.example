@@ -4,6 +4,7 @@ cdn_url = "http://127.0.0.1:3000/public"
 default_avatar = "/avatars/default.png"
 cors_origin = "http://127.0.0.1:5173"
 cookies_domain = "127.0.0.1"
+pagination_limit = 20
 
 # Disable ALL rate limits - useful for development and testing
 disable_rate_limits = false
