@@ -36,7 +36,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 				df.download_count,
 				(
 					(df.download_count + count(DISTINCT s.user_id))
-					/ pow(extract(EPOCH FROM (current_timestamp - r.created_at)) / 3600 + 2, 1.5)
+					/ pow(extract(EPOCH FROM (date_trunc('hour', current_timestamp) - r.created_at)) / 3600 + 2, 1.5)
 				) AS score,
 	`
 
@@ -211,7 +211,8 @@ WHERE rice_id = $1
 `
 
 type Pagination struct {
-	LastID        *uuid.UUID
+	// LastID is stored here as string but its validated in the handler to make sure its a valid UUID
+	LastID        *string
 	LastScore     float32
 	LastCreatedAt time.Time
 	LastDownloads int

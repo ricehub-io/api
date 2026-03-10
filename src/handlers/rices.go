@@ -14,7 +14,6 @@ import (
 	"ricehub/src/security"
 	"ricehub/src/utils"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -64,92 +63,42 @@ func FetchRices(c *gin.Context) {
 	token := GetTokenFromRequest(c)
 	isAdmin := token != nil && token.IsAdmin
 
-	// TODO: use ShouldBindQuery instead of manually validating each param
+	// TODO: make fields required if others are present (https://pkg.go.dev/github.com/go-playground/validator/v10#hdr-Baked_In_Validators_and_Tags)
+	var query struct {
+		Sort          string    `form:"sort,default=trending"`
+		State         string    `form:"state"`
+		LastID        *string   `form:"lastId" binding:"omitempty,uuid"`
+		LastScore     float32   `form:"lastScore,default=-1"`
+		LastCreatedAt time.Time `form:"lastCreatedAt"`
+		LastStars     int       `form:"lastStars,default=-1"`
+		LastDownloads int       `form:"lastDownloads,default=-1"`
+		Reverse       bool      `form:"reverse"`
+	}
+	if err := c.ShouldBindQuery(&query); err != nil {
+		// TODO: return different message depending on which parameter was invalid
+		c.Error(errs.UserError("Failed to parse query parameters", http.StatusBadRequest))
+		return
+	}
 
-	state := c.Query("state")
 	// check if user is an admin and can filter by state
-	if state != "" && isAdmin {
+	if query.State != "" && isAdmin {
 		fetchWaitingRices(c)
 		return
 	}
 
-	sort := c.DefaultQuery("sort", "trending")
-	if !slices.Contains(availableSorts, sort) {
-		c.Error(errs.UserError("Unsupported sorting method requested!", http.StatusBadRequest))
+	if !slices.Contains(availableSorts, query.Sort) {
+		c.Error(errs.UserError("Unsupported sorting method provided", http.StatusBadRequest))
 		return
 	}
 
-	lastID := c.Query("lastId")
-	lastCreatedAt := c.Query("lastCreatedAt")
-	lastDownloads := c.Query("lastDownloads")
-	lastStars := c.Query("lastStars")
-	lastScore := c.Query("lastScore")
-	reverseStr := c.DefaultQuery("reverse", "false")
-
 	var pag repository.Pagination
-	useDefault := lastID == "" && lastCreatedAt == "" && lastDownloads == "" && lastStars == "" && lastScore == ""
 
-	if lastID != "" {
-		id, err := uuid.Parse(lastID)
-		if err != nil {
-			c.Error(errs.UserError("Failed to parse last id", http.StatusBadRequest))
-			return
-		}
-
-		pag.LastID = &id
-	}
-
-	if lastCreatedAt != "" {
-		ts, err := time.Parse(time.RFC3339, lastCreatedAt)
-		if err != nil {
-			c.Error(errs.UserError("Failed to parse last created timestamp", http.StatusBadRequest))
-			return
-		}
-
-		pag.LastCreatedAt = ts
-	}
-
-	if lastDownloads != "" {
-		downloads, err := strconv.Atoi(lastDownloads)
-		if err != nil {
-			c.Error(errs.UserError("Failed to parse last downloads query parameter", http.StatusBadRequest))
-			return
-		}
-
-		pag.LastDownloads = downloads
-	}
-
-	if lastStars != "" {
-		v, err := strconv.Atoi(lastStars)
-		if err != nil {
-			c.Error(errs.UserError("Failed to parse last stars query parameter", http.StatusBadRequest))
-			return
-		}
-
-		pag.LastStars = v
-	}
-
-	if lastScore != "" {
-		v, err := strconv.ParseFloat(lastScore, 32)
-		if err != nil {
-			c.Error(errs.UserError("Failed to parse last score query parameter", http.StatusBadRequest))
-			return
-		}
-
-		pag.LastScore = float32(v)
-	}
-
-	if useDefault {
-		pag.LastID = nil
-		pag.LastDownloads = -1
-		pag.LastStars = -1
-		pag.LastScore = -1
-	}
-
-	pag.Reverse = false
-	if reverseStr != "false" {
-		pag.Reverse = true
-	}
+	pag.LastID = query.LastID
+	pag.LastScore = query.LastScore
+	pag.LastCreatedAt = query.LastCreatedAt
+	pag.LastDownloads = query.LastDownloads
+	pag.LastStars = query.LastStars
+	pag.Reverse = query.Reverse
 
 	rices := []models.PartialRice{}
 	var err error
@@ -159,7 +108,7 @@ func FetchRices(c *gin.Context) {
 		userID = &token.Subject
 	}
 
-	switch sort {
+	switch query.Sort {
 	case "trending":
 		rices, err = repository.FetchTrendingRices(&pag, userID)
 	case "recent":
