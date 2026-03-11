@@ -221,8 +221,8 @@ type Pagination struct {
 }
 
 func FetchPageCount() (pages float32, err error) {
-	query := fmt.Sprintf("SELECT CEIL(COUNT(*) / %v) FROM rices", utils.Config.PaginationLimit)
-	err = db.QueryRow(context.Background(), query).Scan(&pages)
+	query := "SELECT CEIL(COUNT(*) / $1) FROM rices"
+	err = db.QueryRow(context.Background(), query, utils.Config.PaginationLimit).Scan(&pages)
 	return
 }
 
