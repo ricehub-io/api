@@ -169,11 +169,11 @@ func setupRoutes(r *gin.Engine) {
 		auth.POST("", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit+int64(utils.Config.Limits.MaxPreviewsPerRice)*utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(15, 24*time.Hour), handlers.CreateRice)
 		auth.PATCH("/:id", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateRiceMetadata)
 		auth.POST("/:id/dotfiles", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateDotfiles)
-		auth.POST("/:id/previews", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(25, time.Hour), handlers.AddPreview)
+		auth.POST("/:id/screenshots", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(25, time.Hour), handlers.AddScreenshot)
 		auth.PATCH("/:id/state", security.MaintenanceMiddleware(), security.AdminMiddleware, handlers.UpdateRiceState)
 		auth.POST("/:id/star", security.MaintenanceMiddleware(), handlers.AddRiceStar)
 		auth.DELETE("/:id/star", security.MaintenanceMiddleware(), handlers.DeleteRiceStar)
-		auth.DELETE("/:id/previews/:previewId", security.MaintenanceMiddleware(), handlers.DeletePreview)
+		auth.DELETE("/:id/screenshots/:previewId", security.MaintenanceMiddleware(), handlers.DeleteScreenshot)
 		auth.DELETE("/:id", security.MaintenanceMiddleware(), handlers.DeleteRice)
 	}
 

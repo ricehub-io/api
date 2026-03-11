@@ -395,13 +395,13 @@ func UpdateRiceMetadata(c *gin.Context) {
 		return
 	}
 
-	rice, err := repository.UpdateRice(path.RiceID, metadata.Title, metadata.Description)
+	err := repository.UpdateRice(path.RiceID, metadata.Title, metadata.Description)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 
-	c.JSON(http.StatusOK, rice)
+	c.Status(http.StatusCreated)
 }
 
 func UpdateDotfiles(c *gin.Context) {
@@ -460,7 +460,7 @@ func UpdateDotfiles(c *gin.Context) {
 	c.JSON(http.StatusOK, df.ToDTO())
 }
 
-func AddPreview(c *gin.Context) {
+func AddScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	if err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
@@ -559,7 +559,7 @@ func UpdateRiceState(c *gin.Context) {
 	}
 }
 
-func DeletePreview(c *gin.Context) {
+func DeleteScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	if err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)

@@ -162,65 +162,67 @@ func (df RiceDotfiles) ToDTO() RiceDotfilesDTO {
 	}
 }
 
-type RiceDTO struct {
-	ID          uuid.UUID       `json:"id"`
-	Title       string          `json:"title"`
-	Slug        string          `json:"slug"`
-	Description string          `json:"description"`
-	Downloads   uint            `json:"downloads"`
-	Stars       uint            `json:"stars"`
-	Previews    []string        `json:"previews"`
-	Dotfiles    RiceDotfilesDTO `json:"dotfiles"`
-	CreatedAt   time.Time       `json:"createdAt"`
-	UpdatedAt   time.Time       `json:"updatedAt"`
-}
+// type RiceDTO struct {
+// 	ID          uuid.UUID       `json:"id"`
+// 	Title       string          `json:"title"`
+// 	Slug        string          `json:"slug"`
+// 	Description string          `json:"description"`
+// 	Downloads   uint            `json:"downloads"`
+// 	Stars       uint            `json:"stars"`
+// 	Screenshots []string        `json:"screenshots"`
+// 	Dotfiles    RiceDotfilesDTO `json:"dotfiles"`
+// 	CreatedAt   time.Time       `json:"createdAt"`
+// 	UpdatedAt   time.Time       `json:"updatedAt"`
+// }
 
-func (r Rice) ToDTO() RiceDTO {
-	return RiceDTO{
-		ID:          r.ID,
-		Title:       r.Title,
-		Slug:        r.Slug,
-		Description: r.Description,
-		Downloads:   0,
-		Stars:       0,
-		Previews:    []string{},
-		Dotfiles:    RiceDotfilesDTO{},
-		CreatedAt:   r.CreatedAt.UTC(),
-		UpdatedAt:   r.UpdatedAt.UTC(),
-	}
-}
+// func (r Rice) ToDTO() RiceDTO {
+// 	return RiceDTO{
+// 		ID:          r.ID,
+// 		Title:       r.Title,
+// 		Slug:        r.Slug,
+// 		Description: r.Description,
+// 		Downloads:   0,
+// 		Stars:       0,
+// 		Screenshots: []string{},
+// 		Dotfiles:    RiceDotfilesDTO{},
+// 		CreatedAt:   r.CreatedAt.UTC(),
+// 		UpdatedAt:   r.UpdatedAt.UTC(),
+// 	}
+// }
 
-type RicePreviewDTO struct {
+type RiceScreenshotDTO struct {
 	ID  uuid.UUID `json:"id"`
 	Url string    `json:"url"`
 }
 
-func (p RicePreview) ToDTO() RicePreviewDTO {
-	return RicePreviewDTO{
+func (p RicePreview) ToDTO() RiceScreenshotDTO {
+	return RiceScreenshotDTO{
 		ID:  p.ID,
 		Url: utils.Config.CDNUrl + p.FilePath,
 	}
 }
 
+// This is the full DTO that contains everything shown on the rice page
+// (except comments which are fetched separately)
 type RiceWithRelationsDTO struct {
-	ID          uuid.UUID        `json:"id"`
-	Title       string           `json:"title"`
-	Slug        string           `json:"slug"`
-	Description string           `json:"description"`
-	Downloads   uint             `json:"downloads"`
-	Stars       uint             `json:"stars"`
-	IsStarred   bool             `json:"isStarred"`
-	Previews    []RicePreviewDTO `json:"previews"`
-	Dotfiles    RiceDotfilesDTO  `json:"dotfiles"`
-	Author      UserDTO          `json:"author"`
-	CreatedAt   time.Time        `json:"createdAt"`
-	UpdatedAt   time.Time        `json:"updatedAt"`
+	ID          uuid.UUID           `json:"id"`
+	Title       string              `json:"title"`
+	Slug        string              `json:"slug"`
+	Description string              `json:"description"`
+	Downloads   uint                `json:"downloads"`
+	Stars       uint                `json:"stars"`
+	IsStarred   bool                `json:"isStarred"`
+	Screenshots []RiceScreenshotDTO `json:"screenshots"`
+	Dotfiles    RiceDotfilesDTO     `json:"dotfiles"`
+	Author      UserDTO             `json:"author"`
+	CreatedAt   time.Time           `json:"createdAt"`
+	UpdatedAt   time.Time           `json:"updatedAt"`
 }
 
 func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
-	previews := make([]RicePreviewDTO, len(r.Previews))
+	screenshots := make([]RiceScreenshotDTO, len(r.Previews))
 	for i, preview := range r.Previews {
-		previews[i] = preview.ToDTO()
+		screenshots[i] = preview.ToDTO()
 	}
 
 	return RiceWithRelationsDTO{
@@ -231,7 +233,7 @@ func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
 		Downloads:   r.Dotfiles.DownloadCount,
 		Stars:       r.StarCount,
 		IsStarred:   r.IsStarred,
-		Previews:    previews,
+		Screenshots: screenshots,
 		Dotfiles:    r.Dotfiles.ToDTO(),
 		Author:      r.User.ToDTO(),
 		CreatedAt:   r.Rice.CreatedAt.UTC(),
@@ -313,6 +315,8 @@ func CommentsWithUserToDTO(comments []CommentWithUser) []CommentWithUserDTO {
 	return dtos
 }
 
+// Partial Rice is used to only show most important info about the rice
+// in places like home page, account page, profile page
 type PartialRiceDTO struct {
 	ID          uuid.UUID `json:"id"`
 	Title       string    `json:"title"`

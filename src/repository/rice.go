@@ -221,7 +221,7 @@ type Pagination struct {
 }
 
 func FetchPageCount() (pages float32, err error) {
-	const query = "SELECT CEIL(COUNT(*) / 20.0) FROM rices"
+	query := fmt.Sprintf("SELECT CEIL(COUNT(*) / %v) FROM rices", utils.Config.PaginationLimit)
 	err = db.QueryRow(context.Background(), query).Scan(&pages)
 	return
 }
@@ -416,6 +416,7 @@ func InsertRice(tx pgx.Tx, authorID string, title string, slug string, descripti
 	}
 
 	rice, err = txRowToStruct[models.Rice](tx, insertRiceSql, authorID, title, slug, description, state)
+
 	return
 }
 
@@ -439,7 +440,7 @@ func InsertRiceStar(riceID string, userID string) error {
 	return err
 }
 
-func UpdateRice(riceID string, title *string, description *string) (rice models.Rice, err error) {
+func UpdateRice(riceID string, title *string, description *string) error {
 	query := "UPDATE rices SET"
 	args := []any{riceID}
 
@@ -456,10 +457,11 @@ func UpdateRice(riceID string, title *string, description *string) (rice models.
 		args = append(args, *description)
 	}
 
-	query += " WHERE id = $1 RETURNING *"
+	query += " WHERE id = $1"
 
-	rice, err = rowToStruct[models.Rice](query, args...)
-	return
+	_, err := db.Exec(context.Background(), query, args...)
+
+	return err
 }
 
 func UpdateRiceDotfiles(riceID string, filePath string, fileSize int64) (df models.RiceDotfiles, err error) {
