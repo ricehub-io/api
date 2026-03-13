@@ -325,6 +325,7 @@ type PartialRiceDTO struct {
 	Username    string    `json:"username"`
 	Thumbnail   string    `json:"thumbnail"`
 	Stars       uint      `json:"stars"`
+	Comments    uint      `json:"comments"`
 	Downloads   uint      `json:"downloads"`
 	IsStarred   bool      `json:"isStarred"`
 	State       RiceState `json:"state"`
@@ -341,6 +342,7 @@ func (r PartialRice) ToDTO() PartialRiceDTO {
 		Username:    r.Username,
 		Thumbnail:   utils.Config.CDNUrl + r.Thumbnail,
 		Stars:       r.StarCount,
+		Comments:    r.CommentCount,
 		Downloads:   r.DownloadCount,
 		IsStarred:   r.IsStarred,
 		State:       r.State,

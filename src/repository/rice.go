@@ -21,7 +21,6 @@ SELECT EXISTS (
 )
 `
 
-// FIXME: score can change during pagination because it uses current timestamp
 // FIXME: score has to be fetched for all responses even when not needed because PartialRice requires it
 func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse bool) string {
 	argCount := 1
@@ -33,6 +32,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 				u.display_name, u.username,
 				p.file_path AS thumbnail,
 				count(DISTINCT s.user_id) AS star_count,
+				count(c.id) AS comment_count,
 				df.download_count,
 				(
 					(df.download_count + count(DISTINCT s.user_id))
@@ -56,6 +56,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 			FROM rices r
 			JOIN users u ON u.id = r.author_id
 			LEFT JOIN rice_stars s ON s.rice_id = r.id
+			LEFT JOIN rice_comments c ON c.rice_id = r.id
 			JOIN rice_dotfiles df ON df.rice_id = r.id
 			JOIN LATERAL (
 				SELECT p.file_path

@@ -112,6 +112,7 @@ type PartialRice struct {
 	Username      string
 	Thumbnail     string
 	StarCount     uint
+	CommentCount  uint
 	DownloadCount uint
 	IsStarred     bool
 	State         RiceState
