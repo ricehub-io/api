@@ -319,14 +319,13 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
     	r.id, r.title, r.slug, r.created_at, r.state,
 		u.display_name, u.username,
 		p.file_path AS thumbnail,
-		count(DISTINCT s.user_id) AS star_count,
-		df.download_count,
+		0 AS star_count,
+		0 AS comment_count,
+		0 AS download_count,
 		0 AS score,
 		false AS is_starred
 	FROM rices r
 	JOIN users u ON u.id = r.author_id
-	LEFT JOIN rice_stars s ON s.rice_id = r.id
-	JOIN rice_dotfiles df ON df.rice_id = r.id
 	JOIN LATERAL (
 		SELECT p.file_path
 		FROM rice_previews p
@@ -335,7 +334,7 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 		LIMIT 1
 	) p ON TRUE
 	WHERE r.state = 'waiting'
-	GROUP BY r.id, r.slug, r.title, r.created_at, df.download_count, u.display_name, u.username, p.file_path
+	GROUP BY r.id, r.slug, r.title, r.created_at, u.display_name, u.username, p.file_path
 	ORDER BY r.created_at DESC
 	`
 
