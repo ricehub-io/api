@@ -32,7 +32,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 				u.display_name, u.username,
 				p.file_path AS thumbnail,
 				count(DISTINCT s.user_id) AS star_count,
-				count(c.id) AS comment_count,
+				count(DISTINCT c.id) AS comment_count,
 				df.download_count,
 				(
 					(df.download_count + count(DISTINCT s.user_id))
