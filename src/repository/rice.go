@@ -174,7 +174,7 @@ INSERT INTO rices (author_id, title, slug, description, state)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *
 `
-const insertPreviewSql = `
+const insertScreenshotSql = `
 INSERT INTO rice_previews (rice_id, file_path)
 VALUES ($1, $2)
 RETURNING *
@@ -201,14 +201,9 @@ FROM rices r
 WHERE r.id = $1 AND r.id = df.rice_id
 RETURNING df.file_path
 `
-const deletePreviewSql = `
+const deleteScreenshotSql = `
 DELETE FROM rice_previews
 WHERE id = $1 AND rice_id = $2
-`
-const previewCountSql = `
-SELECT COUNT(*)
-FROM rice_previews
-WHERE rice_id = $1
 `
 
 type Pagination struct {
@@ -239,12 +234,6 @@ func DoesRiceExist(riceID string) (exists bool, err error) {
 		riceID,
 	).Scan(&exists)
 	return
-}
-
-func RicePreviewCount(riceID string) (int64, error) {
-	var count int64
-	err := db.QueryRow(context.Background(), previewCountSql, riceID).Scan(&count)
-	return count, err
 }
 
 func FetchTrendingRices(pag *Pagination, userID *string) (r []models.PartialRice, err error) {
@@ -341,14 +330,13 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 	return rowsToStruct[models.PartialRice](query)
 }
 
-func FetchRicePreviewCount(riceID string) (int, error) {
-	var count int
-	err := db.QueryRow(
+func FetchRiceScreenshotCount(riceID string) (count int, err error) {
+	err = db.QueryRow(
 		context.Background(),
 		"SELECT count(*) FROM rice_previews WHERE rice_id = $1",
 		riceID,
 	).Scan(&count)
-	return count, err
+	return
 }
 
 func FetchRiceDotfilesPath(riceID string) (*string, error) {
@@ -420,13 +408,13 @@ func InsertRice(tx pgx.Tx, authorID string, title string, slug string, descripti
 	return
 }
 
-func InsertRicePreview(riceID string, previewPath string) (p models.RicePreview, err error) {
-	p, err = rowToStruct[models.RicePreview](insertPreviewSql, riceID, previewPath)
+func InsertRiceScreenshot(riceID string, scrPath string) (p models.RiceScreenshot, err error) {
+	p, err = rowToStruct[models.RiceScreenshot](insertScreenshotSql, riceID, scrPath)
 	return
 }
 
-func InsertRicePreviewTx(tx pgx.Tx, riceID uuid.UUID, previewPath string) error {
-	_, err := tx.Exec(context.Background(), insertPreviewSql, riceID, previewPath)
+func InsertRiceScreenshotTx(tx pgx.Tx, riceID uuid.UUID, scrPath string) error {
+	_, err := tx.Exec(context.Background(), insertScreenshotSql, riceID, scrPath)
 	return err
 }
 
@@ -481,8 +469,8 @@ func IncrementDotfilesDownloads(riceID string) (string, error) {
 	return filePath, err
 }
 
-func DeleteRicePreview(riceID string, previewID string) (bool, error) {
-	cmd, err := db.Exec(context.Background(), deletePreviewSql, previewID, riceID)
+func DeleteRiceScreenshot(riceID string, screenshotID string) (bool, error) {
+	cmd, err := db.Exec(context.Background(), deleteScreenshotSql, screenshotID, riceID)
 	return cmd.RowsAffected() == 1, err
 }
 

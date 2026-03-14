@@ -195,7 +195,7 @@ type RiceScreenshotDTO struct {
 	Url string    `json:"url"`
 }
 
-func (p RicePreview) ToDTO() RiceScreenshotDTO {
+func (p RiceScreenshot) ToDTO() RiceScreenshotDTO {
 	return RiceScreenshotDTO{
 		ID:  p.ID,
 		Url: utils.Config.CDNUrl + p.FilePath,
@@ -220,9 +220,9 @@ type RiceWithRelationsDTO struct {
 }
 
 func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
-	screenshots := make([]RiceScreenshotDTO, len(r.Previews))
-	for i, preview := range r.Previews {
-		screenshots[i] = preview.ToDTO()
+	screenshots := make([]RiceScreenshotDTO, len(r.Screenshots))
+	for i, screenshot := range r.Screenshots {
+		screenshots[i] = screenshot.ToDTO()
 	}
 
 	return RiceWithRelationsDTO{

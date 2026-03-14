@@ -325,7 +325,7 @@ func CreateRice(c *gin.Context) {
 	for path, file := range validPreviews {
 		c.SaveUploadedFile(file, "./public"+path)
 
-		if err := repository.InsertRicePreviewTx(tx, rice.ID, path); err != nil {
+		if err := repository.InsertRiceScreenshotTx(tx, rice.ID, path); err != nil {
 			c.Error(errs.InternalError(err))
 			return
 		}
@@ -490,12 +490,12 @@ func AddScreenshot(c *gin.Context) {
 		return
 	}
 
-	count, err := repository.RicePreviewCount(path.RiceID)
+	count, err := repository.FetchRiceScreenshotCount(path.RiceID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
-	if count >= int64(utils.Config.Limits.MaxPreviewsPerRice) {
+	if count >= utils.Config.Limits.MaxPreviewsPerRice {
 		c.Error(errs.UserError("You have already reached the maximum amount of previews for this rice", http.StatusRequestEntityTooLarge))
 		return
 	}
@@ -503,7 +503,7 @@ func AddScreenshot(c *gin.Context) {
 	filePath := fmt.Sprintf("/previews/%v%v", uuid.New(), ext)
 	c.SaveUploadedFile(file, "./public"+filePath)
 
-	_, err = repository.InsertRicePreview(path.RiceID, filePath)
+	_, err = repository.InsertRiceScreenshot(path.RiceID, filePath)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -588,7 +588,7 @@ func DeleteScreenshot(c *gin.Context) {
 	}
 
 	// check if there's at least one preview before deleting
-	count, err := repository.FetchRicePreviewCount(path.RiceID)
+	count, err := repository.FetchRiceScreenshotCount(path.RiceID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -598,7 +598,7 @@ func DeleteScreenshot(c *gin.Context) {
 		return
 	}
 
-	deleted, err := repository.DeleteRicePreview(path.RiceID, path.PreviewID)
+	deleted, err := repository.DeleteRiceScreenshot(path.RiceID, path.PreviewID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
