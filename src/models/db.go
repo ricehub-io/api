@@ -57,7 +57,7 @@ type RiceDotfiles struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
-type RicePreview struct {
+type RiceScreenshot struct {
 	ID        uuid.UUID
 	RiceID    uuid.UUID `json:"rice_id"`
 	FilePath  string    `json:"file_path"`
@@ -96,12 +96,12 @@ type CommentWithUser struct {
 }
 
 type RiceWithRelations struct {
-	Rice      Rice
-	User      User
-	Dotfiles  RiceDotfiles
-	Previews  []RicePreview
-	StarCount uint
-	IsStarred bool
+	Rice        Rice
+	User        User
+	Dotfiles    RiceDotfiles
+	Screenshots []RiceScreenshot `db:"previews"`
+	StarCount   uint
+	IsStarred   bool
 }
 
 type PartialRice struct {
