@@ -380,6 +380,7 @@ func FetchUserRices(userID string, callerID *string) (r []models.PartialRice, er
 		u.display_name, u.username,
 		p.file_path AS thumbnail,
 		count(DISTINCT s.user_id) AS star_count,
+		count(DISTINCT c.id) AS comment_count,
 		df.download_count,
 		0 AS score,
 		EXISTS (
@@ -390,6 +391,7 @@ func FetchUserRices(userID string, callerID *string) (r []models.PartialRice, er
 	FROM rices r
 	JOIN users u ON u.id = r.author_id
 	LEFT JOIN rice_stars s ON s.rice_id = r.id
+	LEFT JOIN rice_comments c ON c.rice_id = r.id
 	JOIN rice_dotfiles df ON df.rice_id = r.id
 	JOIN LATERAL (
 		SELECT p.file_path
