@@ -71,8 +71,9 @@ type TagNameDTO struct {
 
 // RICES
 type CreateRiceDTO struct {
-	Title       string `form:"title" binding:"required,min=4,max=32,ricetitle"`
-	Description string `form:"description" binding:"required,min=4,max=10240"`
+	Title        string       `form:"title" binding:"required,min=4,max=32,ricetitle"`
+	Description  string       `form:"description" binding:"required,min=4,max=10240"`
+	DotfilesType DotfilesType `form:"dotfilesType,default=free"`
 }
 
 type UpdateRiceDTO struct {

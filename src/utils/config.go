@@ -18,9 +18,15 @@ type (
 		DisableRateLimits bool   `toml:"disable_rate_limits"`
 		Maintenance       bool   `toml:"maintenance"`
 		PaginationLimit   uint   `toml:"pagination_limit"`
+		Polar             polarConfig
 		JWT               jwtConfig
 		Limits            limitsConfig
 		Blacklist         blacklistConfig
+	}
+
+	polarConfig struct {
+		Sandbox bool   `toml:"sandbox"`
+		Token   string `toml:"token"`
 	}
 
 	jwtConfig struct {

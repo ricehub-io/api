@@ -180,8 +180,8 @@ VALUES ($1, $2)
 RETURNING *
 `
 const insertDotfilesSql = `
-INSERT INTO rice_dotfiles (rice_id, file_path, file_size)
-VALUES ($1, $2, $3)
+INSERT INTO rice_dotfiles (rice_id, file_path, file_size, type)
+VALUES ($1, $2, $3, $4)
 RETURNING *
 `
 const insertStarSql = `
@@ -420,8 +420,8 @@ func InsertRiceScreenshotTx(tx pgx.Tx, riceID uuid.UUID, scrPath string) error {
 	return err
 }
 
-func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, dotfilesPath string, dotfilesSize int64) (df models.RiceDotfiles, err error) {
-	df, err = txRowToStruct[models.RiceDotfiles](tx, insertDotfilesSql, riceID, dotfilesPath, dotfilesSize)
+func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, dotfilesPath string, dotfilesSize int64, dotfilesType models.DotfilesType) (df models.RiceDotfiles, err error) {
+	df, err = txRowToStruct[models.RiceDotfiles](tx, insertDotfilesSql, riceID, dotfilesPath, dotfilesSize, dotfilesType)
 	return
 }
 

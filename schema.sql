@@ -213,3 +213,13 @@ CREATE TYPE rice_state AS ENUM (
 
 ALTER TABLE rices
 ADD COLUMN "state" rice_state NOT NULL DEFAULT 'waiting';
+
+-- create dotfiles type enum and add column to the table
+CREATE TYPE dotfiles_type AS ENUM (
+    'free',
+    'one-time',
+    'subscription'
+);
+
+ALTER TABLE rice_dotfiles
+ADD COLUMN "type" dotfiles_type NOT NULL DEFAULT 'free';

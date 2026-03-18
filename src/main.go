@@ -27,6 +27,7 @@ func main() {
 
 	utils.InitConfig(configPath)
 	utils.InitValidator()
+	utils.InitPolar(utils.Config.Polar.Token, utils.Config.Polar.Sandbox)
 	security.InitJWT(keysDir)
 
 	if utils.Config.DisableRateLimits {

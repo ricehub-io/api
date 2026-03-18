@@ -48,13 +48,22 @@ type Rice struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type DotfilesType string
+
+const (
+	Free         DotfilesType = "free"
+	OneTime      DotfilesType = "one-time"
+	Subscription DotfilesType = "subscription"
+)
+
 type RiceDotfiles struct {
-	RiceID        uuid.UUID `json:"rice_id"`
-	FilePath      string    `json:"file_path"`
-	FileSize      int64     `json:"file_size"`
-	DownloadCount uint      `json:"download_count"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	RiceID        uuid.UUID    `json:"rice_id"`
+	FilePath      string       `json:"file_path"`
+	FileSize      int64        `json:"file_size"`
+	DownloadCount uint         `json:"download_count"`
+	Type          DotfilesType `json:"type"`
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
 }
 
 type RiceScreenshot struct {

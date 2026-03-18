@@ -6,6 +6,10 @@ cors_origin = "http://127.0.0.1:5173"
 cookies_domain = "127.0.0.1"
 pagination_limit = 20
 
+[polar]
+sandbox = false
+token = "polar_oat_xxxxxxx"
+
 # Disable ALL rate limits - useful for development and testing
 disable_rate_limits = false
 

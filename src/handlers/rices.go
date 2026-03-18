@@ -338,7 +338,7 @@ func CreateRice(c *gin.Context) {
 	c.SaveUploadedFile(dotfilesFile, "./public"+dotfilesPath)
 
 	dotfilesSize := dotfilesFile.Size
-	_, err = repository.InsertRiceDotfiles(tx, rice.ID, dotfilesPath, dotfilesSize)
+	_, err = repository.InsertRiceDotfiles(tx, rice.ID, dotfilesPath, dotfilesSize, metadata.DotfilesType)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
