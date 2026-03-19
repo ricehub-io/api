@@ -460,6 +460,81 @@ func UpdateDotfiles(c *gin.Context) {
 	c.JSON(http.StatusOK, df.ToDTO())
 }
 
+// TODO: a lot of duplicated code in endpoints, please encapsulate it into separate function that will be called by all handlers
+func UpdateDotfilesType(c *gin.Context) {
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
+
+	var path ricesPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(invalidRiceID)
+		return
+	}
+
+	if err := checkCanUserModifyRice(token, path.RiceID); err != nil {
+		c.Error(err)
+		return
+	}
+
+	var update *models.UpdateDotfilesTypeDTO
+	if err := utils.ValidateJSON(c, &update); err != nil {
+		c.Error(err)
+		return
+	}
+
+	updated, err := repository.UpdateDotfilesType(path.RiceID, update.NewType)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+	if !updated {
+		c.Error(errs.UserError("Failed to update dotfiles type, please try again later.", http.StatusInternalServerError))
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+func UpdateDotfilesPrice(c *gin.Context) {
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
+
+	var path ricesPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(invalidRiceID)
+		return
+	}
+
+	if err := checkCanUserModifyRice(token, path.RiceID); err != nil {
+		c.Error(err)
+		return
+	}
+
+	var update *models.UpdateDotfilesPriceDTO
+	if err := utils.ValidateJSON(c, &update); err != nil {
+		c.Error(err)
+		return
+	}
+
+	updated, err := repository.UpdateDotfilesPrice(path.RiceID, update.NewPrice)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+	if !updated {
+		c.Error(errs.UserError("Failed to update dotfiles price, please try again later.", http.StatusInternalServerError))
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 func AddScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	if err := security.VerifyUserID(token.Subject); err != nil {

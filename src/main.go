@@ -21,6 +21,13 @@ import (
 const configPath = "config.toml"
 const keysDir = "keys"
 
+var (
+	updateResourceMiddleware = []gin.HandlerFunc{
+		security.MaintenanceMiddleware(),
+		security.PathRateLimitMiddleware(10, time.Hour),
+	}
+)
+
 func main() {
 	logger := setupLogger()
 	defer logger.Sync()
@@ -166,11 +173,46 @@ func setupRoutes(r *gin.Engine) {
 		rices.GET("/:id/dotfiles", handlers.DownloadDotfiles)
 
 		auth := rices.Use(security.AuthMiddleware)
-		// This is actually unreadable, I feel like Im gonna have a seizure trying to comprehend this line
-		auth.POST("", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit+int64(utils.Config.Limits.MaxPreviewsPerRice)*utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(15, 24*time.Hour), handlers.CreateRice)
-		auth.PATCH("/:id", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateRiceMetadata)
-		auth.POST("/:id/dotfiles", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateDotfiles)
-		auth.POST("/:id/screenshots", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(25, time.Hour), handlers.AddScreenshot)
+
+		createRiceMiddleware := []gin.HandlerFunc{
+			security.MaintenanceMiddleware(),
+			security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit + int64(utils.Config.Limits.MaxPreviewsPerRice)*utils.Config.Limits.PreviewSizeLimit),
+			security.PathRateLimitMiddleware(15, 24*time.Hour),
+		}
+		auth.POST("", append(createRiceMiddleware, handlers.CreateRice)...)
+		auth.PATCH(
+			"/:id",
+			append(updateResourceMiddleware, handlers.UpdateRiceMetadata)...,
+		)
+
+		updateDotfilesMiddleware := []gin.HandlerFunc{
+			security.MaintenanceMiddleware(),
+			security.PathRateLimitMiddleware(3, time.Hour),
+			security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit),
+		}
+		auth.POST(
+			"/:id/dotfiles",
+			append(updateDotfilesMiddleware, handlers.UpdateDotfiles)...,
+		)
+		auth.PATCH(
+			"/:id/dotfiles/type",
+			append(updateResourceMiddleware, handlers.UpdateDotfilesType)...,
+		)
+		auth.PATCH(
+			"/:id/dotfiles/price",
+			append(updateResourceMiddleware, handlers.UpdateDotfilesPrice)...,
+		)
+
+		addScreenshotMiddleware := []gin.HandlerFunc{
+			security.MaintenanceMiddleware(),
+			security.FileSizeLimitMiddleware(utils.Config.Limits.PreviewSizeLimit),
+			security.PathRateLimitMiddleware(25, time.Hour),
+		}
+		auth.POST(
+			"/:id/screenshots",
+			append(addScreenshotMiddleware, handlers.AddScreenshot)...,
+		)
+
 		auth.PATCH("/:id/state", security.MaintenanceMiddleware(), security.AdminMiddleware, handlers.UpdateRiceState)
 		auth.POST("/:id/star", security.MaintenanceMiddleware(), handlers.AddRiceStar)
 		auth.DELETE("/:id/star", security.MaintenanceMiddleware(), handlers.DeleteRiceStar)

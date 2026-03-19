@@ -51,9 +51,8 @@ type Rice struct {
 type DotfilesType string
 
 const (
-	Free         DotfilesType = "free"
-	OneTime      DotfilesType = "one-time"
-	Subscription DotfilesType = "subscription"
+	Free    DotfilesType = "free"
+	OneTime DotfilesType = "one-time"
 )
 
 type RiceDotfiles struct {
@@ -62,6 +61,7 @@ type RiceDotfiles struct {
 	FileSize      int64        `json:"file_size"`
 	DownloadCount uint         `json:"download_count"`
 	Type          DotfilesType `json:"type"`
+	Price         float32      `json:"price"`
 	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`
 }
@@ -124,6 +124,7 @@ type PartialRice struct {
 	CommentCount  uint
 	DownloadCount uint
 	IsStarred     bool
+	DotfilesType  DotfilesType
 	State         RiceState
 	CreatedAt     time.Time
 	Score         float32

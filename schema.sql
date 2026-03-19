@@ -217,9 +217,12 @@ ADD COLUMN "state" rice_state NOT NULL DEFAULT 'waiting';
 -- create dotfiles type enum and add column to the table
 CREATE TYPE dotfiles_type AS ENUM (
     'free',
-    'one-time',
-    'subscription'
+    'one-time'
 );
 
 ALTER TABLE rice_dotfiles
 ADD COLUMN "type" dotfiles_type NOT NULL DEFAULT 'free';
+
+-- add price column to dotfiles
+ALTER TABLE rice_dotfiles
+ADD COLUMN price NUMERIC(5, 2) NOT NULL DEFAULT 1.0 CHECK (price > 0.0);

@@ -1,3 +1,5 @@
+// TODO: move all dotfiles-related queries to rice_dotfiles.go file
+
 package repository
 
 import (
@@ -17,7 +19,7 @@ const hasUserRiceSql = `
 SELECT EXISTS (
 	SELECT 1
 	FROM rices
-	WHERE id = $1 AND author_id = $2
+	WHERE id = $1 AND author_id = $2 AND state = 'accepted'
 )
 `
 
@@ -33,7 +35,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 				p.file_path AS thumbnail,
 				count(DISTINCT s.user_id) AS star_count,
 				count(DISTINCT c.id) AS comment_count,
-				df.download_count,
+				df.download_count, df.type AS dotfiles_type,
 				(
 					(df.download_count + count(DISTINCT s.user_id))
 					/ pow(extract(EPOCH FROM (date_trunc('hour', current_timestamp) - r.created_at)) / 3600 + 2, 1.5)
@@ -68,7 +70,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 			WHERE r.state != 'waiting'
 			GROUP BY
 				r.id, r.slug, r.title, r.created_at,
-				df.download_count, u.display_name,
+				df.download_count, df.type, u.display_name,
 				u.username, p.file_path
 		)
 	`
@@ -310,11 +312,12 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 		p.file_path AS thumbnail,
 		0 AS star_count,
 		0 AS comment_count,
-		0 AS download_count,
+		0 AS download_count, df.type AS dotfiles_type,
 		0 AS score,
 		false AS is_starred
 	FROM rices r
 	JOIN users u ON u.id = r.author_id
+	JOIN rice_dotfiles df ON df.rice_id = r.id
 	JOIN LATERAL (
 		SELECT p.file_path
 		FROM rice_previews p
@@ -323,7 +326,10 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 		LIMIT 1
 	) p ON TRUE
 	WHERE r.state = 'waiting'
-	GROUP BY r.id, r.slug, r.title, r.created_at, u.display_name, u.username, p.file_path
+	GROUP BY
+		r.id, r.slug, r.title, r.created_at,
+		u.display_name, u.username, p.file_path,
+		df.type
 	ORDER BY r.created_at DESC
 	`
 
@@ -369,7 +375,7 @@ func FetchUserRices(userID string, callerID *string) (r []models.PartialRice, er
 		p.file_path AS thumbnail,
 		count(DISTINCT s.user_id) AS star_count,
 		count(DISTINCT c.id) AS comment_count,
-		df.download_count,
+		df.download_count, df.type AS dotfiles_type,
 		0 AS score,
 		EXISTS (
 			SELECT 1
@@ -390,8 +396,9 @@ func FetchUserRices(userID string, callerID *string) (r []models.PartialRice, er
 	) p ON TRUE
 	` + where + `
 	GROUP BY
-		r.id, r.slug, r.title, r.created_at, df.download_count,
-		u.display_name, u.username, p.file_path
+		r.id, r.slug, r.title, r.created_at,
+		df.download_count, df.type, u.display_name,
+		u.username, p.file_path
 	ORDER BY r.created_at DESC, r.id DESC
 	`
 
