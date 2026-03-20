@@ -48,7 +48,7 @@ type (
 	}
 )
 
-var Config *rootConfig
+var Config rootConfig
 
 func InitConfig(configPath string) {
 	logger := zap.L()

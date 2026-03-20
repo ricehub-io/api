@@ -102,7 +102,7 @@ func ValidateFileAsImage(formFile *multipart.FileHeader) (string, error) {
 	// }
 
 	// return mtype.Extension(), nil
-	name := formFile.Filename
+	name := strings.ToLower(formFile.Filename)
 	if strings.HasSuffix(name, ".png") {
 		return ".png", nil
 	} else if strings.HasSuffix(name, ".jpg") {
