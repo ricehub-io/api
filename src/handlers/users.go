@@ -276,6 +276,30 @@ func FetchUserRices(c *gin.Context) {
 	c.JSON(http.StatusOK, models.PartialRicesToDTO(rices))
 }
 
+func FetchPurchasedRices(c *gin.Context) {
+	var path usersPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(invalidUserID)
+		return
+	}
+
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
+
+	user, err := preCheck(token, path.UserID)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	rices, err := repository.FetchUserPurchasedRices(user.ID.String())
+
+	c.JSON(http.StatusOK, models.PartialRicesToDTO(rices))
+}
+
 func UpdateDisplayName(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {

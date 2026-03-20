@@ -135,6 +135,14 @@ func setupRoutes(r *gin.Engine) {
 		defaultRL := security.PathRateLimitMiddleware(5, 1*time.Minute)
 		users.GET("", handlers.FetchUsers)
 		users.GET("/:id/rices", security.PathRateLimitMiddleware(5, 1*time.Minute), handlers.FetchUserRices)
+
+		users.GET(
+			"/:id/purchased",
+			security.AuthMiddleware,
+			security.PathRateLimitMiddleware(20, 1*time.Minute),
+			handlers.FetchPurchasedRices,
+		)
+
 		users.GET("/:id/rices/:slug", security.PathRateLimitMiddleware(30, 1*time.Minute), handlers.GetUserRiceBySlug)
 
 		authedOnly := users.Use(security.AuthMiddleware)

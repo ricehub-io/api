@@ -138,13 +138,23 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 		to_jsonb(df) AS dotfiles,
 		jsonb_agg(to_jsonb(p) ORDER BY p.id) AS previews,
 		count(DISTINCT s.user_id) AS star_count,
-		coalesce(bool_or(s.user_id = $1), false) AS is_starred
+		coalesce(bool_or(s.user_id = $1), false) AS is_starred,
+		CASE WHEN df.type != 'free'
+			THEN (
+				SELECT EXISTS(
+					SELECT 1
+					FROM dotfiles_purchases dp
+					WHERE dp.user_id = $1 AND dp.rice_id = base.id
+				)
+			)
+			ELSE true
+    	END AS is_owned
 	FROM base
 	JOIN users_with_ban_status u ON u.id = base.author_id
 	JOIN rice_dotfiles df ON df.rice_id = base.id
 	JOIN rice_previews p ON p.rice_id = base.id
 	LEFT JOIN rice_stars s ON s.rice_id = base.id
-	GROUP BY base.*, df.*, u.*
+	GROUP BY base.*, df.*, u.*, base.id, df.type
 	`
 
 	switch findBy {
@@ -403,6 +413,42 @@ func FetchUserRices(userID string, callerID *string) (r []models.PartialRice, er
 	`
 
 	r, err = rowsToStruct[models.PartialRice](query, userID, callerID)
+	return
+}
+
+func FetchUserPurchasedRices(userID string) (r []models.PartialRice, err error) {
+	const query = `
+	SELECT
+		r.id, r.title, r.slug, r.created_at, r.state,
+		u.display_name, u.username,
+		p.file_path AS thumbnail,
+		count(DISTINCT s.user_id) AS star_count,
+		count(DISTINCT c.id) AS comment_count,
+		df.download_count, df.type AS dotfiles_type,
+		0 AS score,
+		false AS is_starred
+	FROM dotfiles_purchases dp
+	JOIN rices r ON r.id = dp.rice_id
+	JOIN users u ON u.id = r.author_id
+	LEFT JOIN rice_stars s ON s.rice_id = r.id
+	LEFT JOIN rice_comments c ON c.rice_id = r.id
+	JOIN rice_dotfiles df ON df.rice_id = r.id
+	JOIN LATERAL (
+		SELECT p.file_path
+		FROM rice_previews p
+		WHERE p.rice_id = r.id
+		ORDER BY p.created_at
+		LIMIT 1
+	) p ON TRUE
+	WHERE dp.user_id = $1
+	GROUP BY
+		r.id, r.slug, r.title, r.created_at,
+		df.download_count, df.type, u.display_name,
+		u.username, p.file_path
+	ORDER BY r.created_at DESC, r.id DESC
+	`
+
+	r, err = rowsToStruct[models.PartialRice](query, userID)
 	return
 }
 

@@ -160,18 +160,25 @@ type RiceDotfilesDTO struct {
 	FilePath  string       `json:"filePath"`
 	FileSize  int64        `json:"fileSize"`
 	Type      DotfilesType `json:"type"`
+	Price     *float32     `json:"price,omitempty"`
 	CreatedAt time.Time    `json:"createdAt"`
 	UpdatedAt time.Time    `json:"updatedAt"`
 }
 
 func (df RiceDotfiles) ToDTO() RiceDotfilesDTO {
-	return RiceDotfilesDTO{
+	dto := RiceDotfilesDTO{
 		FilePath:  utils.Config.CDNUrl + df.FilePath,
 		FileSize:  df.FileSize,
 		Type:      df.Type,
 		CreatedAt: df.CreatedAt.UTC(),
 		UpdatedAt: df.UpdatedAt.UTC(),
 	}
+
+	if dto.Type != Free {
+		dto.Price = &df.Price
+	}
+
+	return dto
 }
 
 type RiceScreenshotDTO struct {
@@ -196,6 +203,7 @@ type RiceWithRelationsDTO struct {
 	Downloads   uint                `json:"downloads"`
 	Stars       uint                `json:"stars"`
 	IsStarred   bool                `json:"isStarred"`
+	IsOwned     bool                `json:"isOwned"`
 	Screenshots []RiceScreenshotDTO `json:"screenshots"`
 	Dotfiles    RiceDotfilesDTO     `json:"dotfiles"`
 	Author      UserDTO             `json:"author"`
@@ -217,6 +225,7 @@ func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
 		Downloads:   r.Dotfiles.DownloadCount,
 		Stars:       r.StarCount,
 		IsStarred:   r.IsStarred,
+		IsOwned:     r.IsOwned,
 		Screenshots: screenshots,
 		Dotfiles:    r.Dotfiles.ToDTO(),
 		Author:      r.User.ToDTO(),

@@ -111,6 +111,7 @@ type RiceWithRelations struct {
 	Screenshots []RiceScreenshot `db:"previews"`
 	StarCount   uint
 	IsStarred   bool
+	IsOwned     bool
 }
 
 type PartialRice struct {
