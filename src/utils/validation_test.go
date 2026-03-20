@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+// TODO: test ValidateFileAsArchive function
+
 func createTestConfig() {
 	Config.Blacklist.Usernames = []string{"admin"}
 	Config.Blacklist.DisplayNames = []string{"root", "badname"}
