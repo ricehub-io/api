@@ -62,8 +62,14 @@ type RiceDotfiles struct {
 	DownloadCount uint         `json:"download_count"`
 	Type          DotfilesType `json:"type"`
 	Price         float32      `json:"price"`
+	ProductID     *uuid.UUID   `json:"product_id"`
 	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`
+}
+
+type RiceWithDotfiles struct {
+	Rice     Rice         `json:"rice"`
+	Dotfiles RiceDotfiles `json:"dotfiles"`
 }
 
 type RiceScreenshot struct {

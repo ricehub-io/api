@@ -192,8 +192,8 @@ VALUES ($1, $2)
 RETURNING *
 `
 const insertDotfilesSql = `
-INSERT INTO rice_dotfiles (rice_id, file_path, file_size, type)
-VALUES ($1, $2, $3, $4)
+INSERT INTO rice_dotfiles (rice_id, file_path, file_size, type, price, product_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *
 `
 const insertStarSql = `
@@ -362,7 +362,7 @@ func FetchRiceDotfilesPath(riceID string) (*string, error) {
 	return filePath, err
 }
 
-func FindRiceById(userID *string, riceID string) (r models.RiceWithRelations, err error) {
+func FindRiceByID(userID *string, riceID string) (r models.RiceWithRelations, err error) {
 	r, err = rowToStruct[models.RiceWithRelations](findRiceSql, userID, riceID)
 	return
 }
@@ -452,6 +452,18 @@ func FetchUserPurchasedRices(userID string) (r []models.PartialRice, err error) 
 	return
 }
 
+func FindRiceWithDotfilesByID(tx pgx.Tx, riceID string) (r models.RiceWithDotfiles, err error) {
+	const query = `
+	SELECT to_jsonb(rices) AS rice, to_jsonb(dotfiles) AS dotfiles
+	FROM rices
+	JOIN rice_dotfiles dotfiles ON dotfiles.rice_id = rices.id
+	WHERE rices.id = $1
+	LIMIT 1
+	`
+	r, err = txRowToStruct[models.RiceWithDotfiles](tx, query, riceID)
+	return
+}
+
 func InsertRice(tx pgx.Tx, authorID string, title string, slug string, description string, autoAccept bool) (rice models.Rice, err error) {
 	state := models.Waiting
 	if autoAccept {
@@ -473,8 +485,8 @@ func InsertRiceScreenshotTx(tx pgx.Tx, riceID uuid.UUID, scrPath string) error {
 	return err
 }
 
-func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, dotfilesPath string, dotfilesSize int64, dotfilesType models.DotfilesType) (df models.RiceDotfiles, err error) {
-	df, err = txRowToStruct[models.RiceDotfiles](tx, insertDotfilesSql, riceID, dotfilesPath, dotfilesSize, dotfilesType)
+func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, filePath string, fileSize int64, dfType models.DotfilesType, price float32, productID *string) (df models.RiceDotfiles, err error) {
+	df, err = txRowToStruct[models.RiceDotfiles](tx, insertDotfilesSql, riceID, filePath, fileSize, dfType, price, productID)
 	return
 }
 
@@ -539,11 +551,19 @@ func DeleteRiceStar(riceID string, userID string) error {
 	return err
 }
 
-func DeleteRice(riceID string) (bool, error) {
-	cmd, err := db.Exec(
+func deleteRice(exec DbExecutor, riceID string) (bool, error) {
+	cmd, err := exec.Exec(
 		context.Background(),
 		"DELETE FROM rices WHERE id = $1",
 		riceID,
 	)
 	return cmd.RowsAffected() == 1, err
+}
+
+func DeleteRice(riceID string) (bool, error) {
+	return deleteRice(db, riceID)
+}
+
+func DeleteRiceTx(tx pgx.Tx, riceID string) (bool, error) {
+	return deleteRice(tx, riceID)
 }

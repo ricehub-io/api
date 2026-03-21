@@ -155,7 +155,7 @@ func GetRiceById(c *gin.Context) {
 		userID = &token.Subject
 	}
 
-	rice, err := repository.FindRiceById(userID, path.RiceID)
+	rice, err := repository.FindRiceByID(userID, path.RiceID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			c.Error(errs.RiceNotFound)
@@ -197,7 +197,7 @@ func DownloadDotfiles(c *gin.Context) {
 		return
 	}
 
-	rice, err := repository.FindRiceById(nil, path.RiceID)
+	rice, err := repository.FindRiceByID(nil, path.RiceID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			c.Error(errs.RiceNotFound)
@@ -305,7 +305,7 @@ func CreateRice(c *gin.Context) {
 		c.Error(errs.InternalError(err))
 		return
 	}
-	defer tx.Rollback(context.Background())
+	defer tx.Rollback(ctx)
 
 	// insert the rice base (we need rice id for db relation)
 	rice, err := repository.InsertRice(tx, token.Subject, metadata.Title, slug.Make(metadata.Title), metadata.Description, token.IsAdmin)
@@ -337,13 +337,25 @@ func CreateRice(c *gin.Context) {
 	dotfilesPath := fmt.Sprintf("/dotfiles/%v%v", uuid.New(), dotfilesExt)
 	c.SaveUploadedFile(dotfilesFile, "./public"+dotfilesPath)
 
+	// create new polar product if dotfiles are paid
+	var productID *string
+
+	if metadata.DotfilesType != models.Free {
+		res, err := utils.Polar.CreateProduct(metadata.Title, metadata.DotfilesPrice)
+		if err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
+
+		productID = &res.Product.ID
+	}
+
 	dotfilesSize := dotfilesFile.Size
-	_, err = repository.InsertRiceDotfiles(tx, rice.ID, dotfilesPath, dotfilesSize, metadata.DotfilesType)
+	_, err = repository.InsertRiceDotfiles(tx, rice.ID, dotfilesPath, dotfilesSize, metadata.DotfilesType, metadata.DotfilesPrice, productID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
-	// dto.Dotfiles = dotfiles.ToDTO()
 
 	// finish the tx
 	if err := tx.Commit(ctx); err != nil {
@@ -485,13 +497,75 @@ func UpdateDotfilesType(c *gin.Context) {
 		return
 	}
 
-	updated, err := repository.UpdateDotfilesType(path.RiceID, update.NewType)
+	ctx := context.Background()
+	tx, err := repository.StartTx(ctx)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	var productID *string
+
+	if update.NewType == models.Free {
+		// hide existing product
+		existingProdID, err := repository.FetchProductID(tx, path.RiceID)
+		if err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
+
+		temp := existingProdID.String()
+		productID = &temp
+
+		_, err = utils.Polar.HideProduct(temp)
+		if err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
+	} else {
+		data, err := repository.FindRiceWithDotfilesByID(tx, path.RiceID)
+		if err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
+
+		if data.Dotfiles.ProductID != nil {
+			idStr := data.Dotfiles.ProductID.String()
+
+			// product already exists, unhide it
+			_, err := utils.Polar.ShowProduct(idStr)
+			if err != nil {
+				c.Error(errs.InternalError(err))
+				return
+			}
+
+			productID = &idStr
+		} else {
+			// create new product
+			res, err := utils.Polar.CreateProduct(data.Rice.Title, data.Dotfiles.Price)
+			if err != nil {
+				c.Error(errs.InternalError(err))
+				return
+			}
+
+			productID = &res.Product.ID
+		}
+	}
+
+	// update dotfiles in db
+	updated, err := repository.UpdateDotfilesType(tx, path.RiceID, update.NewType, productID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 	if !updated {
 		c.Error(errs.UserError("Failed to update dotfiles type, please try again later.", http.StatusInternalServerError))
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		c.Error(errs.InternalError(err))
 		return
 	}
 
@@ -522,13 +596,32 @@ func UpdateDotfilesPrice(c *gin.Context) {
 		return
 	}
 
-	updated, err := repository.UpdateDotfilesPrice(path.RiceID, update.NewPrice)
+	// create new db tx
+	ctx := context.Background()
+	tx, err := repository.StartTx(ctx)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
-	if !updated {
-		c.Error(errs.UserError("Failed to update dotfiles price, please try again later.", http.StatusInternalServerError))
+	defer tx.Rollback(ctx)
+
+	// try to update dotfiles price in db
+	productID, err := repository.UpdateDotfilesPrice(tx, path.RiceID, update.NewPrice)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	// try update product price in polar
+	_, err = utils.Polar.UpdatePrice(productID.String(), update.NewPrice)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	// finish the tx
+	if err := tx.Commit(ctx); err != nil {
+		c.Error(errs.InternalError(err))
 		return
 	}
 
@@ -600,7 +693,7 @@ func UpdateRiceState(c *gin.Context) {
 		return
 	}
 
-	rice, err := repository.FindRiceById(nil, path.RiceID)
+	rice, err := repository.FindRiceByID(nil, path.RiceID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			c.Error(errs.RiceNotFound)
@@ -626,7 +719,11 @@ func UpdateRiceState(c *gin.Context) {
 	case "rejected":
 		_, err := repository.DeleteRice(path.RiceID)
 		if err != nil {
-			zap.L().Error("Database error when trying to delete rejected rice", zap.String("riceId", path.RiceID), zap.Error(err))
+			zap.L().Error(
+				"Database error when trying to delete rejected rice",
+				zap.String("riceId", path.RiceID),
+				zap.Error(err),
+			)
 			c.Error(errs.InternalError(err))
 			return
 		}
@@ -750,13 +847,45 @@ func DeleteRice(c *gin.Context) {
 		return
 	}
 
-	deleted, err := repository.DeleteRice(path.RiceID)
+	// create new db transaction
+	ctx := context.Background()
+	tx, err := repository.StartTx(ctx)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	// fetch product id before deleting
+	productID, err := repository.FetchProductID(tx, path.RiceID)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	// try to delete the rice from database
+	deleted, err := repository.DeleteRiceTx(tx, path.RiceID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 	if !deleted {
 		c.Error(errs.RiceNotFound)
+		return
+	}
+
+	if productID != nil {
+		// try to archive the product
+		_, err := utils.Polar.ArchiveProduct(productID.String())
+		if err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
+	}
+
+	// commit transaction
+	if err := tx.Commit(ctx); err != nil {
+		c.Error(errs.InternalError(err))
 		return
 	}
 

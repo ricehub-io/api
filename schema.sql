@@ -235,3 +235,7 @@ CREATE TABLE dotfiles_purchases (
     price_paid NUMERIC(5, 2) NOT NULL CHECK (price_paid > 0.0),
     purchased_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- add polar product id to rice dotfiles
+ALTER TABLE rice_dotfiles
+ADD COLUMN product_id UUID CHECK (product_id IS NOT NULL OR "type" = 'free');
