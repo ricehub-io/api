@@ -6,6 +6,7 @@ import (
 	"os"
 	"ricehub/src/errs"
 	"ricehub/src/handlers"
+	"ricehub/src/polar"
 	"ricehub/src/repository"
 	"ricehub/src/security"
 	"ricehub/src/utils"
@@ -34,7 +35,7 @@ func main() {
 
 	utils.InitConfig(configPath)
 	utils.InitValidator()
-	utils.InitPolar(utils.Config.Polar.Token, utils.Config.Polar.Sandbox)
+	polar.Init(utils.Config.Polar.Token, utils.Config.Polar.Sandbox)
 	security.InitJWT(keysDir)
 
 	if utils.Config.DisableRateLimits {
@@ -121,6 +122,8 @@ func setupRoutes(r *gin.Engine) {
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "I'm working and responding!"})
 	})
+
+	r.POST("/webhook", polar.WebhookListener)
 
 	auth := r.Group("/auth")
 	{
@@ -219,6 +222,13 @@ func setupRoutes(r *gin.Engine) {
 		auth.POST(
 			"/:id/screenshots",
 			append(addScreenshotMiddleware, handlers.AddScreenshot)...,
+		)
+
+		auth.POST(
+			"/:id/purchase",
+			security.MaintenanceMiddleware(),
+			security.PathRateLimitMiddleware(5, time.Hour),
+			handlers.PurchaseDotfiles,
 		)
 
 		auth.PATCH("/:id/state", security.MaintenanceMiddleware(), security.AdminMiddleware, handlers.UpdateRiceState)

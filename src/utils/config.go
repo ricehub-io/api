@@ -25,8 +25,9 @@ type (
 	}
 
 	polarConfig struct {
-		Sandbox bool   `toml:"sandbox"`
-		Token   string `toml:"token"`
+		Sandbox       bool   `toml:"sandbox"`
+		Token         string `toml:"token"`
+		WebhookSecret string `toml:"webhook_secret"`
 	}
 
 	jwtConfig struct {

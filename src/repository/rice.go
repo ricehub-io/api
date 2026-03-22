@@ -139,7 +139,7 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 		jsonb_agg(to_jsonb(p) ORDER BY p.id) AS previews,
 		count(DISTINCT s.user_id) AS star_count,
 		coalesce(bool_or(s.user_id = $1), false) AS is_starred,
-		CASE WHEN df.type != 'free'
+		CASE WHEN df.type != 'free' AND u.id != $1
 			THEN (
 				SELECT EXISTS(
 					SELECT 1
@@ -154,7 +154,7 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 	JOIN rice_dotfiles df ON df.rice_id = base.id
 	JOIN rice_previews p ON p.rice_id = base.id
 	LEFT JOIN rice_stars s ON s.rice_id = base.id
-	GROUP BY base.*, df.*, u.*, base.id, df.type
+	GROUP BY base.*, df.*, u.*, u.id, base.id, df.type
 	`
 
 	switch findBy {

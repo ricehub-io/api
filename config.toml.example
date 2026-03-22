@@ -9,6 +9,7 @@ pagination_limit = 20
 [polar]
 sandbox = false
 token = "polar_oat_xxxxxxx"
+webhook_secret = "polar_whs_yyyyyyyy"
 
 # Disable ALL rate limits - useful for development and testing
 disable_rate_limits = false

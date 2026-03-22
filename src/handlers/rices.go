@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"ricehub/src/errs"
 	"ricehub/src/models"
+	"ricehub/src/polar"
 	"ricehub/src/repository"
 	"ricehub/src/security"
 	"ricehub/src/utils"
@@ -197,7 +198,10 @@ func DownloadDotfiles(c *gin.Context) {
 		return
 	}
 
-	rice, err := repository.FindRiceByID(nil, path.RiceID)
+	userID := GetUserIdFromRequest(c)
+
+	// try to find the rice
+	rice, err := repository.FindRiceByID(userID, path.RiceID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			c.Error(errs.RiceNotFound)
@@ -208,6 +212,13 @@ func DownloadDotfiles(c *gin.Context) {
 		return
 	}
 
+	// check if user can download dotfiles
+	if rice.Dotfiles.Type != models.Free && !rice.IsOwned {
+		c.Error(errs.UserError("You don't have access to these dotfiles", http.StatusForbidden))
+		return
+	}
+
+	// increment download count
 	filePath, err := repository.IncrementDotfilesDownloads(path.RiceID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -223,9 +234,9 @@ func DownloadDotfiles(c *gin.Context) {
 
 	ext := filepath.Ext(filePath)
 	timestamp := time.Now().UTC().Format("20060102-150405")
-	filename := fmt.Sprintf("%s-%s%s", slug.Make(rice.Rice.Title), timestamp, ext)
+	fileName := fmt.Sprintf("%s-%s%s", slug.Make(rice.Rice.Title), timestamp, ext)
 
-	c.FileAttachment(fullPath, filename)
+	c.FileAttachment(fullPath, fileName)
 }
 
 func CreateRice(c *gin.Context) {
@@ -341,7 +352,7 @@ func CreateRice(c *gin.Context) {
 	var productID *string
 
 	if metadata.DotfilesType != models.Free {
-		res, err := utils.Polar.CreateProduct(metadata.Title, metadata.DotfilesPrice)
+		res, err := polar.CreateProduct(metadata.Title, metadata.DotfilesPrice)
 		if err != nil {
 			c.Error(errs.InternalError(err))
 			return
@@ -518,7 +529,7 @@ func UpdateDotfilesType(c *gin.Context) {
 		temp := existingProdID.String()
 		productID = &temp
 
-		_, err = utils.Polar.HideProduct(temp)
+		_, err = polar.HideProduct(temp)
 		if err != nil {
 			c.Error(errs.InternalError(err))
 			return
@@ -534,7 +545,7 @@ func UpdateDotfilesType(c *gin.Context) {
 			idStr := data.Dotfiles.ProductID.String()
 
 			// product already exists, unhide it
-			_, err := utils.Polar.ShowProduct(idStr)
+			_, err := polar.ShowProduct(idStr)
 			if err != nil {
 				c.Error(errs.InternalError(err))
 				return
@@ -543,7 +554,7 @@ func UpdateDotfilesType(c *gin.Context) {
 			productID = &idStr
 		} else {
 			// create new product
-			res, err := utils.Polar.CreateProduct(data.Rice.Title, data.Dotfiles.Price)
+			res, err := polar.CreateProduct(data.Rice.Title, data.Dotfiles.Price)
 			if err != nil {
 				c.Error(errs.InternalError(err))
 				return
@@ -613,7 +624,7 @@ func UpdateDotfilesPrice(c *gin.Context) {
 	}
 
 	// try update product price in polar
-	_, err = utils.Polar.UpdatePrice(productID.String(), update.NewPrice)
+	_, err = polar.UpdatePrice(productID.String(), update.NewPrice)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -829,6 +840,49 @@ func DeleteRiceStar(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func PurchaseDotfiles(c *gin.Context) {
+	var path ricesPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(invalidRiceID)
+		return
+	}
+
+	token := c.MustGet("token").(*security.AccessToken)
+
+	// check if rice exists
+	rice, err := repository.FindRiceByID(&token.Subject, path.RiceID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.Error(errs.RiceNotFound)
+			return
+		}
+
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	// check if dotfiles are paid
+	if rice.Dotfiles.Type == models.Free {
+		c.Error(errs.UserError("You can't purchase free dotfiles", http.StatusBadRequest))
+		return
+	}
+
+	// check if user owns the dotfiles
+	if rice.IsOwned {
+		c.Error(errs.UserError("You already own these dotfiles", http.StatusConflict))
+		return
+	}
+
+	// create new checkout session
+	res, err := polar.CreateCheckoutSession(token.Subject, path.RiceID, rice.Dotfiles.ProductID.String())
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"checkout_url": res.Checkout.URL})
+}
+
 func DeleteRice(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	if err := security.VerifyUserID(token.Subject); err != nil {
@@ -876,7 +930,7 @@ func DeleteRice(c *gin.Context) {
 
 	if productID != nil {
 		// try to archive the product
-		_, err := utils.Polar.ArchiveProduct(productID.String())
+		_, err := polar.ArchiveProduct(productID.String())
 		if err != nil {
 			c.Error(errs.InternalError(err))
 			return
