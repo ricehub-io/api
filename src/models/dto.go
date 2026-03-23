@@ -71,8 +71,10 @@ type TagNameDTO struct {
 
 // RICES
 type CreateRiceDTO struct {
-	Title       string `form:"title" binding:"required,min=4,max=32,ricetitle"`
-	Description string `form:"description" binding:"required,min=4,max=10240"`
+	Title         string       `form:"title" binding:"required,min=4,max=32,ricetitle"`
+	Description   string       `form:"description" binding:"required,min=4,max=10240"`
+	DotfilesType  DotfilesType `form:"dotfilesType" binding:"required_with=DotfilesPrice,omitempty,oneof=free one-time"`
+	DotfilesPrice float64      `form:"dotfilesPrice" binding:"required_with=DotfilesType,omitnil,gt=0"`
 }
 
 type UpdateRiceDTO struct {
@@ -82,6 +84,14 @@ type UpdateRiceDTO struct {
 
 type UpdateRiceStateDTO struct {
 	NewState string `json:"newState" binding:"required,oneof=accepted rejected"`
+}
+
+type UpdateDotfilesTypeDTO struct {
+	NewType DotfilesType `json:"newType" binding:"required,oneof=free one-time"`
+}
+
+type UpdateDotfilesPriceDTO struct {
+	NewPrice float64 `json:"newPrice" binding:"required,gt=0"`
 }
 
 // COMMENTS
@@ -147,48 +157,29 @@ func (t Tag) ToDTO() TagDTO {
 }
 
 type RiceDotfilesDTO struct {
-	FilePath  string    `json:"filePath"`
-	FileSize  int64     `json:"fileSize"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	FilePath  string       `json:"filePath"`
+	FileSize  int64        `json:"fileSize"`
+	Type      DotfilesType `json:"type"`
+	Price     *float64     `json:"price,omitempty"`
+	CreatedAt time.Time    `json:"createdAt"`
+	UpdatedAt time.Time    `json:"updatedAt"`
 }
 
 func (df RiceDotfiles) ToDTO() RiceDotfilesDTO {
-	return RiceDotfilesDTO{
+	dto := RiceDotfilesDTO{
 		FilePath:  utils.Config.CDNUrl + df.FilePath,
 		FileSize:  df.FileSize,
+		Type:      df.Type,
 		CreatedAt: df.CreatedAt.UTC(),
 		UpdatedAt: df.UpdatedAt.UTC(),
 	}
+
+	if dto.Type != Free {
+		dto.Price = &df.Price
+	}
+
+	return dto
 }
-
-// type RiceDTO struct {
-// 	ID          uuid.UUID       `json:"id"`
-// 	Title       string          `json:"title"`
-// 	Slug        string          `json:"slug"`
-// 	Description string          `json:"description"`
-// 	Downloads   uint            `json:"downloads"`
-// 	Stars       uint            `json:"stars"`
-// 	Screenshots []string        `json:"screenshots"`
-// 	Dotfiles    RiceDotfilesDTO `json:"dotfiles"`
-// 	CreatedAt   time.Time       `json:"createdAt"`
-// 	UpdatedAt   time.Time       `json:"updatedAt"`
-// }
-
-// func (r Rice) ToDTO() RiceDTO {
-// 	return RiceDTO{
-// 		ID:          r.ID,
-// 		Title:       r.Title,
-// 		Slug:        r.Slug,
-// 		Description: r.Description,
-// 		Downloads:   0,
-// 		Stars:       0,
-// 		Screenshots: []string{},
-// 		Dotfiles:    RiceDotfilesDTO{},
-// 		CreatedAt:   r.CreatedAt.UTC(),
-// 		UpdatedAt:   r.UpdatedAt.UTC(),
-// 	}
-// }
 
 type RiceScreenshotDTO struct {
 	ID  uuid.UUID `json:"id"`
@@ -212,6 +203,7 @@ type RiceWithRelationsDTO struct {
 	Downloads   uint                `json:"downloads"`
 	Stars       uint                `json:"stars"`
 	IsStarred   bool                `json:"isStarred"`
+	IsOwned     bool                `json:"isOwned"`
 	Screenshots []RiceScreenshotDTO `json:"screenshots"`
 	Dotfiles    RiceDotfilesDTO     `json:"dotfiles"`
 	Author      UserDTO             `json:"author"`
@@ -233,6 +225,7 @@ func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
 		Downloads:   r.Dotfiles.DownloadCount,
 		Stars:       r.StarCount,
 		IsStarred:   r.IsStarred,
+		IsOwned:     r.IsOwned,
 		Screenshots: screenshots,
 		Dotfiles:    r.Dotfiles.ToDTO(),
 		Author:      r.User.ToDTO(),
@@ -328,6 +321,7 @@ type PartialRiceDTO struct {
 	Comments    uint      `json:"comments"`
 	Downloads   uint      `json:"downloads"`
 	IsStarred   bool      `json:"isStarred"`
+	IsFree      bool      `json:"isFree"`
 	State       RiceState `json:"state"`
 	CreatedAt   time.Time `json:"createdAt"`
 	Score       float32   `json:"score"`
@@ -345,6 +339,7 @@ func (r PartialRice) ToDTO() PartialRiceDTO {
 		Comments:    r.CommentCount,
 		Downloads:   r.DownloadCount,
 		IsStarred:   r.IsStarred,
+		IsFree:      r.DotfilesType == Free,
 		State:       r.State,
 		CreatedAt:   r.CreatedAt.UTC(),
 		Score:       r.Score,

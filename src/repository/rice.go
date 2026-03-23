@@ -1,3 +1,5 @@
+// TODO: move all dotfiles-related queries to rice_dotfiles.go file
+
 package repository
 
 import (
@@ -17,7 +19,7 @@ const hasUserRiceSql = `
 SELECT EXISTS (
 	SELECT 1
 	FROM rices
-	WHERE id = $1 AND author_id = $2
+	WHERE id = $1 AND author_id = $2 AND state = 'accepted'
 )
 `
 
@@ -33,7 +35,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 				p.file_path AS thumbnail,
 				count(DISTINCT s.user_id) AS star_count,
 				count(DISTINCT c.id) AS comment_count,
-				df.download_count,
+				df.download_count, df.type AS dotfiles_type,
 				(
 					(df.download_count + count(DISTINCT s.user_id))
 					/ pow(extract(EPOCH FROM (date_trunc('hour', current_timestamp) - r.created_at)) / 3600 + 2, 1.5)
@@ -68,7 +70,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 			WHERE r.state != 'waiting'
 			GROUP BY
 				r.id, r.slug, r.title, r.created_at,
-				df.download_count, u.display_name,
+				df.download_count, df.type, u.display_name,
 				u.username, p.file_path
 		)
 	`
@@ -136,13 +138,23 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 		to_jsonb(df) AS dotfiles,
 		jsonb_agg(to_jsonb(p) ORDER BY p.id) AS previews,
 		count(DISTINCT s.user_id) AS star_count,
-		coalesce(bool_or(s.user_id = $1), false) AS is_starred
+		coalesce(bool_or(s.user_id = $1), false) AS is_starred,
+		CASE WHEN df.type != 'free' AND u.id != $1
+			THEN (
+				SELECT EXISTS(
+					SELECT 1
+					FROM dotfiles_purchases dp
+					WHERE dp.user_id = $1 AND dp.rice_id = base.id
+				)
+			)
+			ELSE true
+    	END AS is_owned
 	FROM base
 	JOIN users_with_ban_status u ON u.id = base.author_id
 	JOIN rice_dotfiles df ON df.rice_id = base.id
 	JOIN rice_previews p ON p.rice_id = base.id
 	LEFT JOIN rice_stars s ON s.rice_id = base.id
-	GROUP BY base.*, df.*, u.*
+	GROUP BY base.*, df.*, u.*, u.id, base.id, df.type
 	`
 
 	switch findBy {
@@ -180,8 +192,8 @@ VALUES ($1, $2)
 RETURNING *
 `
 const insertDotfilesSql = `
-INSERT INTO rice_dotfiles (rice_id, file_path, file_size)
-VALUES ($1, $2, $3)
+INSERT INTO rice_dotfiles (rice_id, file_path, file_size, type, price, product_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *
 `
 const insertStarSql = `
@@ -310,11 +322,12 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 		p.file_path AS thumbnail,
 		0 AS star_count,
 		0 AS comment_count,
-		0 AS download_count,
+		0 AS download_count, df.type AS dotfiles_type,
 		0 AS score,
 		false AS is_starred
 	FROM rices r
 	JOIN users u ON u.id = r.author_id
+	JOIN rice_dotfiles df ON df.rice_id = r.id
 	JOIN LATERAL (
 		SELECT p.file_path
 		FROM rice_previews p
@@ -323,7 +336,10 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 		LIMIT 1
 	) p ON TRUE
 	WHERE r.state = 'waiting'
-	GROUP BY r.id, r.slug, r.title, r.created_at, u.display_name, u.username, p.file_path
+	GROUP BY
+		r.id, r.slug, r.title, r.created_at,
+		u.display_name, u.username, p.file_path,
+		df.type
 	ORDER BY r.created_at DESC
 	`
 
@@ -346,7 +362,7 @@ func FetchRiceDotfilesPath(riceID string) (*string, error) {
 	return filePath, err
 }
 
-func FindRiceById(userID *string, riceID string) (r models.RiceWithRelations, err error) {
+func FindRiceByID(userID *string, riceID string) (r models.RiceWithRelations, err error) {
 	r, err = rowToStruct[models.RiceWithRelations](findRiceSql, userID, riceID)
 	return
 }
@@ -369,7 +385,7 @@ func FetchUserRices(userID string, callerID *string) (r []models.PartialRice, er
 		p.file_path AS thumbnail,
 		count(DISTINCT s.user_id) AS star_count,
 		count(DISTINCT c.id) AS comment_count,
-		df.download_count,
+		df.download_count, df.type AS dotfiles_type,
 		0 AS score,
 		EXISTS (
 			SELECT 1
@@ -390,12 +406,61 @@ func FetchUserRices(userID string, callerID *string) (r []models.PartialRice, er
 	) p ON TRUE
 	` + where + `
 	GROUP BY
-		r.id, r.slug, r.title, r.created_at, df.download_count,
-		u.display_name, u.username, p.file_path
+		r.id, r.slug, r.title, r.created_at,
+		df.download_count, df.type, u.display_name,
+		u.username, p.file_path
 	ORDER BY r.created_at DESC, r.id DESC
 	`
 
 	r, err = rowsToStruct[models.PartialRice](query, userID, callerID)
+	return
+}
+
+func FetchUserPurchasedRices(userID string) (r []models.PartialRice, err error) {
+	const query = `
+	SELECT
+		r.id, r.title, r.slug, r.created_at, r.state,
+		u.display_name, u.username,
+		p.file_path AS thumbnail,
+		count(DISTINCT s.user_id) AS star_count,
+		count(DISTINCT c.id) AS comment_count,
+		df.download_count, df.type AS dotfiles_type,
+		0 AS score,
+		false AS is_starred
+	FROM dotfiles_purchases dp
+	JOIN rices r ON r.id = dp.rice_id
+	JOIN users u ON u.id = r.author_id
+	LEFT JOIN rice_stars s ON s.rice_id = r.id
+	LEFT JOIN rice_comments c ON c.rice_id = r.id
+	JOIN rice_dotfiles df ON df.rice_id = r.id
+	JOIN LATERAL (
+		SELECT p.file_path
+		FROM rice_previews p
+		WHERE p.rice_id = r.id
+		ORDER BY p.created_at
+		LIMIT 1
+	) p ON TRUE
+	WHERE dp.user_id = $1
+	GROUP BY
+		r.id, r.slug, r.title, r.created_at,
+		df.download_count, df.type, u.display_name,
+		u.username, p.file_path
+	ORDER BY r.created_at DESC, r.id DESC
+	`
+
+	r, err = rowsToStruct[models.PartialRice](query, userID)
+	return
+}
+
+func FindRiceWithDotfilesByID(tx pgx.Tx, riceID string) (r models.RiceWithDotfiles, err error) {
+	const query = `
+	SELECT to_jsonb(rices) AS rice, to_jsonb(dotfiles) AS dotfiles
+	FROM rices
+	JOIN rice_dotfiles dotfiles ON dotfiles.rice_id = rices.id
+	WHERE rices.id = $1
+	LIMIT 1
+	`
+	r, err = txRowToStruct[models.RiceWithDotfiles](tx, query, riceID)
 	return
 }
 
@@ -420,8 +485,8 @@ func InsertRiceScreenshotTx(tx pgx.Tx, riceID uuid.UUID, scrPath string) error {
 	return err
 }
 
-func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, dotfilesPath string, dotfilesSize int64) (df models.RiceDotfiles, err error) {
-	df, err = txRowToStruct[models.RiceDotfiles](tx, insertDotfilesSql, riceID, dotfilesPath, dotfilesSize)
+func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, filePath string, fileSize int64, dfType models.DotfilesType, price float64, productID *string) (df models.RiceDotfiles, err error) {
+	df, err = txRowToStruct[models.RiceDotfiles](tx, insertDotfilesSql, riceID, filePath, fileSize, dfType, price, productID)
 	return
 }
 
@@ -486,11 +551,19 @@ func DeleteRiceStar(riceID string, userID string) error {
 	return err
 }
 
-func DeleteRice(riceID string) (bool, error) {
-	cmd, err := db.Exec(
+func deleteRice(exec DbExecutor, riceID string) (bool, error) {
+	cmd, err := exec.Exec(
 		context.Background(),
 		"DELETE FROM rices WHERE id = $1",
 		riceID,
 	)
 	return cmd.RowsAffected() == 1, err
+}
+
+func DeleteRice(riceID string) (bool, error) {
+	return deleteRice(db, riceID)
+}
+
+func DeleteRiceTx(tx pgx.Tx, riceID string) (bool, error) {
+	return deleteRice(tx, riceID)
 }

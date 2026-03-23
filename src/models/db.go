@@ -48,13 +48,28 @@ type Rice struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type DotfilesType string
+
+const (
+	Free    DotfilesType = "free"
+	OneTime DotfilesType = "one-time"
+)
+
 type RiceDotfiles struct {
-	RiceID        uuid.UUID `json:"rice_id"`
-	FilePath      string    `json:"file_path"`
-	FileSize      int64     `json:"file_size"`
-	DownloadCount uint      `json:"download_count"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	RiceID        uuid.UUID    `json:"rice_id"`
+	FilePath      string       `json:"file_path"`
+	FileSize      int64        `json:"file_size"`
+	DownloadCount uint         `json:"download_count"`
+	Type          DotfilesType `json:"type"`
+	Price         float64      `json:"price"`
+	ProductID     *uuid.UUID   `json:"product_id"`
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
+}
+
+type RiceWithDotfiles struct {
+	Rice     Rice         `json:"rice"`
+	Dotfiles RiceDotfiles `json:"dotfiles"`
 }
 
 type RiceScreenshot struct {
@@ -102,6 +117,7 @@ type RiceWithRelations struct {
 	Screenshots []RiceScreenshot `db:"previews"`
 	StarCount   uint
 	IsStarred   bool
+	IsOwned     bool
 }
 
 type PartialRice struct {
@@ -115,6 +131,7 @@ type PartialRice struct {
 	CommentCount  uint
 	DownloadCount uint
 	IsStarred     bool
+	DotfilesType  DotfilesType
 	State         RiceState
 	CreatedAt     time.Time
 	Score         float32

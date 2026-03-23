@@ -6,6 +6,7 @@ import (
 	"os"
 	"ricehub/src/errs"
 	"ricehub/src/handlers"
+	"ricehub/src/polar"
 	"ricehub/src/repository"
 	"ricehub/src/security"
 	"ricehub/src/utils"
@@ -21,12 +22,20 @@ import (
 const configPath = "config.toml"
 const keysDir = "keys"
 
+var (
+	updateResourceMiddleware = []gin.HandlerFunc{
+		security.MaintenanceMiddleware(),
+		security.PathRateLimitMiddleware(10, time.Hour),
+	}
+)
+
 func main() {
 	logger := setupLogger()
 	defer logger.Sync()
 
 	utils.InitConfig(configPath)
 	utils.InitValidator()
+	polar.Init(utils.Config.Polar.Token, utils.Config.Polar.Sandbox)
 	security.InitJWT(keysDir)
 
 	if utils.Config.DisableRateLimits {
@@ -114,6 +123,8 @@ func setupRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "I'm working and responding!"})
 	})
 
+	r.POST("/webhook", polar.WebhookListener)
+
 	auth := r.Group("/auth")
 	{
 		auth.POST("/register", security.MaintenanceMiddleware(), handlers.Register)
@@ -127,6 +138,14 @@ func setupRoutes(r *gin.Engine) {
 		defaultRL := security.PathRateLimitMiddleware(5, 1*time.Minute)
 		users.GET("", handlers.FetchUsers)
 		users.GET("/:id/rices", security.PathRateLimitMiddleware(5, 1*time.Minute), handlers.FetchUserRices)
+
+		users.GET(
+			"/:id/purchased",
+			security.AuthMiddleware,
+			security.PathRateLimitMiddleware(20, 1*time.Minute),
+			handlers.FetchPurchasedRices,
+		)
+
 		users.GET("/:id/rices/:slug", security.PathRateLimitMiddleware(30, 1*time.Minute), handlers.GetUserRiceBySlug)
 
 		authedOnly := users.Use(security.AuthMiddleware)
@@ -165,11 +184,53 @@ func setupRoutes(r *gin.Engine) {
 		rices.GET("/:id/dotfiles", handlers.DownloadDotfiles)
 
 		auth := rices.Use(security.AuthMiddleware)
-		// This is actually unreadable, I feel like Im gonna have a seizure trying to comprehend this line
-		auth.POST("", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit+int64(utils.Config.Limits.MaxPreviewsPerRice)*utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(15, 24*time.Hour), handlers.CreateRice)
-		auth.PATCH("/:id", security.MaintenanceMiddleware(), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateRiceMetadata)
-		auth.POST("/:id/dotfiles", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit), security.PathRateLimitMiddleware(5, time.Hour), handlers.UpdateDotfiles)
-		auth.POST("/:id/screenshots", security.MaintenanceMiddleware(), security.FileSizeLimitMiddleware(utils.Config.Limits.PreviewSizeLimit), security.PathRateLimitMiddleware(25, time.Hour), handlers.AddScreenshot)
+
+		createRiceMiddleware := []gin.HandlerFunc{
+			security.MaintenanceMiddleware(),
+			security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit + int64(utils.Config.Limits.MaxPreviewsPerRice)*utils.Config.Limits.PreviewSizeLimit),
+			security.PathRateLimitMiddleware(15, 24*time.Hour),
+		}
+		auth.POST("", append(createRiceMiddleware, handlers.CreateRice)...)
+		auth.PATCH(
+			"/:id",
+			append(updateResourceMiddleware, handlers.UpdateRiceMetadata)...,
+		)
+
+		updateDotfilesMiddleware := []gin.HandlerFunc{
+			security.MaintenanceMiddleware(),
+			security.PathRateLimitMiddleware(3, time.Hour),
+			security.FileSizeLimitMiddleware(utils.Config.Limits.DotfilesSizeLimit),
+		}
+		auth.POST(
+			"/:id/dotfiles",
+			append(updateDotfilesMiddleware, handlers.UpdateDotfiles)...,
+		)
+		auth.PATCH(
+			"/:id/dotfiles/type",
+			append(updateResourceMiddleware, handlers.UpdateDotfilesType)...,
+		)
+		auth.PATCH(
+			"/:id/dotfiles/price",
+			append(updateResourceMiddleware, handlers.UpdateDotfilesPrice)...,
+		)
+
+		addScreenshotMiddleware := []gin.HandlerFunc{
+			security.MaintenanceMiddleware(),
+			security.FileSizeLimitMiddleware(utils.Config.Limits.PreviewSizeLimit),
+			security.PathRateLimitMiddleware(25, time.Hour),
+		}
+		auth.POST(
+			"/:id/screenshots",
+			append(addScreenshotMiddleware, handlers.AddScreenshot)...,
+		)
+
+		auth.POST(
+			"/:id/purchase",
+			security.MaintenanceMiddleware(),
+			security.PathRateLimitMiddleware(5, time.Hour),
+			handlers.PurchaseDotfiles,
+		)
+
 		auth.PATCH("/:id/state", security.MaintenanceMiddleware(), security.AdminMiddleware, handlers.UpdateRiceState)
 		auth.POST("/:id/star", security.MaintenanceMiddleware(), handlers.AddRiceStar)
 		auth.DELETE("/:id/star", security.MaintenanceMiddleware(), handlers.DeleteRiceStar)
