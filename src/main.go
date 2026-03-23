@@ -168,7 +168,7 @@ func registerUserRoutes(r *gin.Engine) {
 
 	// Authenticated
 	auth := users.Group("", security.AuthMiddleware)
-	auth.GET("/:id", security.PathRateLimitMiddleware(5, time.Minute), handlers.GetUserById)
+	auth.GET("/:id", security.PathRateLimitMiddleware(5, time.Minute), handlers.GetUserByID)
 	auth.GET("/:id/purchased", security.PathRateLimitMiddleware(20, time.Minute), handlers.FetchPurchasedRices)
 	auth.DELETE("/:id", maintenance, security.PathRateLimitMiddleware(5, time.Minute), handlers.DeleteUser)
 	auth.PATCH("/:id/displayName", maintenance, accountRL, handlers.UpdateDisplayName)
@@ -191,7 +191,7 @@ func registerRiceRoutes(r *gin.Engine) {
 
 	// Public
 	rices.GET("", handlers.FetchRices)
-	rices.GET("/:id", handlers.GetRiceById)
+	rices.GET("/:id", handlers.GetRiceByID)
 	rices.GET("/:id/comments", handlers.GetRiceComments)
 	rices.GET("/:id/dotfiles", handlers.DownloadDotfiles)
 
@@ -232,7 +232,7 @@ func registerCommentRoutes(r *gin.Engine) {
 	comments := r.Group("/comments", security.AuthMiddleware)
 
 	comments.GET("", security.AdminMiddleware, handlers.GetRecentComments)
-	comments.GET("/:id", security.PathRateLimitMiddleware(10, time.Minute), handlers.GetCommentById)
+	comments.GET("/:id", security.PathRateLimitMiddleware(10, time.Minute), handlers.GetCommentByID)
 	comments.POST("", maintenance, security.PathRateLimitMiddleware(10, time.Hour), handlers.AddComment)
 	comments.PATCH("/:id", maintenance, security.PathRateLimitMiddleware(10, time.Hour), handlers.UpdateComment)
 	comments.DELETE("/:id", maintenance, handlers.DeleteComment)
@@ -245,7 +245,7 @@ func registerReportRoutes(r *gin.Engine) {
 
 	admin := reports.Group("", security.AdminMiddleware)
 	admin.GET("", handlers.FetchReports)
-	admin.GET("/:reportId", handlers.GetReportById)
+	admin.GET("/:reportId", handlers.GetReportByID)
 	admin.POST("/:reportId/close", handlers.CloseReport)
 }
 

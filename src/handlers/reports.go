@@ -11,11 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
-
-var reportNotFound = errs.UserError("Report with provided ID not found!", http.StatusNotFound)
 
 func FetchReports(c *gin.Context) {
 	reports, err := repository.FetchReports()
@@ -27,16 +24,11 @@ func FetchReports(c *gin.Context) {
 	c.JSON(http.StatusOK, models.ReportsToDTO(reports))
 }
 
-func GetReportById(c *gin.Context) {
+func GetReportByID(c *gin.Context) {
 	reportID := c.Param("reportId")
-	report, err := repository.FindReport(reportID)
+	report, err := repository.FindReportByID(reportID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(reportNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.ReportNotFound))
 		return
 	}
 
@@ -57,7 +49,7 @@ func CreateReport(c *gin.Context) {
 		return
 	}
 
-	reportId, err := repository.InsertReport(token.Subject, report.Reason, report.RiceID, report.CommentID)
+	reportID, err := repository.InsertReport(token.Subject, report.Reason, report.RiceID, report.CommentID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -75,19 +67,19 @@ func CreateReport(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"reportId": reportId})
+	c.JSON(http.StatusCreated, gin.H{"reportId": reportID})
 }
 
 func CloseReport(c *gin.Context) {
 	reportID := c.Param("reportId")
 
-	updated, err := repository.SetReportIsClosed(reportID, true)
+	updated, err := repository.CloseReport(reportID, true)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 	if !updated {
-		c.Error(reportNotFound)
+		c.Error(errs.ReportNotFound)
 		return
 	}
 

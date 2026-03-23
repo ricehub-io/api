@@ -11,7 +11,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -19,14 +18,12 @@ type commentsPath struct {
 	CommentID string `uri:"id" binding:"required,uuid"`
 }
 
-var invalidCommentId = errs.UserError("Invalid comment ID path parameter. It must be a valid UUID.", http.StatusBadRequest)
-
 func checkCanUserModifyComment(token *security.AccessToken, commentID string) error {
 	if token.IsAdmin {
 		return nil
 	}
 
-	isAuthor, err := repository.HasUserCommentWithId(commentID, token.Subject)
+	isAuthor, err := repository.UserOwnsComment(commentID, token.Subject)
 	if err != nil || !isAuthor {
 		return errs.NoAccess
 	}
@@ -80,21 +77,19 @@ func GetRecentComments(c *gin.Context) {
 	c.JSON(http.StatusOK, models.CommentsWithUserToDTO(comments))
 }
 
-func GetCommentById(c *gin.Context) {
+func GetCommentByID(c *gin.Context) {
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidCommentId)
+		c.Error(errs.InvalidCommentID)
 		return
 	}
 
-	comment, err := repository.FindCommentById(path.CommentID)
+	comment, err := repository.FindCommentByID(path.CommentID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.UserError("Comment with provided ID not found", http.StatusNotFound))
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.UserError(
+			"Comment with provided ID not found",
+			http.StatusNotFound,
+		)))
 		return
 	}
 
@@ -110,7 +105,7 @@ func UpdateComment(c *gin.Context) {
 
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidCommentId)
+		c.Error(errs.InvalidCommentID)
 		return
 	}
 
@@ -143,7 +138,7 @@ func DeleteComment(c *gin.Context) {
 
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidCommentId)
+		c.Error(errs.InvalidCommentID)
 		return
 	}
 

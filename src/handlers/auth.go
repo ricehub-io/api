@@ -13,49 +13,46 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5"
+	"github.com/google/uuid"
 )
 
-var invalidCredentials = errs.UserError("Invalid credentials provided", http.StatusUnauthorized)
-
 func Register(c *gin.Context) {
-	var credentials models.RegisterDTO
-	if err := utils.ValidateJSON(c, &credentials); err != nil {
+	var body models.RegisterDTO
+	if err := utils.ValidateJSON(c, &body); err != nil {
 		c.Error(err)
 		return
 	}
 
-	// check if username or display name contains blacklisted words
-	if utils.IsUsernameBlacklisted(credentials.Username) {
-		c.Error(errs.UserError("You can't use this username! Please try again with a different one.", http.StatusUnprocessableEntity))
+	if utils.IsUsernameBlacklisted(body.Username) {
+		c.Error(errs.UserError(
+			"You can't use this username! Please try again with a different one.",
+			http.StatusUnprocessableEntity,
+		))
 		return
 	}
 
-	if utils.IsDisplayNameBlacklisted(credentials.DisplayName) {
+	if utils.IsDisplayNameBlacklisted(body.DisplayName) {
 		c.Error(errs.BlacklistedDisplayName)
 		return
 	}
 
-	// check if username is taken
-	usernameTaken, err := repository.IsUsernameTaken(credentials.Username)
+	taken, err := repository.UsernameExists(body.Username)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
-	if usernameTaken {
+	if taken {
 		c.Error(errs.UserError("Username is already taken", http.StatusConflict))
 		return
 	}
 
-	// hash password
-	pass, err := argon2id.CreateHash(credentials.Password, argon2id.DefaultParams)
+	hashedPassword, err := argon2id.CreateHash(body.Password, argon2id.DefaultParams)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 
-	// insert new user
-	err = repository.InsertUser(credentials.Username, credentials.DisplayName, pass)
+	err = repository.InsertUser(body.Username, body.DisplayName, hashedPassword)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -65,32 +62,25 @@ func Register(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
-	var credentials models.LoginDTO
-	if err := utils.ValidateJSON(c, &credentials); err != nil {
+	var body models.LoginDTO
+	if err := utils.ValidateJSON(c, &body); err != nil {
 		c.Error(err)
 		return
 	}
 
-	// find user by username
-	user, err := repository.FindUserByUsername(credentials.Username)
+	user, err := repository.FindUserByUsername(body.Username)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(invalidCredentials)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.InvalidCredentials))
 		return
 	}
 
-	// check if password matches
-	match, err := argon2id.ComparePasswordAndHash(credentials.Password, user.Password)
+	match, err := argon2id.ComparePasswordAndHash(body.Password, user.Password)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 	if !match {
-		c.Error(invalidCredentials)
+		c.Error(errs.InvalidCredentials)
 		return
 	}
 
@@ -99,30 +89,27 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// create tokens
-	refresh, err := security.NewRefreshToken(user.ID)
+	access, refresh, err := issueTokenPair(user.ID, user.IsAdmin)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 
-	access, err := security.NewAccessToken(user.ID, user.IsAdmin)
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-
-	maxAge := int(math.Round(utils.Config.JWT.RefreshExpiration.Seconds()))
-	c.SetCookie("refresh_token", refresh, maxAge, "/", utils.Config.Server.CookiesDomain, true, true)
-	c.JSON(http.StatusOK, gin.H{"accessToken": access, "user": user.ToDTO()})
+	setRefreshCookie(c, refresh)
+	c.JSON(http.StatusOK, gin.H{
+		"accessToken": access,
+		"user":        user.ToDTO(),
+	})
 }
 
 func RefreshToken(c *gin.Context) {
-	// try to extract refresh token from cookies
 	tokenStr, err := c.Cookie("refresh_token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
-			c.Error(errs.UserError("Refresh token is required to generate a new access token!", http.StatusBadRequest))
+			c.Error(errs.UserError(
+				"Refresh token is required to generate a new access token",
+				http.StatusBadRequest,
+			))
 			return
 		}
 
@@ -130,11 +117,13 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	// validate refresh claims
 	refresh, err := security.DecodeRefreshToken(tokenStr)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			c.Error(errs.UserError("Refresh token is expired! Please authenticate again.", http.StatusForbidden))
+			c.Error(errs.UserError(
+				"Refresh token is expired! Please authenticate again.",
+				http.StatusForbidden,
+			))
 			return
 		}
 
@@ -142,15 +131,12 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	// check user data from database
-	user, err := repository.FindUserById(refresh.Subject)
+	user, err := repository.FindUserByID(refresh.Subject)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.UserError("Invalid refresh token! Log out and try again.", http.StatusForbidden))
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.UserError(
+			"Invalid refresh token! Log out and try again.",
+			http.StatusForbidden,
+		)))
 		return
 	}
 
@@ -159,18 +145,37 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	// generate access token
 	access, err := security.NewAccessToken(user.ID, user.IsAdmin)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 
-	// return new token in response body
 	c.JSON(http.StatusOK, gin.H{"accessToken": access})
 }
 
 func LogOut(c *gin.Context) {
-	c.SetCookie("refresh_token", "", -10, "/", utils.Config.Server.CookiesDomain, true, true)
-	c.Status(http.StatusOK)
+	clearRefreshCookie(c)
+}
+
+// issueTokenPair generates access and refresh token for given parameters.
+func issueTokenPair(userID uuid.UUID, isAdmin bool) (access, refresh string, err error) {
+	refresh, err = security.NewRefreshToken(userID)
+	if err != nil {
+		return
+	}
+
+	access, err = security.NewAccessToken(userID, isAdmin)
+	return
+}
+
+// setRefreshCookie writes refresh token to secure and http-only cookie header.
+func setRefreshCookie(c *gin.Context, token string) {
+	maxAge := int(math.Round(utils.Config.JWT.AccessExpiration.Seconds()))
+	c.SetCookie("refresh_token", token, maxAge, "/", utils.Config.Server.CookiesDomain, true, true)
+}
+
+// clearRefreshCookie writes empty refresh token that's expired into response headers.
+func clearRefreshCookie(c *gin.Context) {
+	c.SetCookie("refresh_token", "", -1, "/", utils.Config.Server.CookiesDomain, true, true)
 }

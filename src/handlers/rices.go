@@ -22,7 +22,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
@@ -33,16 +32,12 @@ type ricesPath struct {
 
 var availableSorts = []string{"trending", "recent", "mostDownloads", "mostStars"}
 
-var invalidRiceID = errs.UserError("Invalid rice ID path parameter. It must be a valid UUID.", http.StatusBadRequest)
-var blacklistedTitle = errs.UserError("Title contains blacklisted words!", http.StatusUnprocessableEntity)
-var blacklistedDescription = errs.UserError("Description contains blacklisted words!", http.StatusUnprocessableEntity)
-
 func checkCanUserModifyRice(token *security.AccessToken, riceID string) error {
 	if token.IsAdmin {
 		return nil
 	}
 
-	isAuthor, err := repository.HasUserRiceWithId(riceID, token.Subject)
+	isAuthor, err := repository.UserOwnsRice(riceID, token.Subject)
 	if err != nil || !isAuthor {
 		return errs.NoAccess
 	}
@@ -77,7 +72,10 @@ func FetchRices(c *gin.Context) {
 	}
 	if err := c.ShouldBindQuery(&query); err != nil {
 		// TODO: return different message depending on which parameter was invalid
-		c.Error(errs.UserError("Failed to parse query parameters", http.StatusBadRequest))
+		c.Error(errs.UserError(
+			"Failed to parse query parameters",
+			http.StatusBadRequest,
+		))
 		return
 	}
 
@@ -143,10 +141,10 @@ func FetchRices(c *gin.Context) {
 	})
 }
 
-func GetRiceById(c *gin.Context) {
+func GetRiceByID(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -158,12 +156,7 @@ func GetRiceById(c *gin.Context) {
 
 	rice, err := repository.FindRiceByID(userID, path.RiceID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.RiceNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.RiceNotFound))
 		return
 	}
 
@@ -178,11 +171,11 @@ func GetRiceById(c *gin.Context) {
 func GetRiceComments(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
-	comments, err := repository.FetchCommentsByRiceId(path.RiceID)
+	comments, err := repository.FetchCommentsByRiceID(path.RiceID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -194,21 +187,16 @@ func GetRiceComments(c *gin.Context) {
 func DownloadDotfiles(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
-	userID := GetUserIdFromRequest(c)
+	userID := GetUserIDFromRequest(c)
 
 	// try to find the rice
 	rice, err := repository.FindRiceByID(userID, path.RiceID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.RiceNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.RiceNotFound))
 		return
 	}
 
@@ -219,14 +207,9 @@ func DownloadDotfiles(c *gin.Context) {
 	}
 
 	// increment download count
-	filePath, err := repository.IncrementDotfilesDownloads(path.RiceID)
+	filePath, err := repository.IncrementDownloadCount(path.RiceID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.RiceNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.RiceNotFound))
 		return
 	}
 
@@ -306,11 +289,11 @@ func CreateRice(c *gin.Context) {
 	// check if title or description contains blacklisted words
 	bl := utils.Config.Blacklist.Words
 	if utils.ContainsBlacklistedWord(metadata.Title, bl) {
-		c.Error(blacklistedTitle)
+		c.Error(errs.BlacklistedRiceTitle)
 		return
 	}
 	if utils.ContainsBlacklistedWord(metadata.Description, bl) {
-		c.Error(blacklistedDescription)
+		c.Error(errs.BlacklistedRiceDescription)
 		return
 	}
 
@@ -393,7 +376,7 @@ func UpdateRiceMetadata(c *gin.Context) {
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -416,11 +399,11 @@ func UpdateRiceMetadata(c *gin.Context) {
 	// check against blacklisted words
 	bl := utils.Config.Blacklist.Words
 	if metadata.Title != nil && utils.ContainsBlacklistedWord(*metadata.Title, bl) {
-		c.Error(blacklistedTitle)
+		c.Error(errs.BlacklistedRiceTitle)
 		return
 	}
 	if metadata.Description != nil && utils.ContainsBlacklistedWord(*metadata.Description, bl) {
-		c.Error(blacklistedDescription)
+		c.Error(errs.BlacklistedRiceDescription)
 		return
 	}
 
@@ -442,7 +425,7 @@ func UpdateDotfiles(c *gin.Context) {
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -499,7 +482,7 @@ func UpdateDotfilesType(c *gin.Context) {
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -526,7 +509,7 @@ func UpdateDotfilesType(c *gin.Context) {
 
 	if update.NewType == models.Free {
 		// hide existing product
-		existingProdID, err := repository.FetchProductID(tx, path.RiceID)
+		existingProdID, err := repository.FindDotfilesProductID(tx, path.RiceID)
 		if err != nil {
 			c.Error(errs.InternalError(err))
 			return
@@ -598,7 +581,7 @@ func UpdateDotfilesPrice(c *gin.Context) {
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -654,7 +637,7 @@ func AddScreenshot(c *gin.Context) {
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -663,15 +646,15 @@ func AddScreenshot(c *gin.Context) {
 		return
 	}
 
-	file, err := c.FormFile("file")
+	form, err := c.MultipartForm()
 	if err != nil {
-		c.Error(errs.MissingFile)
+		c.Error(errs.UserError("Invalid multipart form", http.StatusBadRequest))
 		return
 	}
 
-	ext, err := utils.ValidateFileAsImage(file)
-	if err != nil {
-		c.Error(err)
+	files := form.File["files[]"]
+	if len(files) == 0 {
+		c.Error(errs.MissingFile)
 		return
 	}
 
@@ -682,27 +665,68 @@ func AddScreenshot(c *gin.Context) {
 	}
 
 	maxPreviews := int(utils.Config.Limits.MaxPreviewsPerRice)
-	if count >= maxPreviews {
-		c.Error(errs.UserError("You have already reached the maximum amount of previews for this rice", http.StatusRequestEntityTooLarge))
+	if count+len(files) > maxPreviews {
+		c.Error(errs.UserError(
+			fmt.Sprintf(
+				"You can't have more than %v previews per rice!",
+				maxPreviews,
+			),
+			http.StatusRequestEntityTooLarge,
+		))
 		return
 	}
 
-	filePath := fmt.Sprintf("/previews/%v%v", uuid.New(), ext)
-	c.SaveUploadedFile(file, "./public"+filePath)
+	type validFile struct {
+		path   string
+		header *multipart.FileHeader
+	}
 
-	_, err = repository.InsertRiceScreenshot(path.RiceID, filePath)
+	validFiles := make([]validFile, 0, len(files))
+	for _, file := range files {
+		ext, err := utils.ValidateFileAsImage(file)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		validFiles = append(validFiles, validFile{
+			path:   fmt.Sprintf("/previews/%v%v", uuid.New(), ext),
+			header: file,
+		})
+	}
+
+	ctx := context.Background()
+	tx, err := repository.StartTx(ctx)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
+	defer tx.Rollback(ctx)
 
-	c.JSON(http.StatusCreated, gin.H{"preview": utils.Config.App.CDNUrl + filePath})
+	previews := make([]string, 0, len(validFiles))
+	for _, vf := range validFiles {
+		c.SaveUploadedFile(vf.header, "./public"+vf.path)
+
+		err := repository.InsertRiceScreenshotTx(tx, path.RiceID, vf.path)
+		if err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
+
+		previews = append(previews, utils.Config.App.CDNUrl+vf.path)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"previews": previews})
 }
 
 func UpdateRiceState(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -714,12 +738,7 @@ func UpdateRiceState(c *gin.Context) {
 
 	rice, err := repository.FindRiceByID(nil, path.RiceID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.RiceNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.RiceNotFound))
 		return
 	}
 	if rice.Rice.State == models.Accepted {
@@ -740,7 +759,7 @@ func UpdateRiceState(c *gin.Context) {
 		if err != nil {
 			zap.L().Error(
 				"Database error when trying to delete rejected rice",
-				zap.String("riceId", path.RiceID),
+				zap.String("rice_id", path.RiceID),
 				zap.Error(err),
 			)
 			c.Error(errs.InternalError(err))
@@ -764,7 +783,7 @@ func DeleteScreenshot(c *gin.Context) {
 	if err := c.ShouldBindUri(&path); err != nil {
 		msg := err.Error()
 		if strings.Contains(msg, "RiceID") {
-			msg = invalidRiceID.Error()
+			msg = errs.InvalidRiceID.Error()
 		} else if strings.Contains(msg, "PreviewID") {
 			msg = "Invalid preview ID path parameter. It must be a valid UUID."
 		}
@@ -807,7 +826,7 @@ func AddRiceStar(c *gin.Context) {
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -836,7 +855,7 @@ func DeleteRiceStar(c *gin.Context) {
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -851,7 +870,7 @@ func DeleteRiceStar(c *gin.Context) {
 func PurchaseDotfiles(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -860,12 +879,7 @@ func PurchaseDotfiles(c *gin.Context) {
 	// check if rice exists
 	rice, err := repository.FindRiceByID(&token.Subject, path.RiceID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.RiceNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.RiceNotFound))
 		return
 	}
 
@@ -900,7 +914,7 @@ func DeleteRice(c *gin.Context) {
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidRiceID)
+		c.Error(errs.InvalidRiceID)
 		return
 	}
 
@@ -919,7 +933,7 @@ func DeleteRice(c *gin.Context) {
 	defer tx.Rollback(ctx)
 
 	// fetch product id before deleting
-	productID, err := repository.FetchProductID(tx, path.RiceID)
+	productID, err := repository.FindDotfilesProductID(tx, path.RiceID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return

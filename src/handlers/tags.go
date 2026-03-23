@@ -11,12 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
-
-var invalidTagID = errs.UserError("Failed to parse tag ID, it must be an integer!", http.StatusBadRequest)
-var tagNotFound = errs.UserError("Tag with provided ID not found", http.StatusNotFound)
 
 func GetAllTags(c *gin.Context) {
 	tags, err := repository.FetchTags()
@@ -56,9 +52,9 @@ func CreateTag(c *gin.Context) {
 }
 
 func UpdateTag(c *gin.Context) {
-	tagId, err := strconv.Atoi(c.Param("id"))
+	tagID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Error(invalidTagID)
+		c.Error(errs.InvalidTagID)
 		return
 	}
 
@@ -68,14 +64,9 @@ func UpdateTag(c *gin.Context) {
 		return
 	}
 
-	tag, err := repository.UpdateTag(tagId, update.Name)
+	tag, err := repository.UpdateTag(tagID, update.Name)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(tagNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.TagNotFound))
 		return
 	}
 
@@ -83,19 +74,19 @@ func UpdateTag(c *gin.Context) {
 }
 
 func DeleteTag(c *gin.Context) {
-	tagId, err := strconv.Atoi(c.Param("id"))
+	tagID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Error(invalidTagID)
+		c.Error(errs.InvalidTagID)
 		return
 	}
 
-	deleted, err := repository.DeleteTag(tagId)
+	deleted, err := repository.DeleteTag(tagID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
 	if !deleted {
-		c.Error(tagNotFound)
+		c.Error(errs.TagNotFound)
 		return
 	}
 

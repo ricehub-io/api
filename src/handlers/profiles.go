@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 	"ricehub/src/errs"
 	"ricehub/src/models"
 	"ricehub/src/repository"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 )
 
 type profilesPath struct {
@@ -28,16 +26,11 @@ func GetUserProfile(c *gin.Context) {
 	// fetch user data
 	user, err := repository.FindUserByUsername(path.Username)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.UserNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.UserNotFound))
 		return
 	}
 
-	callerUserID := GetUserIdFromRequest(c)
+	callerUserID := GetUserIDFromRequest(c)
 
 	// fetch user rices
 	rices, err := repository.FetchUserRices(user.ID.String(), callerUserID)

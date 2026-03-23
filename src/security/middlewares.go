@@ -91,7 +91,7 @@ func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
 	}
 }
 
-func getClientId(c *gin.Context) string {
+func getClientID(c *gin.Context) string {
 	clientID := c.RemoteIP()
 
 	// try to extract access token from headers
@@ -125,7 +125,7 @@ func RateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Handle
 			return
 		}
 
-		clientID := getClientId(c)
+		clientID := getClientID(c)
 
 		count, err := utils.IncrementRateLimit(clientID, resetAfter)
 		if err != nil {
@@ -154,7 +154,7 @@ func PathRateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Ha
 			return
 		}
 
-		clientID := getClientId(c)
+		clientID := getClientID(c)
 		path := c.Request.URL.Path
 
 		count, err := utils.IncrementPathRateLimit(path, clientID, resetAfter)

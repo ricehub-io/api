@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func IsUserBanned(userID string) (state models.UserState, err error) {
+func IsUserBanned(userID string) (models.UserState, error) {
 	const query = `
 	SELECT
 		EXISTS(
@@ -23,21 +23,19 @@ func IsUserBanned(userID string) (state models.UserState, err error) {
 				is_revoked = false
 		) AS user_banned
 	`
-
 	return rowToStruct[models.UserState](query, userID)
 }
 
-func InsertBan(userID string, adminID string, reason string, expiresAt *time.Time) (ban models.UserBan, err error) {
+func InsertBan(userID string, adminID string, reason string, expiresAt *time.Time) (models.UserBan, error) {
 	const query = `
 	INSERT INTO user_bans (user_id, admin_id, reason, expires_at)
 	VALUES ($1, $2, $3, $4)
 	RETURNING *
 	`
-
 	return rowToStruct[models.UserBan](query, userID, adminID, reason, expiresAt)
 }
 
-func FetchUserBan(userID uuid.UUID) (ban models.UserBan, err error) {
+func FindUserBan(userID uuid.UUID) (models.UserBan, error) {
 	const query = `
 	SELECT *
 	FROM user_bans
@@ -46,7 +44,6 @@ func FetchUserBan(userID uuid.UUID) (ban models.UserBan, err error) {
 		(expires_at > NOW() OR expires_at IS NULL) AND
 		is_revoked = false
 	`
-
 	return rowToStruct[models.UserBan](query, userID)
 }
 
@@ -57,7 +54,6 @@ func RevokeBan(userID string) error {
 	SET is_revoked = true
 	WHERE user_id = $1
 	`
-
 	_, err := db.Exec(context.Background(), query, userID)
 	return err
 }

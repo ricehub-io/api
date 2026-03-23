@@ -17,7 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
@@ -26,17 +25,10 @@ type usersPath struct {
 	UserID string `uri:"id" binding:"required,uuid"`
 }
 
-var invalidUserID = errs.UserError("Invalid user ID provided. It must be a valid UUID.", http.StatusBadRequest)
-var queryRequired = errs.UserError("At least one query parameter is required", http.StatusBadRequest)
-
-func findUser(userID string) (*models.User, error) {
-	user, err := repository.FindUserById(userID)
+func findUser(userID string) (models.User, error) {
+	user, err := repository.FindUserByID(userID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errs.UserNotFound
-		}
-
-		return nil, errs.InternalError(err)
+		return user, errs.FromDBError(err, errs.UserNotFound)
 	}
 
 	return user, nil
@@ -45,9 +37,12 @@ func findUser(userID string) (*models.User, error) {
 // Checks if user can modify the resource.
 //
 // It protects user data from being modified by other non-admin users.
-func preCheck(token *security.AccessToken, userID string) (*models.User, error) {
+func preCheck(token *security.AccessToken, userID string) (models.User, error) {
 	if token.Subject != userID && !token.IsAdmin {
-		return nil, errs.UserError("You can't access this resource", http.StatusForbidden)
+		return models.User{}, errs.UserError(
+			"You can't access this resource",
+			http.StatusForbidden,
+		)
 	}
 
 	return findUser(userID)
@@ -87,7 +82,7 @@ func GetTokenFromRequest(c *gin.Context) *security.AccessToken {
 	return nil
 }
 
-func GetUserIdFromRequest(c *gin.Context) *string {
+func GetUserIDFromRequest(c *gin.Context) *string {
 	var userID *string = nil
 	if token := GetTokenFromRequest(c); token != nil {
 		userID = &token.Subject
@@ -108,7 +103,8 @@ func fetchRecentUsers(c *gin.Context, limit int) {
 func fetchBannedUsers(c *gin.Context) {
 	users, err := repository.FetchBannedUsers()
 	if err != nil {
-
+		c.Error(errs.InternalError(err))
+		return
 	}
 
 	c.JSON(http.StatusOK, models.UsersWithBanToDTO(users))
@@ -117,12 +113,7 @@ func fetchBannedUsers(c *gin.Context) {
 func findUserByUsername(c *gin.Context, username string) {
 	user, err := repository.FindUserByUsername(username)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.UserNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.UserNotFound))
 		return
 	}
 
@@ -139,7 +130,7 @@ func checkIsAdmin(header http.Header) error {
 	}
 
 	if !token.IsAdmin {
-		return queryRequired
+		return errs.QueryRequired
 	}
 
 	return nil
@@ -196,10 +187,10 @@ func FetchUsers(c *gin.Context) {
 	fetchRecentUsers(c, query.Limit)
 }
 
-func GetUserById(c *gin.Context) {
+func GetUserByID(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
@@ -221,12 +212,12 @@ func GetUserRiceBySlug(c *gin.Context) {
 	slug := c.Param("slug")
 
 	// check if rice's author exists
-	exists, err := repository.DoesUserExistsByUsername(username)
+	taken, err := repository.UsernameExists(username)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
-	if !exists {
+	if !taken {
 		c.Error(errs.UserNotFound)
 		return
 	}
@@ -240,12 +231,7 @@ func GetUserRiceBySlug(c *gin.Context) {
 
 	rice, err := repository.FindRiceBySlug(userID, slug, username)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.Error(errs.RiceNotFound)
-			return
-		}
-
-		c.Error(errs.InternalError(err))
+		c.Error(errs.FromDBError(err, errs.RiceNotFound))
 		return
 	}
 
@@ -261,11 +247,11 @@ func GetUserRiceBySlug(c *gin.Context) {
 func FetchUserRices(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
-	callerUserID := GetUserIdFromRequest(c)
+	callerUserID := GetUserIDFromRequest(c)
 
 	rices, err := repository.FetchUserRices(path.UserID, callerUserID)
 	if err != nil {
@@ -279,7 +265,7 @@ func FetchUserRices(c *gin.Context) {
 func FetchPurchasedRices(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
@@ -296,6 +282,10 @@ func FetchPurchasedRices(c *gin.Context) {
 	}
 
 	rices, err := repository.FetchUserPurchasedRices(user.ID.String())
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
 
 	c.JSON(http.StatusOK, models.PartialRicesToDTO(rices))
 }
@@ -303,7 +293,7 @@ func FetchPurchasedRices(c *gin.Context) {
 func UpdateDisplayName(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
@@ -345,7 +335,7 @@ func UpdateDisplayName(c *gin.Context) {
 func UpdatePassword(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
@@ -397,7 +387,7 @@ func UpdatePassword(c *gin.Context) {
 func UploadAvatar(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
@@ -454,7 +444,7 @@ func BanUser(c *gin.Context) {
 
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
@@ -501,7 +491,7 @@ func BanUser(c *gin.Context) {
 	}
 
 	// 5. remove user permissions (if has any)
-	if err := repository.RemoveAdminFromUser(path.UserID); err != nil {
+	if err := repository.RevokeAdmin(path.UserID); err != nil {
 		c.Error(errs.InternalError(err))
 		zap.L().Error(
 			"Failed to remove admin role after user ban",
@@ -518,7 +508,7 @@ func BanUser(c *gin.Context) {
 func UnbanUser(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
@@ -550,7 +540,7 @@ func UnbanUser(c *gin.Context) {
 func DeleteAvatar(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
@@ -574,7 +564,7 @@ func DeleteAvatar(c *gin.Context) {
 func DeleteUser(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(invalidUserID)
+		c.Error(errs.InvalidUserID)
 		return
 	}
 
