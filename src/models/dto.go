@@ -167,7 +167,7 @@ type RiceDotfilesDTO struct {
 
 func (df RiceDotfiles) ToDTO() RiceDotfilesDTO {
 	dto := RiceDotfilesDTO{
-		FilePath:  utils.Config.CDNUrl + df.FilePath,
+		FilePath:  utils.Config.App.CDNUrl + df.FilePath,
 		FileSize:  df.FileSize,
 		Type:      df.Type,
 		CreatedAt: df.CreatedAt.UTC(),
@@ -189,7 +189,7 @@ type RiceScreenshotDTO struct {
 func (p RiceScreenshot) ToDTO() RiceScreenshotDTO {
 	return RiceScreenshotDTO{
 		ID:  p.ID,
-		Url: utils.Config.CDNUrl + p.FilePath,
+		Url: utils.Config.App.CDNUrl + p.FilePath,
 	}
 }
 
@@ -334,7 +334,7 @@ func (r PartialRice) ToDTO() PartialRiceDTO {
 		Slug:        r.Slug,
 		DisplayName: r.DisplayName,
 		Username:    r.Username,
-		Thumbnail:   utils.Config.CDNUrl + r.Thumbnail,
+		Thumbnail:   utils.Config.App.CDNUrl + r.Thumbnail,
 		Stars:       r.StarCount,
 		Comments:    r.CommentCount,
 		Downloads:   r.DownloadCount,

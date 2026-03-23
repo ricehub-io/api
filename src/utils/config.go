@@ -9,19 +9,38 @@ import (
 
 type (
 	rootConfig struct {
-		DatabaseUrl       string `toml:"database_url"`
-		RedisUrl          string `toml:"redis_url"`
+		Server    serverConfig
+		Database  databaseConfig
+		App       appConfig
+		JWT       jwtConfig
+		Polar     polarConfig
+		Limits    limitsConfig
+		Blacklist blacklistConfig
+	}
+
+	serverConfig struct {
+		Port          uint16 `toml:"port"`
+		CorsOrigin    string `toml:"cors_origin"`
+		CookiesDomain string `toml:"cookies_domain"`
+		KeysDir       string `toml:"keys_dir"`
+	}
+
+	databaseConfig struct {
+		DatabaseUrl string `toml:"database_url"`
+		RedisUrl    string `toml:"redis_url"`
+	}
+
+	appConfig struct {
 		CDNUrl            string `toml:"cdn_url"`
 		DefaultAvatar     string `toml:"default_avatar"`
-		CorsOrigin        string `toml:"cors_origin"`
-		CookiesDomain     string `toml:"cookies_domain"`
+		PaginationLimit   uint   `toml:"pagination_limit"`
 		DisableRateLimits bool   `toml:"disable_rate_limits"`
 		Maintenance       bool   `toml:"maintenance"`
-		PaginationLimit   uint   `toml:"pagination_limit"`
-		Polar             polarConfig
-		JWT               jwtConfig
-		Limits            limitsConfig
-		Blacklist         blacklistConfig
+	}
+
+	jwtConfig struct {
+		AccessExpiration  time.Duration `toml:"access_exp"`
+		RefreshExpiration time.Duration `toml:"refresh_exp"`
 	}
 
 	polarConfig struct {
@@ -30,22 +49,17 @@ type (
 		WebhookSecret string `toml:"webhook_secret"`
 	}
 
-	jwtConfig struct {
-		AccessExpiration  time.Duration `toml:"access_exp"`
-		RefreshExpiration time.Duration `toml:"refresh_exp"`
-	}
-
 	limitsConfig struct {
-		MaxPreviewsPerRice  int   `toml:"max_previews_per_rice"`
+		MaxPreviewsPerRice  uint  `toml:"max_previews_per_rice"`
 		UserAvatarSizeLimit int64 `toml:"user_avatar_size_limit"`
 		DotfilesSizeLimit   int64 `toml:"dotfiles_size_limit"`
 		PreviewSizeLimit    int64 `toml:"preview_size_limit"`
 	}
 
 	blacklistConfig struct {
-		Words        []string
-		DisplayNames []string
-		Usernames    []string
+		Words        []string `toml:"words"`
+		DisplayNames []string `toml:"display_names"`
+		Usernames    []string `toml:"usernames"`
 	}
 )
 
@@ -53,11 +67,18 @@ var Config rootConfig
 
 func InitConfig(configPath string) {
 	logger := zap.L()
-	logger.Info("Reading config file...", zap.String("path", configPath))
+	logger.Info(
+		"Reading config file...",
+		zap.String("path", configPath),
+	)
 
 	_, err := toml.DecodeFile(configPath, &Config)
 	if err != nil {
 		logger.Fatal("Failed to decode config file", zap.Error(err))
+	}
+
+	if Config.Database.DatabaseUrl == "" || Config.Database.RedisUrl == "" || Config.Server.Port == 0 {
+		logger.Fatal("Missing required config fields (database.database_url, database.redis_url, server.port)")
 	}
 
 	logger.Info("Config variables successfully loaded")

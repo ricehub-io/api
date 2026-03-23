@@ -268,8 +268,14 @@ func CreateRice(c *gin.Context) {
 	}
 
 	maxPreviews := utils.Config.Limits.MaxPreviewsPerRice
-	if len(previews) > maxPreviews {
-		c.Error(errs.UserError(fmt.Sprintf("You cannot add more than %v previews", maxPreviews), http.StatusRequestEntityTooLarge))
+	if len(previews) > int(maxPreviews) {
+		c.Error(errs.UserError(
+			fmt.Sprintf(
+				"You cannot add more than %v previews",
+				maxPreviews,
+			),
+			http.StatusRequestEntityTooLarge,
+		))
 		return
 	}
 
@@ -674,7 +680,9 @@ func AddScreenshot(c *gin.Context) {
 		c.Error(errs.InternalError(err))
 		return
 	}
-	if count >= utils.Config.Limits.MaxPreviewsPerRice {
+
+	maxPreviews := int(utils.Config.Limits.MaxPreviewsPerRice)
+	if count >= maxPreviews {
 		c.Error(errs.UserError("You have already reached the maximum amount of previews for this rice", http.StatusRequestEntityTooLarge))
 		return
 	}
@@ -688,7 +696,7 @@ func AddScreenshot(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"preview": utils.Config.CDNUrl + filePath})
+	c.JSON(http.StatusCreated, gin.H{"preview": utils.Config.App.CDNUrl + filePath})
 }
 
 func UpdateRiceState(c *gin.Context) {

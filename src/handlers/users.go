@@ -446,7 +446,7 @@ func UploadAvatar(c *gin.Context) {
 	// update avatar path in database
 	repository.UpdateUserAvatarPath(path.UserID, &avatarPath)
 
-	c.JSON(http.StatusCreated, gin.H{"avatarUrl": utils.Config.CDNUrl + avatarPath})
+	c.JSON(http.StatusCreated, gin.H{"avatarUrl": utils.Config.App.CDNUrl + avatarPath})
 }
 
 func BanUser(c *gin.Context) {
@@ -568,7 +568,7 @@ func DeleteAvatar(c *gin.Context) {
 
 	repository.UpdateUserAvatarPath(path.UserID, nil)
 
-	c.JSON(http.StatusOK, gin.H{"avatarUrl": utils.Config.CDNUrl + utils.Config.DefaultAvatar})
+	c.JSON(http.StatusOK, gin.H{"avatarUrl": utils.Config.App.CDNUrl + utils.Config.App.DefaultAvatar})
 }
 
 func DeleteUser(c *gin.Context) {

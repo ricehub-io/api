@@ -135,7 +135,7 @@ func CreateCheckoutSession(userID string, riceID string, productID string) (res 
 	checkout := components.CheckoutCreate{
 		ExternalCustomerID: polargo.String(userID),
 		Products:           []string{productID},
-		EmbedOrigin:        polargo.String(utils.Config.CorsOrigin),
+		EmbedOrigin:        polargo.String(utils.Config.Server.CorsOrigin),
 		CustomerBillingAddress: &components.AddressInput{
 			Country: components.CountryAlpha2InputUs,
 		},

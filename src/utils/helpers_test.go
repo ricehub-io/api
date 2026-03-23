@@ -4,8 +4,8 @@ import "testing"
 
 func init() {
 	// init config values for our tests
-	Config.CDNUrl = "https://cdn.example.com"
-	Config.DefaultAvatar = "/avatars/default.png"
+	Config.App.CDNUrl = "https://cdn.example.com"
+	Config.App.DefaultAvatar = "/avatars/default.png"
 }
 
 // #################################################
@@ -31,7 +31,7 @@ func TestGetUserAvatar_WithPath_UsesProvidedPath(t *testing.T) {
 func TestGetUserAvatar_EmptyCDNUrl(t *testing.T) {
 	original := Config
 	defer func() { Config = original }()
-	Config.CDNUrl = ""
+	Config.App.CDNUrl = ""
 
 	got := GetUserAvatar(nil)
 	if got != "/avatars/default.png" {

@@ -5,9 +5,11 @@ import "math"
 // Try to construct URL from avatar path
 // or use the default one if user didn't set any
 func GetUserAvatar(avatarPath *string) string {
-	avatar := Config.CDNUrl + Config.DefaultAvatar
+	cdnURL := Config.App.CDNUrl
+
+	avatar := cdnURL + Config.App.DefaultAvatar
 	if avatarPath != nil {
-		avatar = Config.CDNUrl + *avatarPath
+		avatar = cdnURL + *avatarPath
 	}
 	return avatar
 }

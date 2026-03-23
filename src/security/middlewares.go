@@ -149,7 +149,7 @@ func PathRateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Ha
 	logger := zap.L()
 
 	return func(c *gin.Context) {
-		if utils.Config.DisableRateLimits || isAdmin(c) {
+		if utils.Config.App.DisableRateLimits || isAdmin(c) {
 			c.Next()
 			return
 		}
@@ -200,10 +200,13 @@ func FileSizeLimitMiddleware(maxBytes int64) gin.HandlerFunc {
 // middleware that automatically responds with appropriate error if maintenance is toggled in config
 func MaintenanceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if utils.Config.Maintenance {
+		if utils.Config.App.Maintenance {
 			_, _ = c.GetRawData()
 
-			c.Error(errs.UserError("API is in read-only mode for a maintenance. Please retry later.", http.StatusServiceUnavailable))
+			c.Error(errs.UserError(
+				"API is in read-only mode for a maintenance. Please retry later.",
+				http.StatusServiceUnavailable,
+			))
 			c.Abort()
 			return
 		}

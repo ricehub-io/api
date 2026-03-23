@@ -9,8 +9,8 @@ import (
 )
 
 func init() {
-	utils.Config.CDNUrl = "https://cdn.example.com"
-	utils.Config.DefaultAvatar = "/default.png"
+	utils.Config.App.CDNUrl = "https://cdn.example.com"
+	utils.Config.App.DefaultAvatar = "/default.png"
 }
 
 // #################################################

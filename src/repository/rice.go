@@ -120,7 +120,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 		order = fmt.Sprintf(" ORDER BY star_count %v, id %v", ord, ord)
 	}
 
-	return baseSelect + userSelect + base + mainSelect + where + order + fmt.Sprintf(" LIMIT %v", utils.Config.PaginationLimit)
+	return baseSelect + userSelect + base + mainSelect + where + order + fmt.Sprintf(" LIMIT %v", utils.Config.App.PaginationLimit)
 }
 
 type FindRiceBy uint8
@@ -230,7 +230,7 @@ type Pagination struct {
 
 func FetchPageCount() (pages float32, err error) {
 	query := "SELECT CEIL(COUNT(*) / $1) FROM rices"
-	err = db.QueryRow(context.Background(), query, utils.Config.PaginationLimit).Scan(&pages)
+	err = db.QueryRow(context.Background(), query, utils.Config.App.PaginationLimit).Scan(&pages)
 	return
 }
 
