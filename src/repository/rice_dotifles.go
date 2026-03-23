@@ -26,7 +26,7 @@ func UpdateDotfilesType(tx pgx.Tx, riceID string, newType models.DotfilesType, p
 	return cmd.RowsAffected() > 0, err
 }
 
-func UpdateDotfilesPrice(tx pgx.Tx, riceID string, newPrice float32) (productID uuid.UUID, err error) {
+func UpdateDotfilesPrice(tx pgx.Tx, riceID string, newPrice float64) (productID uuid.UUID, err error) {
 	err = tx.QueryRow(
 		context.Background(),
 		"UPDATE rice_dotfiles SET price = $2 WHERE rice_id = $1 RETURNING product_id",

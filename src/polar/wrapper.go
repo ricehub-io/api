@@ -40,7 +40,7 @@ func Init(token string, useSandbox bool) {
 }
 
 // CreateProduct creates new product in Polar with provided name and price.
-func CreateProduct(name string, price float32) (res *operations.ProductsCreateResponse, err error) {
+func CreateProduct(name string, price float64) (res *operations.ProductsCreateResponse, err error) {
 	logger := zap.L()
 
 	// convert price to cents
@@ -48,7 +48,7 @@ func CreateProduct(name string, price float32) (res *operations.ProductsCreateRe
 	logger.Info(
 		"Creating new Polar product for dotfiles",
 		zap.String("name", name),
-		zap.Float32("price_org", price),
+		zap.Float64("price_org", price),
 		zap.Int64("price_cents", cents),
 	)
 
@@ -67,12 +67,12 @@ func CreateProduct(name string, price float32) (res *operations.ProductsCreateRe
 }
 
 // UpdatePrice updates existing product's price to provided newPrice
-func UpdatePrice(productID string, newPrice float32) (res *operations.ProductsUpdateResponse, err error) {
+func UpdatePrice(productID string, newPrice float64) (res *operations.ProductsUpdateResponse, err error) {
 	cents := utils.PriceToCents(newPrice)
 	zap.L().Info(
 		"Updating product's price",
 		zap.String("product_id", productID),
-		zap.Float32("new_price_org", newPrice),
+		zap.Float64("new_price_org", newPrice),
 		zap.Int64("new_price_cents", cents),
 	)
 

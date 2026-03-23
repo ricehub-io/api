@@ -112,18 +112,32 @@ func ValidateFileAsImage(formFile *multipart.FileHeader) (string, error) {
 	}
 }
 
-func ValidateFileAsArchive(formFile *multipart.FileHeader) (string, error) {
-	file, err := formFile.Open()
+type opener interface {
+	Open() (multipart.File, error)
+}
+
+// validateArchive checks whether provided file (from opener interface) is a valid archive.
+// It's using a custom interface so it can be unit tested :p
+func validateArchive(o opener) (string, error) {
+	file, err := o.Open()
 	if err != nil {
 		return "", openFailed
 	}
+	defer file.Close()
 
 	mtype, _ := mimetype.DetectReader(file)
 	if !mtype.Is("application/zip") {
-		return "", errs.UserError("Unsupported file type! Only zip is accepted", http.StatusUnsupportedMediaType)
+		return "", errs.UserError(
+			"Unsupported file type! Only zip is accepted",
+			http.StatusUnsupportedMediaType,
+		)
 	}
 
 	return mtype.Extension(), nil
+}
+
+func ValidateFileAsArchive(formFile *multipart.FileHeader) (string, error) {
+	return validateArchive(formFile)
 }
 
 // case-insensitive version of strings.Contains

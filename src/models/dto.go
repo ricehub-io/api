@@ -74,7 +74,7 @@ type CreateRiceDTO struct {
 	Title         string       `form:"title" binding:"required,min=4,max=32,ricetitle"`
 	Description   string       `form:"description" binding:"required,min=4,max=10240"`
 	DotfilesType  DotfilesType `form:"dotfilesType" binding:"required_with=DotfilesPrice,omitempty,oneof=free one-time"`
-	DotfilesPrice float32      `form:"dotfilesPrice" binding:"required_with=DotfilesType,omitnil,gt=0"`
+	DotfilesPrice float64      `form:"dotfilesPrice" binding:"required_with=DotfilesType,omitnil,gt=0"`
 }
 
 type UpdateRiceDTO struct {
@@ -91,7 +91,7 @@ type UpdateDotfilesTypeDTO struct {
 }
 
 type UpdateDotfilesPriceDTO struct {
-	NewPrice float32 `json:"newPrice" binding:"required,gt=0"`
+	NewPrice float64 `json:"newPrice" binding:"required,gt=0"`
 }
 
 // COMMENTS
@@ -160,7 +160,7 @@ type RiceDotfilesDTO struct {
 	FilePath  string       `json:"filePath"`
 	FileSize  int64        `json:"fileSize"`
 	Type      DotfilesType `json:"type"`
-	Price     *float32     `json:"price,omitempty"`
+	Price     *float64     `json:"price,omitempty"`
 	CreatedAt time.Time    `json:"createdAt"`
 	UpdatedAt time.Time    `json:"updatedAt"`
 }

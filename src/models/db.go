@@ -61,7 +61,7 @@ type RiceDotfiles struct {
 	FileSize      int64        `json:"file_size"`
 	DownloadCount uint         `json:"download_count"`
 	Type          DotfilesType `json:"type"`
-	Price         float32      `json:"price"`
+	Price         float64      `json:"price"`
 	ProductID     *uuid.UUID   `json:"product_id"`
 	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`

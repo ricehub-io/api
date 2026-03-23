@@ -485,7 +485,7 @@ func InsertRiceScreenshotTx(tx pgx.Tx, riceID uuid.UUID, scrPath string) error {
 	return err
 }
 
-func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, filePath string, fileSize int64, dfType models.DotfilesType, price float32, productID *string) (df models.RiceDotfiles, err error) {
+func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, filePath string, fileSize int64, dfType models.DotfilesType, price float64, productID *string) (df models.RiceDotfiles, err error) {
 	df, err = txRowToStruct[models.RiceDotfiles](tx, insertDotfilesSql, riceID, filePath, fileSize, dfType, price, productID)
 	return
 }

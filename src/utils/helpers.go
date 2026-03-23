@@ -13,6 +13,6 @@ func GetUserAvatar(avatarPath *string) string {
 }
 
 // PriceToCents converts price in normal format (e.g. 15.89) to cents (in this case 1589) and returns them.
-func PriceToCents(price float32) int64 {
-	return int64(math.Round(float64(price) * 100.0))
+func PriceToCents(price float64) int64 {
+	return int64(math.RoundToEven(price * 100.0))
 }
