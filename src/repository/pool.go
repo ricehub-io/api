@@ -2,8 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
-	"reflect"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -61,15 +59,9 @@ func StartTx(ctx context.Context) (pgx.Tx, error) {
 }
 
 func _rowToStruct[T any](exec DBExecutor, query string, args ...any) (res T, err error) {
-	// compile-time check to make sure T is a struct
-	var zero T
-	if reflect.TypeOf(zero).Kind() != reflect.Struct {
-		return res, fmt.Errorf("T must be a struct, got %v", zero)
-	}
-
 	rows, err := exec.Query(context.Background(), query, args...)
 	if err != nil {
-		return zero, err
+		return res, err
 	}
 
 	return pgx.CollectOneRow(rows, pgx.RowToStructByName[T])
