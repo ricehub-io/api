@@ -431,10 +431,18 @@ func UploadAvatar(c *gin.Context) {
 
 	// save file to cdn
 	avatarPath := fmt.Sprintf("/avatars/%v%v", uuid.New(), ext)
-	c.SaveUploadedFile(file, "./public"+avatarPath)
+	err = c.SaveUploadedFile(file, "./public"+avatarPath)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
 
 	// update avatar path in database
-	repository.UpdateUserAvatarPath(path.UserID, &avatarPath)
+	err = repository.UpdateUserAvatarPath(path.UserID, &avatarPath)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{"avatarUrl": utils.Config.App.CDNUrl + avatarPath})
 }
@@ -556,7 +564,11 @@ func DeleteAvatar(c *gin.Context) {
 		return
 	}
 
-	repository.UpdateUserAvatarPath(path.UserID, nil)
+	err = repository.UpdateUserAvatarPath(path.UserID, nil)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"avatarUrl": utils.Config.App.CDNUrl + utils.Config.App.DefaultAvatar})
 }

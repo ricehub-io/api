@@ -30,7 +30,7 @@ func main() {
 
 func run() error {
 	logger := setupLogger()
-	defer logger.Sync()
+	defer logger.Sync() //nolint:errcheck
 
 	utils.InitConfig(configPath)
 	utils.InitValidator()

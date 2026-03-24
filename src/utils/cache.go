@@ -16,12 +16,12 @@ const testKey = "connTest"
 var rdb *redis.Client
 
 func InitCache(connUrl string) {
-	logger := zap.L()
-	logger.Info("Trying to establish a connection with redis cache...")
+	log := zap.L()
+	log.Info("Trying to establish a connection with redis cache...")
 
 	opt, err := redis.ParseURL(connUrl)
 	if err != nil {
-		logger.Fatal("Failed to parse redis connection URL", zap.Error(err))
+		log.Fatal("Failed to parse redis connection URL", zap.Error(err))
 	}
 
 	rdb = redis.NewClient(opt)
@@ -33,26 +33,28 @@ func InitCache(connUrl string) {
 	testData := strconv.Itoa(rand.IntN(15000))
 	err = rdb.Set(ctx, testKey, testData, 5*time.Minute).Err()
 	if err != nil {
-		logger.Fatal("Failed to set test data in cache", zap.Error(err))
+		log.Fatal("Failed to set test data in cache", zap.Error(err))
 	}
 
 	// retrieve the data
 	res, err := rdb.Get(ctx, testKey).Result()
 	if err != nil {
-		logger.Fatal("Failed to retrieve test data from cache", zap.Error(err))
+		log.Fatal("Failed to retrieve test data from cache", zap.Error(err))
 	}
 	if res != testData {
-		logger.Fatal("Incorrect test data returned from cache",
+		log.Fatal("Incorrect test data returned from cache",
 			zap.String("expected", testData),
 			zap.String("got", res),
 		)
 	}
 
-	logger.Info("Successfully connected to the cache")
+	log.Info("Successfully connected to the cache")
 }
 
 func CloseCache() {
-	rdb.Close()
+	if err := rdb.Close(); err != nil {
+		zap.L().Fatal("Failed to close cache", zap.Error(err))
+	}
 }
 
 func increment(key string, expireAfter time.Duration) (int64, error) {

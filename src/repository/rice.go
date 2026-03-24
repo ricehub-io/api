@@ -80,28 +80,24 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 	case "trending":
 		if subsequent {
 			where = fmt.Sprintf(" WHERE (score, id) %v ($%v, $%v)", sign, argCount, argCount+1)
-			argCount += 2
 		}
 
 		order = fmt.Sprintf(" ORDER BY score %v, id %v", ord, ord)
 	case "recent":
 		if subsequent {
 			where = fmt.Sprintf(" WHERE (created_at, id) %v ($%v, $%v)", sign, argCount, argCount+1)
-			argCount += 2
 		}
 
 		order = fmt.Sprintf(" ORDER BY created_at %v, id %v", ord, ord)
 	case "downloads":
 		if subsequent {
 			where = fmt.Sprintf(" WHERE (download_count, id) %v ($%v, $%v)", sign, argCount, argCount+1)
-			argCount += 2
 		}
 
 		order = fmt.Sprintf(" ORDER BY download_count %v, id %v", ord, ord)
 	case "stars":
 		if subsequent {
 			where = fmt.Sprintf(" WHERE (star_count, id) %v ($%v, $%v)", sign, argCount, argCount+1)
-			argCount += 2
 		}
 
 		order = fmt.Sprintf(" ORDER BY star_count %v, id %v", ord, ord)

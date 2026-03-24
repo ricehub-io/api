@@ -1,0 +1,8 @@
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        - (*github.com/gin-gonic/gin.Context).Error
+        - (github.com/jackc/pgx/v5.Tx).Rollback

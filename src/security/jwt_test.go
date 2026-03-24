@@ -62,7 +62,10 @@ func writePEM(t *testing.T, content string) string {
 		t.Fatalf("failed to write content: %v", err)
 	}
 
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatalf("failed to close temp file: %v", err)
+	}
+
 	return f.Name()
 }
 

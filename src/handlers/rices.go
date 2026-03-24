@@ -320,22 +320,25 @@ func CreateRice(c *gin.Context) {
 		return
 	}
 
-	// dto := rice.ToDTO()
-
 	for path, file := range validPreviews {
-		c.SaveUploadedFile(file, "./public"+path)
+		if err := c.SaveUploadedFile(file, "./public"+path); err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
 
 		if err := repository.InsertRiceScreenshotTx(tx, rice.ID, path); err != nil {
 			c.Error(errs.InternalError(err))
 			return
 		}
-
-		// dto.Previews = append(dto.Previews, utils.Config.CDNUrl+path)
 	}
 
 	// save dotfiles on the disk
 	dotfilesPath := fmt.Sprintf("/dotfiles/%v%v", uuid.New(), dotfilesExt)
-	c.SaveUploadedFile(dotfilesFile, "./public"+dotfilesPath)
+	err = c.SaveUploadedFile(dotfilesFile, "./public"+dotfilesPath)
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
 
 	// create new polar product if dotfiles are paid
 	var productID *string
@@ -363,7 +366,6 @@ func CreateRice(c *gin.Context) {
 		return
 	}
 
-	// c.JSON(http.StatusCreated, dto)
 	c.Status(http.StatusCreated)
 }
 
@@ -460,7 +462,10 @@ func UpdateDotfiles(c *gin.Context) {
 	}
 
 	filePath := fmt.Sprintf("/dotfiles/%v%v", uuid.New(), ext)
-	c.SaveUploadedFile(file, "./public"+filePath)
+	if err := c.SaveUploadedFile(file, "./public"+filePath); err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
 
 	fileSize := file.Size
 	df, err := repository.UpdateRiceDotfiles(path.RiceID, filePath, fileSize)
@@ -704,7 +709,11 @@ func AddScreenshot(c *gin.Context) {
 
 	previews := make([]string, 0, len(validFiles))
 	for _, vf := range validFiles {
-		c.SaveUploadedFile(vf.header, "./public"+vf.path)
+		err = c.SaveUploadedFile(vf.header, "./public"+vf.path)
+		if err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
 
 		err := repository.InsertRiceScreenshotTx(tx, path.RiceID, vf.path)
 		if err != nil {

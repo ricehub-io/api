@@ -24,29 +24,51 @@ import (
 var translator ut.Translator
 
 func addCustomTag(v *validator.Validate, tag string, validate func(field string) bool, translation string) {
-	v.RegisterValidation(tag, func(fl validator.FieldLevel) bool {
+	log := zap.L()
+
+	err := v.RegisterValidation(tag, func(fl validator.FieldLevel) bool {
 		fieldStr := fl.Field().String()
 		return validate(fieldStr)
 	})
+	if err != nil {
+		log.Fatal(
+			"Failed to register custom tag validation",
+			zap.Error(err),
+			zap.String("tag", tag),
+		)
+	}
 
-	v.RegisterTranslation(tag, translator, func(ut ut.Translator) error {
+	err = v.RegisterTranslation(tag, translator, func(ut ut.Translator) error {
 		return ut.Add(tag, translation, true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 		t, _ := ut.T(tag, fe.Field())
 		return t
 	})
+	if err != nil {
+		log.Fatal(
+			"Failed to register custom tag translation",
+			zap.Error(err),
+			zap.String("tag", tag),
+		)
+	}
 }
 
 func InitValidator() {
+	log := zap.L()
+
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		// setup translation
 		en := enLocales.New()
 		uni := ut.New(en, en)
 
 		translator, _ = uni.GetTranslator("en")
-		enTranslations.RegisterDefaultTranslations(v, translator)
+		err := enTranslations.RegisterDefaultTranslations(v, translator)
+		if err != nil {
+			log.Fatal(
+				"Failed to register default translations",
+				zap.Error(err),
+			)
+		}
 
-		// custom validation tags
 		addCustomTag(v, "displayname", func(displayName string) bool {
 			re := regexp.MustCompile(`^[a-zA-Z0-9 _\-.]+$`)
 			return re.MatchString(displayName)
@@ -57,7 +79,7 @@ func InitValidator() {
 			return re.MatchString(riceTitle)
 		}, "{0} can contain only a-Z, 0-9, -, _, [], () and whitespace characters.")
 
-		zap.L().Info("Validator initialized")
+		log.Info("Validator initialized")
 	}
 }
 
@@ -123,7 +145,14 @@ func validateArchive(o opener) (string, error) {
 	if err != nil {
 		return "", openFailed
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			zap.L().Error(
+				"Failed to close archive file during validation",
+				zap.Error(err),
+			)
+		}
+	}()
 
 	mtype, _ := mimetype.DetectReader(file)
 	if !mtype.Is("application/zip") {
@@ -170,21 +199,11 @@ func IsUsernameBlacklisted(username string) bool {
 		}
 	}
 
-	// check if contains
-	if ContainsBlacklistedWord(username, bl.Words) {
-		return true
-	}
-
-	return false
+	return ContainsBlacklistedWord(username, bl.Words)
 }
 
 func IsDisplayNameBlacklisted(displayName string) bool {
 	bl := Config.Blacklist
-
 	contains := append(bl.Words, bl.DisplayNames...)
-	if ContainsBlacklistedWord(displayName, contains) {
-		return true
-	}
-
-	return false
+	return ContainsBlacklistedWord(displayName, contains)
 }
