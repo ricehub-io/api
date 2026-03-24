@@ -911,7 +911,7 @@ func PurchaseDotfiles(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"checkout_url": res.Checkout.URL})
+	c.JSON(http.StatusOK, gin.H{"checkoutUrl": res.Checkout.URL})
 }
 
 func DeleteRice(c *gin.Context) {
