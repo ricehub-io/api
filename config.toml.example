@@ -40,6 +40,12 @@ sandbox = false
 token = "polar_oat_xxxxxxx"
 webhook_secret = "polar_whs_yyyyyyyy"
 
+# ID of your monthly subscription product in Polar
+subscription_product_id = "a890950e-1633-49cc-9f3a-cae5266996b6"
+
+# Checkout link for your monthly subscription product in Polar
+subscription_link = "https://api.polar.sh/v1/checkout-links/polar_cl_zzzzzz/redirect"
+
 
 # ------ UPLOAD LIMITS ------
 [limits]

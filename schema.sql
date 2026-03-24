@@ -230,7 +230,7 @@ ADD COLUMN price NUMERIC(5, 2) NOT NULL DEFAULT 1.0 CHECK (price > 0.0);
 -- create table to keep track of dotfiles purchased by users
 CREATE TABLE dotfiles_purchases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id),
     rice_id UUID NOT NULL REFERENCES rices(id),
     price_paid NUMERIC(5, 2) NOT NULL CHECK (price_paid > 0.0),
     purchased_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -239,3 +239,21 @@ CREATE TABLE dotfiles_purchases (
 -- add polar product id to rice dotfiles
 ALTER TABLE rice_dotfiles
 ADD COLUMN product_id UUID CHECK (product_id IS NOT NULL OR "type" = 'free');
+
+-- create table to keep track of users' subscription
+CREATE TABLE user_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    current_period_end TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now() 
+);
+
+CREATE TRIGGER update_user_subscriptions_updated_at
+    BEFORE UPDATE ON user_subscriptions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- table to keep record of ALL webhooks that were received by API
+-- CREATE TABLE webhook_events (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+-- );
