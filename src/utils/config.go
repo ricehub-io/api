@@ -50,7 +50,7 @@ type (
 	}
 
 	limitsConfig struct {
-		MaxPreviewsPerRice  uint  `toml:"max_previews_per_rice"`
+		MaxPreviewsPerRice  int64 `toml:"max_previews_per_rice"`
 		UserAvatarSizeLimit int64 `toml:"user_avatar_size_limit"`
 		DotfilesSizeLimit   int64 `toml:"dotfiles_size_limit"`
 		PreviewSizeLimit    int64 `toml:"preview_size_limit"`
@@ -66,20 +66,24 @@ type (
 var Config rootConfig
 
 func InitConfig(configPath string) {
-	logger := zap.L()
-	logger.Info(
+	log := zap.L()
+	log.Info(
 		"Reading config file...",
 		zap.String("path", configPath),
 	)
 
 	_, err := toml.DecodeFile(configPath, &Config)
 	if err != nil {
-		logger.Fatal("Failed to decode config file", zap.Error(err))
+		log.Fatal("Failed to decode config file", zap.Error(err))
 	}
 
 	if Config.Database.DatabaseUrl == "" || Config.Database.RedisUrl == "" || Config.Server.Port == 0 {
-		logger.Fatal("Missing required config fields (database.database_url, database.redis_url, server.port)")
+		log.Fatal("Missing required config fields (database.database_url, database.redis_url, server.port)")
 	}
 
-	logger.Info("Config variables successfully loaded")
+	if Config.Limits.MaxPreviewsPerRice <= 0 {
+		log.Fatal("limits.max_previews_per_rice must be greater than zero")
+	}
+
+	log.Info("Config variables successfully loaded")
 }

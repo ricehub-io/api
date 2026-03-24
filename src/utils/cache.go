@@ -2,9 +2,9 @@ package utils
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand/v2"
-	"strconv"
+	"math/big"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -30,8 +30,12 @@ func InitCache(connUrl string) {
 	ctx := context.Background()
 
 	// set test data
-	testData := strconv.Itoa(rand.IntN(15000))
-	err = rdb.Set(ctx, testKey, testData, 5*time.Minute).Err()
+	num, err := rand.Int(rand.Reader, big.NewInt(15000))
+	if err != nil {
+		log.Fatal("Failed to generate random test number", zap.Error(err))
+	}
+	numStr := num.String()
+	err = rdb.Set(ctx, testKey, numStr, 5*time.Minute).Err()
 	if err != nil {
 		log.Fatal("Failed to set test data in cache", zap.Error(err))
 	}
@@ -41,9 +45,10 @@ func InitCache(connUrl string) {
 	if err != nil {
 		log.Fatal("Failed to retrieve test data from cache", zap.Error(err))
 	}
-	if res != testData {
-		log.Fatal("Incorrect test data returned from cache",
-			zap.String("expected", testData),
+	if res != numStr {
+		log.Fatal(
+			"Incorrect test data returned from cache",
+			zap.String("expected", numStr),
 			zap.String("got", res),
 		)
 	}

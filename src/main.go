@@ -199,7 +199,7 @@ func registerRiceRoutes(r *gin.Engine) {
 	auth := rices.Group("", security.AuthMiddleware)
 	auth.POST("",
 		maintenance,
-		security.FileSizeLimitMiddleware(limits.DotfilesSizeLimit+int64(limits.MaxPreviewsPerRice)*limits.PreviewSizeLimit),
+		security.FileSizeLimitMiddleware(limits.DotfilesSizeLimit+limits.MaxPreviewsPerRice*limits.PreviewSizeLimit),
 		security.PathRateLimitMiddleware(15, 24*time.Hour),
 		handlers.CreateRice,
 	)

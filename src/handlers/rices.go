@@ -251,7 +251,7 @@ func CreateRice(c *gin.Context) {
 	}
 
 	maxPreviews := utils.Config.Limits.MaxPreviewsPerRice
-	if len(previews) > int(maxPreviews) {
+	if int64(len(previews)) > maxPreviews {
 		c.Error(errs.UserError(
 			fmt.Sprintf(
 				"You cannot add more than %v previews",
@@ -669,8 +669,8 @@ func AddScreenshot(c *gin.Context) {
 		return
 	}
 
-	maxPreviews := int(utils.Config.Limits.MaxPreviewsPerRice)
-	if count+len(files) > maxPreviews {
+	maxPreviews := utils.Config.Limits.MaxPreviewsPerRice
+	if int64(count+len(files)) > maxPreviews {
 		c.Error(errs.UserError(
 			fmt.Sprintf(
 				"You can't have more than %v previews per rice!",

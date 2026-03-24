@@ -31,8 +31,16 @@ var (
 	refreshPub  *ecdsa.PublicKey
 )
 
-func loadECPrivateKey(path string) (*ecdsa.PrivateKey, error) {
-	data, err := os.ReadFile(path)
+func loadECPrivateKey(fileName string) (*ecdsa.PrivateKey, error) {
+	root, err := os.OpenRoot(utils.Config.Server.KeysDir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = root.Close()
+	}()
+
+	data, err := root.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +58,16 @@ func loadECPrivateKey(path string) (*ecdsa.PrivateKey, error) {
 	return key.(*ecdsa.PrivateKey), nil
 }
 
-func loadECPublicKey(path string) (*ecdsa.PublicKey, error) {
-	data, err := os.ReadFile(path)
+func loadECPublicKey(fileName string) (*ecdsa.PublicKey, error) {
+	root, err := os.OpenRoot(utils.Config.Server.KeysDir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = root.Close()
+	}()
+
+	data, err := root.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -73,27 +89,27 @@ func InitJWT(keysDir string) {
 	logger := zap.L()
 	logger.Info("Parsing JWT key pairs...", zap.String("dir", keysDir))
 
-	priv := func(path string) *ecdsa.PrivateKey {
-		key, err := loadECPrivateKey(path)
+	priv := func(fileName string) *ecdsa.PrivateKey {
+		key, err := loadECPrivateKey(fileName)
 		if err != nil {
 			log.Fatalf("Failed to load JWT private key: %v\n", err)
 		}
 		return key
 	}
-	pub := func(path string) *ecdsa.PublicKey {
-		key, err := loadECPublicKey(path)
+	pub := func(fileName string) *ecdsa.PublicKey {
+		key, err := loadECPublicKey(fileName)
 		if err != nil {
 			log.Fatalf("Failed to load JWT public key: %v\n", err)
 		}
 		return key
 	}
 
-	accessPriv = priv(keysDir + "/access_private.pem")
-	accessPub = pub(keysDir + "/access_public.pem")
-	refreshPriv = priv(keysDir + "/refresh_private.pem")
-	refreshPub = pub(keysDir + "/refresh_public.pem")
+	accessPriv = priv("access_private.pem")
+	accessPub = pub("access_public.pem")
+	refreshPriv = priv("refresh_private.pem")
+	refreshPub = pub("refresh_public.pem")
 
-	logger.Info("JWT key pairs successfully loaded")
+	logger.Info("JWT key-pairs successfully loaded")
 }
 
 func NewAccessToken(userID uuid.UUID, isAdmin bool) (token string, err error) {
