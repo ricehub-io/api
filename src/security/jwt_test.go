@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"os"
 	"ricehub/src/utils"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,6 +48,7 @@ func init() {
 	// initialize config variables that are used by tests
 	utils.Config.JWT.AccessExpiration = 5 * time.Minute
 	utils.Config.JWT.RefreshExpiration = 24 * time.Hour
+	utils.Config.Server.KeysDir = os.TempDir()
 }
 
 // writePEM writes a provided content string to a temporary '.pem' file and returns its path.
@@ -66,7 +68,8 @@ func writePEM(t *testing.T, content string) string {
 		t.Fatalf("failed to close temp file: %v", err)
 	}
 
-	return f.Name()
+	path, _ := strings.CutPrefix(f.Name(), os.TempDir()+"/")
+	return path
 }
 
 // initTestKeys initializes key-pair variables so that tests
