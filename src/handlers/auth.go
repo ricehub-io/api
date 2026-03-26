@@ -89,7 +89,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	access, refresh, err := issueTokenPair(user.ID, user.IsAdmin)
+	subActive, err := repository.SubscriptionActive(user.ID.String())
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	access, refresh, err := issueTokenPair(user.ID, user.IsAdmin, subActive)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -145,7 +151,13 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	access, err := security.NewAccessToken(user.ID, user.IsAdmin)
+	subActive, err := repository.SubscriptionActive(user.ID.String())
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	access, err := security.NewAccessToken(user.ID, user.IsAdmin, subActive)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -159,13 +171,13 @@ func LogOut(c *gin.Context) {
 }
 
 // issueTokenPair generates access and refresh token for given parameters.
-func issueTokenPair(userID uuid.UUID, isAdmin bool) (access, refresh string, err error) {
+func issueTokenPair(userID uuid.UUID, isAdmin, hasSubscription bool) (access, refresh string, err error) {
 	refresh, err = security.NewRefreshToken(userID)
 	if err != nil {
 		return
 	}
 
-	access, err = security.NewAccessToken(userID, isAdmin)
+	access, err = security.NewAccessToken(userID, isAdmin, hasSubscription)
 	return
 }
 

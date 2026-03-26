@@ -49,7 +49,6 @@ type (
 		Token                 string    `toml:"token"`
 		WebhookSecret         string    `toml:"webhook_secret"`
 		SubscriptionProductID uuid.UUID `toml:"subscription_product_id"`
-		SubscriptionLink      string    `toml:"subscription_link"`
 	}
 
 	limitsConfig struct {

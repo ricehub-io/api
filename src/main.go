@@ -276,6 +276,7 @@ func registerLinkRoutes(r *gin.Engine) {
 	links.GET(
 		"/subscription",
 		security.PathRateLimitMiddleware(5, time.Minute),
+		security.AuthMiddleware,
 		handlers.GetSubscriptionLink,
 	)
 	links.GET(

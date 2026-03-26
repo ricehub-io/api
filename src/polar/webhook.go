@@ -76,6 +76,8 @@ func WebhookListener(c *gin.Context) {
 		return
 	}
 
+	// TODO: insert all webhooks into database
+
 	switch event.Type {
 	case components.WebhookEventTypeOrderPaid:
 		if ok := handleOrderPaid(event.Data); !ok {
@@ -94,8 +96,6 @@ func WebhookListener(c *gin.Context) {
 		)
 	}
 
-	// unaimeds: not sure if this response is required
-	// it was like that in an example so ;ppp
 	c.JSON(http.StatusOK, bytes)
 }
 
@@ -113,47 +113,40 @@ func handleSubscriptionActive(rawData json.RawMessage) bool {
 
 	if data.ProductID != utils.Config.Polar.SubscriptionProductID.String() {
 		logger.Warn(
-			"Received 'subscription.active' event for invalid product ID",
+			"Received 'subscription.active' event for unhandled product ID",
 			zap.String("data", string(rawData)),
 		)
 		return true
 	}
 
-	// userID := data.Customer.ExternalID
-	// if userID == nil {
-	// 	logger.Warn(
-	// 		"Received 'customer.state_changed' for nil external user",
-	// 		zap.String("data", string(rawData)),
-	// 	)
-	// 	return true
-	// }
+	userID := data.Customer.ExternalID
+	if userID == nil {
+		logger.Warn(
+			"Received 'subscription.active' for nil external user",
+			zap.String("data", string(rawData)),
+		)
+		return true
+	}
 
-	// ok, err := repository.InsertUserSubscription(*userID, data.CurrentPeriodEnd)
-	// if err != nil {
-	// 	logger.Error(
-	// 		"Failed to insert user subscription",
-	// 		zap.Error(err),
-	// 		zap.String("event_data", string(rawData)),
-	// 	)
-	// 	return false
-	// }
-	// if !ok {
-	// 	logger.Error(
-	// 		"Unexpected false returned when inserting user subscription",
-	// 		zap.String("event_data", string(rawData)),
-	// 	)
-	// 	return false
-	// }
+	sub, err := repository.InsertUserSubscription(*userID, data.CurrentPeriodEnd)
+	if err != nil {
+		logger.Error(
+			"Failed to insert user subscription",
+			zap.Error(err),
+			zap.String("event_data", string(rawData)),
+		)
+		return false
+	}
 
-	// logger.Info(
-	// 	"New user subscription",
-	// 	zap.Stringp("user_id", userID),
-	// )
+	logger.Info(
+		"New user subscription",
+		zap.Stringp("user_id", userID),
+		zap.String("subscription_id", sub.ID.String()),
+	)
 
 	return true
 }
 
-// TODO: gracefully handle required nil fields in payload
 func handleOrderPaid(rawData json.RawMessage) bool {
 	logger := zap.L()
 
@@ -172,9 +165,18 @@ func handleOrderPaid(rawData json.RawMessage) bool {
 		return false
 	}
 
-	riceID := data.Metadata["rice_id"].Str
-	if riceID == nil {
-		logger.Error("Rice ID from order's metadata is nil")
+	if *data.ProductID == utils.Config.Polar.SubscriptionProductID.String() {
+		// subscription is handled elsewhere
+		return true
+	}
+
+	df, err := repository.FindDotfilesByProductID(*data.ProductID)
+	if err != nil {
+		logger.Error(
+			"Unexpected database error occurred when trying to find dotfiles by product ID",
+			zap.Error(err),
+			zap.Stringp("product_id", data.ProductID),
+		)
 		return false
 	}
 
@@ -182,17 +184,17 @@ func handleOrderPaid(rawData json.RawMessage) bool {
 	logger.Info(
 		"Received order.paid event",
 		zap.Stringp("user_id", userID),
-		zap.Stringp("rice_id", riceID),
+		zap.String("rice_id", df.RiceID.String()),
 		zap.Float32("paid_amount", paid_amount),
 	)
 
-	err := repository.InsertDotfilesPurchase(*userID, *riceID, paid_amount)
+	err = repository.InsertDotfilesPurchase(*userID, df.RiceID, paid_amount)
 	if err != nil {
 		logger.Error(
 			"Unexpected error received from database when inserting dotfiles purchase",
 			zap.Error(err),
 			zap.Stringp("user_id", userID),
-			zap.Stringp("rice_id", riceID),
+			zap.String("rice_id", df.RiceID.String()),
 			zap.Float32("paid_amount", paid_amount),
 		)
 		return false

@@ -16,7 +16,8 @@ import (
 )
 
 type AccessToken struct {
-	IsAdmin bool `json:"isAdmin"`
+	IsAdmin         bool `json:"isAdmin"`
+	HasSubscription bool `json:"hasSubscription"`
 	jwt.RegisteredClaims
 }
 
@@ -112,20 +113,20 @@ func InitJWT(keysDir string) {
 	logger.Info("JWT key-pairs successfully loaded")
 }
 
-func NewAccessToken(userID uuid.UUID, isAdmin bool) (token string, err error) {
+func NewAccessToken(userID uuid.UUID, isAdmin, hasSubscription bool) (string, error) {
 	exp := time.Now().Add(utils.Config.JWT.AccessExpiration)
 	claims := AccessToken{
-		IsAdmin: isAdmin,
+		IsAdmin:         isAdmin,
+		HasSubscription: hasSubscription,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID.String(),
 			ExpiresAt: jwt.NewNumericDate(exp),
 		},
 	}
-	token, err = jwt.NewWithClaims(jwt.SigningMethodES256, claims).SignedString(accessPriv)
-	return
+	return jwt.NewWithClaims(jwt.SigningMethodES256, claims).SignedString(accessPriv)
 }
 
-func NewRefreshToken(userID uuid.UUID) (token string, err error) {
+func NewRefreshToken(userID uuid.UUID) (string, error) {
 	exp := time.Now().Add(utils.Config.JWT.RefreshExpiration)
 	claims := RefreshToken{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -133,8 +134,7 @@ func NewRefreshToken(userID uuid.UUID) (token string, err error) {
 			ExpiresAt: jwt.NewNumericDate(exp),
 		},
 	}
-	token, err = jwt.NewWithClaims(jwt.SigningMethodES256, claims).SignedString(refreshPriv)
-	return
+	return jwt.NewWithClaims(jwt.SigningMethodES256, claims).SignedString(refreshPriv)
 }
 
 func decodeJWT[T jwt.Claims](tokenStr string, newClaims func() T, pubKey *ecdsa.PublicKey) (T, error) {

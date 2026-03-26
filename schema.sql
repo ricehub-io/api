@@ -243,7 +243,7 @@ ADD COLUMN product_id UUID CHECK (product_id IS NOT NULL OR "type" = 'free');
 -- create table to keep track of users' subscription
 CREATE TABLE user_subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id UUID NOT NULL REFERENCES users(id) UNIQUE,
     current_period_end TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now() 
@@ -254,6 +254,12 @@ CREATE TRIGGER update_user_subscriptions_updated_at
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- table to keep record of ALL webhooks that were received by API
--- CREATE TABLE webhook_events (
---     id UUID PRIMARY KEY DEFAULT gen_random_uuid()
--- );
+CREATE TABLE webhook_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    polar_webhook_id TEXT NOT NULL UNIQUE,
+    event_type TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    processed_at TIMESTAMPTZ,
+    error TEXT,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
