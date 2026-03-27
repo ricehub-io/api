@@ -34,3 +34,9 @@ func InsertRiceTags(riceID uuid.UUID, tagIDs []int) error {
 func InsertRiceTagsTx(tx pgx.Tx, riceID uuid.UUID, tagIDs []int) error {
 	return _insertRiceTags(tx, riceID, tagIDs)
 }
+
+func DeleteRiceTags(riceID uuid.UUID, tagIDs []int) error {
+	const query = "DELETE FROM rice_tag WHERE rice_id = $1 AND tag_id = ANY($2)"
+	_, err := db.Exec(context.Background(), query, riceID, tagIDs)
+	return err
+}

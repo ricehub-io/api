@@ -87,6 +87,10 @@ type AttachTagsDTO struct {
 	Tags []int `json:"tags" binding:"required"`
 }
 
+type UnattachTagsDTO struct {
+	Tags []int `json:"tags" binding:"required"`
+}
+
 type UpdateRiceStateDTO struct {
 	NewState string `json:"newState" binding:"required,oneof=accepted rejected"`
 }

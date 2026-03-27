@@ -468,6 +468,39 @@ func AttachTags(c *gin.Context) {
 	}
 }
 
+func UnattachTags(c *gin.Context) {
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
+
+	var path ricesPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(errs.InvalidRiceID)
+		return
+	}
+
+	if err := checkCanUserModifyRice(token, path.RiceID); err != nil {
+		c.Error(err)
+		return
+	}
+
+	var body models.UnattachTagsDTO
+	if err := utils.ValidateJSON(c, &body); err != nil {
+		c.Error(err)
+		return
+	}
+
+	riceID, _ := uuid.Parse(path.RiceID)
+	if err := repository.DeleteRiceTags(riceID, body.Tags); err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 func UpdateDotfiles(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	if err := security.VerifyUserID(token.Subject); err != nil {

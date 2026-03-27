@@ -205,6 +205,7 @@ func registerRiceRoutes(r *gin.Engine) {
 	)
 	auth.PATCH("/:id", maintenance, updateRL, handlers.UpdateRiceMetadata)
 	auth.POST("/:id/tags", maintenance, updateRL, handlers.AttachTags)
+	auth.DELETE("/:id/tags", maintenance, updateRL, handlers.UnattachTags)
 	auth.POST("/:id/dotfiles",
 		maintenance,
 		security.PathRateLimitMiddleware(3, time.Hour),
