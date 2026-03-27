@@ -10,10 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
-func makeValidBearerToken(t *testing.T, isAdmin bool) string {
+func makeValidBearerToken(t *testing.T, isAdmin, hasSubscription bool) string {
 	t.Helper()
 
-	tokenStr, err := NewAccessToken(uuid.New(), isAdmin)
+	tokenStr, err := NewAccessToken(uuid.New(), isAdmin, hasSubscription)
 	if err != nil {
 		t.Fatalf("could not create access token: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestValidateToken_GarbageToken_ReturnsForbidden(t *testing.T) {
 func TestValidateToken_TamperedToken_ReturnsForbidden(t *testing.T) {
 	initTestKeys(t)
 
-	header := makeValidBearerToken(t, false)
+	header := makeValidBearerToken(t, false, false)
 	_, err := ValidateToken(header + "tampered")
 	if err == nil {
 		t.Fatal("expected error for tampered token")
@@ -150,7 +150,7 @@ func TestValidateToken_ExpiredToken_ReturnsForbidden(t *testing.T) {
 func TestValidateToken_ValidToken_ReturnsToken(t *testing.T) {
 	initTestKeys(t)
 
-	_, err := ValidateToken(makeValidBearerToken(t, false))
+	_, err := ValidateToken(makeValidBearerToken(t, false, false))
 	if err != nil {
 		t.Fatalf("expected no error for valid token, got: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestValidateToken_ValidToken_PreservesSubject(t *testing.T) {
 	initTestKeys(t)
 
 	userID := uuid.New()
-	tokenStr, _ := NewAccessToken(userID, false)
+	tokenStr, _ := NewAccessToken(userID, false, false)
 
 	token, err := ValidateToken("Bearer " + tokenStr)
 	if err != nil {
@@ -174,11 +174,23 @@ func TestValidateToken_ValidToken_PreservesSubject(t *testing.T) {
 func TestValidateToken_ValidToken_PreservesIsAdmin(t *testing.T) {
 	initTestKeys(t)
 
-	token, err := ValidateToken(makeValidBearerToken(t, true))
+	token, err := ValidateToken(makeValidBearerToken(t, true, false))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !token.IsAdmin {
 		t.Error("expected IsAdmin to be true")
+	}
+}
+
+func TestValidateToken_ValidToken_PreservesHasSubscription(t *testing.T) {
+	initTestKeys(t)
+
+	token, err := ValidateToken(makeValidBearerToken(t, false, true))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !token.HasSubscription {
+		t.Error("expected HasSubscription to be true")
 	}
 }

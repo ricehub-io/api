@@ -894,18 +894,24 @@ func PurchaseDotfiles(c *gin.Context) {
 
 	// check if dotfiles are paid
 	if rice.Dotfiles.Type == models.Free {
-		c.Error(errs.UserError("You can't purchase free dotfiles", http.StatusBadRequest))
+		c.Error(errs.UserError(
+			"You can't purchase free dotfiles",
+			http.StatusBadRequest,
+		))
 		return
 	}
 
 	// check if user owns the dotfiles
 	if rice.IsOwned {
-		c.Error(errs.UserError("You already own these dotfiles", http.StatusConflict))
+		c.Error(errs.UserError(
+			"You already own these dotfiles",
+			http.StatusConflict,
+		))
 		return
 	}
 
 	// create new checkout session
-	res, err := polar.CreateCheckoutSession(token.Subject, path.RiceID, rice.Dotfiles.ProductID.String())
+	res, err := polar.CreateCheckoutSession(token.Subject, *rice.Dotfiles.ProductID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return

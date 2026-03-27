@@ -183,7 +183,7 @@ func TestLoadECPublicKey_WrongPEMType(t *testing.T) {
 func TestDecodeAccessToken_TamperedToken(t *testing.T) {
 	initTestKeys(t)
 
-	tokenStr, _ := NewAccessToken(uuid.New(), false)
+	tokenStr, _ := NewAccessToken(uuid.New(), false, false)
 	tampered := tokenStr + "x"
 
 	_, err := DecodeAccessToken(tampered)
@@ -271,7 +271,7 @@ func TestDecodeRefreshToken_AccessTokenRejected(t *testing.T) {
 	initTestKeys(t)
 
 	// valid access token must not be accepted by DecodeRefreshToken
-	accessStr, _ := NewAccessToken(uuid.New(), false)
+	accessStr, _ := NewAccessToken(uuid.New(), false, false)
 	_, err := DecodeRefreshToken(accessStr)
 	if err == nil {
 		t.Fatal("expected refresh token decoder to reject an access token")
@@ -285,7 +285,7 @@ func TestNewAccessToken_ValidToken(t *testing.T) {
 	initTestKeys(t)
 	userID := uuid.New()
 
-	tokenStr, err := NewAccessToken(userID, false)
+	tokenStr, err := NewAccessToken(userID, false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -298,7 +298,7 @@ func TestNewAccessToken_DecodesCorrectly(t *testing.T) {
 	initTestKeys(t)
 	userID := uuid.New()
 
-	tokenStr, _ := NewAccessToken(userID, true)
+	tokenStr, _ := NewAccessToken(userID, true, true)
 	claims, err := DecodeAccessToken(tokenStr)
 	if err != nil {
 		t.Fatalf("unexpected decode error: %v", err)
@@ -309,13 +309,16 @@ func TestNewAccessToken_DecodesCorrectly(t *testing.T) {
 	if !claims.IsAdmin {
 		t.Error("expected IsAdmin to be true")
 	}
+	if !claims.HasSubscription {
+		t.Error("expected HasSubscription to be true")
+	}
 }
 
 func TestNewAccessToken_IsAdminFalse(t *testing.T) {
 	initTestKeys(t)
 	userID := uuid.New()
 
-	tokenStr, _ := NewAccessToken(userID, false)
+	tokenStr, _ := NewAccessToken(userID, false, false)
 	claims, err := DecodeAccessToken(tokenStr)
 	if err != nil {
 		t.Fatalf("unexpected decode error: %v", err)
@@ -325,10 +328,24 @@ func TestNewAccessToken_IsAdminFalse(t *testing.T) {
 	}
 }
 
+func TestNewAccessToken_HasSubscriptionFalse(t *testing.T) {
+	initTestKeys(t)
+	userID := uuid.New()
+
+	tokenStr, _ := NewAccessToken(userID, false, false)
+	claims, err := DecodeAccessToken(tokenStr)
+	if err != nil {
+		t.Fatalf("unexpected decode error: %v", err)
+	}
+	if claims.IsAdmin {
+		t.Error("expected HasSubscription to be false")
+	}
+}
+
 func TestNewAccessToken_HasExpiry(t *testing.T) {
 	initTestKeys(t)
 
-	tokenStr, _ := NewAccessToken(uuid.New(), false)
+	tokenStr, _ := NewAccessToken(uuid.New(), false, false)
 	claims, _ := DecodeAccessToken(tokenStr)
 
 	if claims.ExpiresAt == nil {

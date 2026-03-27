@@ -139,11 +139,9 @@ func setupRoutes(r *gin.Engine) {
 	registerTagRoutes(r)
 	registerProfileRoutes(r)
 	registerAdminRoutes(r)
+	registerLinkRoutes(r)
 
-	// unaimeds: I dont think we'll ever expand this domain of endpoints
-	// therefore they're not in their own 'register*Routes' function
-	r.GET("/vars/:key", security.PathRateLimitMiddleware(5, 1*time.Minute), handlers.GetWebsiteVariable)
-	r.GET("/links/:name", security.PathRateLimitMiddleware(5, 1*time.Minute), handlers.GetLinkByName)
+	r.GET("/vars/:key", security.PathRateLimitMiddleware(5, time.Minute), handlers.GetWebsiteVariable)
 }
 
 func registerAuthRoutes(r *gin.Engine) {
@@ -270,4 +268,20 @@ func registerAdminRoutes(r *gin.Engine) {
 	admin := r.Group("/admin", security.AuthMiddleware, security.AdminMiddleware)
 
 	admin.GET("/stats", handlers.ServiceStatistics)
+}
+
+func registerLinkRoutes(r *gin.Engine) {
+	links := r.Group("/links")
+
+	links.GET(
+		"/subscription",
+		security.PathRateLimitMiddleware(5, time.Minute),
+		security.AuthMiddleware,
+		handlers.GetSubscriptionLink,
+	)
+	links.GET(
+		"/:name",
+		security.PathRateLimitMiddleware(5, time.Minute),
+		handlers.GetLinkByName,
+	)
 }
