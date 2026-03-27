@@ -27,6 +27,11 @@ func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, filePath string, fileSize i
 	return txRowToStruct[models.RiceDotfiles](tx, query, riceID, filePath, fileSize, dfType, price, productID)
 }
 
+func FindDotfilesByProductID(productID string) (models.RiceDotfiles, error) {
+	const query = "SELECT * FROM rice_dotfiles WHERE product_id = $1"
+	return rowToStruct[models.RiceDotfiles](query, productID)
+}
+
 func FindDotfilesProductID(tx pgx.Tx, riceID string) (productID *uuid.UUID, err error) {
 	const query = "SELECT product_id FROM rice_dotfiles WHERE rice_id = $1"
 	err = tx.QueryRow(context.Background(), query, riceID).Scan(&productID)

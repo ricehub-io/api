@@ -191,3 +191,11 @@ type UserBan struct {
 	BannedAt  time.Time  `json:"banned_at"`
 	RevokedAt *time.Time `json:"revoked_at"`
 }
+
+type UserSubscription struct {
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	CurrentPeriodEnd time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}

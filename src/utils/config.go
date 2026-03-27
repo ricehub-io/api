@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -44,9 +45,10 @@ type (
 	}
 
 	polarConfig struct {
-		Sandbox       bool   `toml:"sandbox"`
-		Token         string `toml:"token"`
-		WebhookSecret string `toml:"webhook_secret"`
+		Sandbox               bool      `toml:"sandbox"`
+		Token                 string    `toml:"token"`
+		WebhookSecret         string    `toml:"webhook_secret"`
+		SubscriptionProductID uuid.UUID `toml:"subscription_product_id"`
 	}
 
 	limitsConfig struct {

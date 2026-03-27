@@ -4,6 +4,7 @@ import (
 	"context"
 	"ricehub/src/utils"
 
+	"github.com/google/uuid"
 	polargo "github.com/polarsource/polar-go"
 	"github.com/polarsource/polar-go/models/components"
 	"github.com/polarsource/polar-go/models/operations"
@@ -125,22 +126,19 @@ func ArchiveProduct(productID string) (res *operations.ProductsUpdateResponse, e
 	return
 }
 
-func CreateCheckoutSession(userID string, riceID string, productID string) (res *operations.CheckoutsCreateResponse, err error) {
+func CreateCheckoutSession(userID string, productID uuid.UUID) (res *operations.CheckoutsCreateResponse, err error) {
 	zap.L().Info(
 		"Creating a new checkout session",
 		zap.String("user_id", userID),
-		zap.String("product_id", productID),
+		zap.String("product_id", productID.String()),
 	)
 
 	checkout := components.CheckoutCreate{
 		ExternalCustomerID: polargo.String(userID),
-		Products:           []string{productID},
+		Products:           []string{productID.String()},
 		EmbedOrigin:        polargo.String(utils.Config.Server.CorsOrigin),
 		CustomerBillingAddress: &components.AddressInput{
 			Country: components.CountryAlpha2InputUs,
-		},
-		Metadata: map[string]components.CheckoutCreateMetadata{
-			"rice_id": components.CreateCheckoutCreateMetadataStr(riceID),
 		},
 	}
 
