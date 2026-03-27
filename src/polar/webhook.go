@@ -76,30 +76,76 @@ func WebhookListener(c *gin.Context) {
 		return
 	}
 
-	// TODO: insert all webhooks into database
-
-	switch event.Type {
-	case components.WebhookEventTypeOrderPaid:
-		if ok := handleOrderPaid(event.Data); !ok {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-	case components.WebhookEventTypeSubscriptionActive:
-		if ok := handleSubscriptionActive(event.Data); !ok {
-			c.Status(http.StatusBadRequest)
-			return
-		}
-	default:
-		logger.Debug(
-			"Unhandled polar webhook event type received",
-			zap.String("type", string(event.Type)),
-		)
+	if ok := processEvent(webhookID, event.Type, event.Data); !ok {
+		c.Status(http.StatusBadRequest)
+		return
 	}
 
 	c.JSON(http.StatusOK, bytes)
 }
 
-func handleSubscriptionActive(rawData json.RawMessage) bool {
+func processEvent(webhookID string, eventType components.WebhookEventType, rawData json.RawMessage) bool {
+	logger := zap.L()
+
+	insertEvent := func() {
+		err := repository.InsertEvent(webhookID, string(eventType), rawData)
+		if err != nil {
+			logger.Error(
+				"Failed to insert new webhook event into database",
+				zap.Error(err),
+				zap.String("webhook_id", webhookID),
+			)
+		}
+	}
+
+	eventProcessed := func() {
+		err := repository.EventProcessed(webhookID)
+		if err != nil {
+			logger.Error(
+				"Failed to update webhook event's processed_at timestamp in database",
+				zap.Error(err),
+				zap.String("webhook_id", webhookID),
+			)
+		}
+	}
+
+	setEventError := func(eventErr error) {
+		err := repository.SetEventError(webhookID, eventErr.Error())
+		if err != nil {
+			logger.Error(
+				"Failed to set webhook event's error in database",
+				zap.Error(err),
+				zap.String("webhook_id", webhookID),
+			)
+		}
+	}
+
+	switch eventType {
+	case components.WebhookEventTypeOrderPaid:
+		insertEvent()
+		if err := handleOrderPaid(rawData); err != nil {
+			setEventError(err)
+			return false
+		}
+		eventProcessed()
+	case components.WebhookEventTypeSubscriptionActive:
+		insertEvent()
+		if err := handleSubscriptionActive(rawData); err != nil {
+			setEventError(err)
+			return false
+		}
+		eventProcessed()
+	default:
+		logger.Debug(
+			"Unhandled polar webhook event type received",
+			zap.String("type", string(eventType)),
+		)
+	}
+
+	return true
+}
+
+func handleSubscriptionActive(rawData json.RawMessage) error {
 	logger := zap.L()
 
 	var data components.Subscription
@@ -108,7 +154,7 @@ func handleSubscriptionActive(rawData json.RawMessage) bool {
 			"Failed to json parse subscription payload",
 			zap.Error(err),
 		)
-		return false
+		return err
 	}
 
 	if data.ProductID != utils.Config.Polar.SubscriptionProductID.String() {
@@ -116,7 +162,7 @@ func handleSubscriptionActive(rawData json.RawMessage) bool {
 			"Received 'subscription.active' event for unhandled product ID",
 			zap.String("data", string(rawData)),
 		)
-		return true
+		return nil
 	}
 
 	userID := data.Customer.ExternalID
@@ -125,7 +171,7 @@ func handleSubscriptionActive(rawData json.RawMessage) bool {
 			"Received 'subscription.active' for nil external user",
 			zap.String("data", string(rawData)),
 		)
-		return true
+		return nil
 	}
 
 	sub, err := repository.InsertUserSubscription(*userID, data.CurrentPeriodEnd)
@@ -135,7 +181,7 @@ func handleSubscriptionActive(rawData json.RawMessage) bool {
 			zap.Error(err),
 			zap.String("event_data", string(rawData)),
 		)
-		return false
+		return err
 	}
 
 	logger.Info(
@@ -144,10 +190,10 @@ func handleSubscriptionActive(rawData json.RawMessage) bool {
 		zap.String("subscription_id", sub.ID.String()),
 	)
 
-	return true
+	return nil
 }
 
-func handleOrderPaid(rawData json.RawMessage) bool {
+func handleOrderPaid(rawData json.RawMessage) error {
 	logger := zap.L()
 
 	var data components.Order
@@ -156,18 +202,21 @@ func handleOrderPaid(rawData json.RawMessage) bool {
 			"Failed to json parse paid order event body",
 			zap.Error(err),
 		)
-		return false
+		return err
 	}
 
 	userID := data.Customer.ExternalID
 	if userID == nil {
-		logger.Error("External customer ID from order data is nil")
-		return false
+		logger.Warn(
+			"External customer ID from order data is nil",
+			zap.String("raw_data", string(rawData)),
+		)
+		return nil
 	}
 
 	if *data.ProductID == utils.Config.Polar.SubscriptionProductID.String() {
 		// subscription is handled elsewhere
-		return true
+		return nil
 	}
 
 	df, err := repository.FindDotfilesByProductID(*data.ProductID)
@@ -177,7 +226,7 @@ func handleOrderPaid(rawData json.RawMessage) bool {
 			zap.Error(err),
 			zap.Stringp("product_id", data.ProductID),
 		)
-		return false
+		return err
 	}
 
 	paid_amount := float32(data.TotalAmount) / 100.0
@@ -197,8 +246,8 @@ func handleOrderPaid(rawData json.RawMessage) bool {
 			zap.String("rice_id", df.RiceID.String()),
 			zap.Float32("paid_amount", paid_amount),
 		)
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
