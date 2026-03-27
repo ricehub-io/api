@@ -115,6 +115,7 @@ type RiceWithRelations struct {
 	User        User
 	Dotfiles    RiceDotfiles
 	Screenshots []RiceScreenshot `db:"previews"`
+	Tags        []string
 	StarCount   uint
 	IsStarred   bool
 	IsOwned     bool
@@ -135,6 +136,7 @@ type PartialRice struct {
 	State         RiceState
 	CreatedAt     time.Time
 	Score         float32
+	Tags          []string
 }
 
 type ReportWithUser struct {

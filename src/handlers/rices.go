@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"mime/multipart"
@@ -286,6 +287,16 @@ func CreateRice(c *gin.Context) {
 		return
 	}
 
+	hasTags := metadata.Tags != ""
+
+	var tags []int
+	if hasTags {
+		if err := json.Unmarshal([]byte(metadata.Tags), &tags); err != nil {
+			c.Error(errs.UserError("Failed to parse tags", http.StatusBadRequest))
+			return
+		}
+	}
+
 	// check if title or description contains blacklisted words
 	bl := utils.Config.Blacklist.Words
 	if utils.ContainsBlacklistedWord(metadata.Title, bl) {
@@ -343,8 +354,8 @@ func CreateRice(c *gin.Context) {
 	// create new polar product if dotfiles are paid
 	var productID *string
 
-	if metadata.DotfilesType != models.Free {
-		res, err := polar.CreateProduct(metadata.Title, metadata.DotfilesPrice)
+	if metadata.DotfilesType != nil && *metadata.DotfilesType != models.Free {
+		res, err := polar.CreateProduct(metadata.Title, *metadata.DotfilesPrice)
 		if err != nil {
 			c.Error(errs.InternalError(err))
 			return
@@ -358,6 +369,14 @@ func CreateRice(c *gin.Context) {
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
+	}
+
+	// attach tags
+	if hasTags {
+		if err := repository.InsertRiceTagsTx(tx, rice.ID, tags); err != nil {
+			c.Error(errs.InternalError(err))
+			return
+		}
 	}
 
 	// finish the tx
@@ -416,6 +435,37 @@ func UpdateRiceMetadata(c *gin.Context) {
 	}
 
 	c.Status(http.StatusCreated)
+}
+
+func AttachTags(c *gin.Context) {
+	token := c.MustGet("token").(*security.AccessToken)
+	if err := security.VerifyUserID(token.Subject); err != nil {
+		c.Error(err)
+		return
+	}
+
+	var path ricesPath
+	if err := c.ShouldBindUri(&path); err != nil {
+		c.Error(errs.InvalidRiceID)
+		return
+	}
+
+	if err := checkCanUserModifyRice(token, path.RiceID); err != nil {
+		c.Error(err)
+		return
+	}
+
+	var body models.AttachTagsDTO
+	if err := utils.ValidateJSON(c, &body); err != nil {
+		c.Error(err)
+		return
+	}
+
+	riceID, _ := uuid.Parse(path.RiceID)
+	if err := repository.InsertRiceTags(riceID, body.Tags); err != nil {
+		c.Error(errs.FromDBError(err, errs.RiceNotFound))
+		return
+	}
 }
 
 func UpdateDotfiles(c *gin.Context) {

@@ -8,7 +8,16 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, filePath string, fileSize int64, dfType models.DotfilesType, price float64, productID *string) (models.RiceDotfiles, error) {
+func InsertRiceDotfiles(tx pgx.Tx, riceID uuid.UUID, filePath string, fileSize int64, dfType *models.DotfilesType, price *float64, productID *string) (models.RiceDotfiles, error) {
+	if dfType == nil {
+		temp := models.Free
+		dfType = &temp
+	}
+	if price == nil {
+		temp := 1.0
+		price = &temp
+	}
+
 	const query = `
 	INSERT INTO rice_dotfiles (rice_id, file_path, file_size, type, price, product_id)
 	VALUES ($1, $2, $3, $4, $5, $6)

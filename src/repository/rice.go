@@ -27,6 +27,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 					(df.download_count + count(DISTINCT s.user_id))
 					/ pow(extract(EPOCH FROM (date_trunc('hour', current_timestamp) - r.created_at)) / 3600 + 2, 1.5)
 				) AS score,
+				array_remove(array_agg(DISTINCT t.name), NULL) AS tags,
 	`
 
 	userSelect := "false AS is_starred"
@@ -54,6 +55,8 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 				ORDER BY p.created_at
 				LIMIT 1
 			) p ON TRUE
+			LEFT JOIN rice_tag rt ON rt.rice_id = r.id
+			LEFT JOIN tags t on t.id = rt.tag_id
 			WHERE r.state != 'waiting'
 			GROUP BY
 				r.id, r.slug, r.title, r.created_at,
@@ -131,12 +134,15 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 				)
 			)
 			ELSE true
-    	END AS is_owned
+    	END AS is_owned,
+		array_remove(array_agg(DISTINCT t.name), NULL) AS tags
 	FROM base
 	JOIN users_with_ban_status u ON u.id = base.author_id
 	JOIN rice_dotfiles df ON df.rice_id = base.id
 	JOIN rice_previews p ON p.rice_id = base.id
 	LEFT JOIN rice_stars s ON s.rice_id = base.id
+	LEFT JOIN rice_tag rt ON rt.rice_id = base.id
+	LEFT JOIN tags t on t.id = rt.tag_id
 	GROUP BY base.*, df.*, u.*, u.id, base.id, df.type
 	`
 
@@ -275,7 +281,8 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 		0 AS comment_count,
 		0 AS download_count, df.type AS dotfiles_type,
 		0 AS score,
-		false AS is_starred
+		false AS is_starred,
+		array_remove(array_agg(DISTINCT t.name), NULL) AS tags
 	FROM rices r
 	JOIN users u ON u.id = r.author_id
 	JOIN rice_dotfiles df ON df.rice_id = r.id
@@ -286,6 +293,8 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 		ORDER BY p.created_at
 		LIMIT 1
 	) p ON TRUE
+	LEFT JOIN rice_tag rt ON rt.rice_id = r.id
+	LEFT JOIN tags t on t.id = rt.tag_id
 	WHERE r.state = 'waiting'
 	GROUP BY
 		r.id, r.slug, r.title, r.created_at,
@@ -330,7 +339,8 @@ func FetchUserRices(userID string, callerID *string) ([]models.PartialRice, erro
 			SELECT 1
 			FROM rice_stars rs
 			WHERE rs.rice_id = r.id AND rs.user_id = $2
-		) AS is_starred
+		) AS is_starred,
+		array_remove(array_agg(DISTINCT t.name), NULL) AS tags
 	FROM rices r
 	JOIN users u ON u.id = r.author_id
 	LEFT JOIN rice_stars s ON s.rice_id = r.id
@@ -343,6 +353,8 @@ func FetchUserRices(userID string, callerID *string) ([]models.PartialRice, erro
 		ORDER BY p.created_at
 		LIMIT 1
 	) p ON TRUE
+	LEFT JOIN rice_tag rt ON rt.rice_id = r.id
+	LEFT JOIN tags t on t.id = rt.tag_id
 	` + where + `
 	GROUP BY
 		r.id, r.slug, r.title, r.created_at,
@@ -364,7 +376,12 @@ func FetchUserPurchasedRices(userID string) ([]models.PartialRice, error) {
 		count(DISTINCT c.id) AS comment_count,
 		df.download_count, df.type AS dotfiles_type,
 		0 AS score,
-		false AS is_starred
+		EXISTS (
+			SELECT 1
+			FROM rice_stars rs
+			WHERE rs.rice_id = r.id AND rs.user_id = $1
+		) AS is_starred,
+		array_remove(array_agg(DISTINCT t.name), NULL) AS tags
 	FROM dotfiles_purchases dp
 	JOIN rices r ON r.id = dp.rice_id
 	JOIN users u ON u.id = r.author_id
@@ -378,6 +395,8 @@ func FetchUserPurchasedRices(userID string) ([]models.PartialRice, error) {
 		ORDER BY p.created_at
 		LIMIT 1
 	) p ON TRUE
+	LEFT JOIN rice_tag rt ON rt.rice_id = r.id
+	LEFT JOIN tags t on t.id = rt.tag_id
 	WHERE dp.user_id = $1
 	GROUP BY
 		r.id, r.slug, r.title, r.created_at,

@@ -80,12 +80,6 @@ CREATE TABLE reports (
     UNIQUE(reporter_id, reason, is_closed)
 );
 
--- junction tables
-CREATE TABLE rices_tags (
-    rice_id UUID NOT NULL REFERENCES rices(id) ON DELETE CASCADE,
-    tag_id INT NOT NULL REFERENCES tags(id) ON DELETE CASCADE
-);
-
 -- logic behind updating the `updated_at` column for all tables
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
@@ -239,3 +233,10 @@ CREATE TABLE dotfiles_purchases (
 -- add polar product id to rice dotfiles
 ALTER TABLE rice_dotfiles
 ADD COLUMN product_id UUID CHECK (product_id IS NOT NULL OR "type" = 'free');
+
+-- M-to-M table for rices and tags
+CREATE TABLE rice_tag (
+    rice_id UUID REFERENCES rices(id) ON DELETE CASCADE,
+    tag_id INT REFERENCES tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (rice_id, tag_id)
+);

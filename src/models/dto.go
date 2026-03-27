@@ -71,15 +71,20 @@ type TagNameDTO struct {
 
 // RICES
 type CreateRiceDTO struct {
-	Title         string       `form:"title" binding:"required,min=4,max=32,ricetitle"`
-	Description   string       `form:"description" binding:"required,min=4,max=10240"`
-	DotfilesType  DotfilesType `form:"dotfilesType" binding:"required_with=DotfilesPrice,omitempty,oneof=free one-time"`
-	DotfilesPrice float64      `form:"dotfilesPrice" binding:"required_with=DotfilesType,omitnil,gt=0"`
+	Title         string        `form:"title" binding:"required,min=4,max=32,ricetitle"`
+	Description   string        `form:"description" binding:"required,min=4,max=10240"`
+	Tags          string        `form:"tags"`
+	DotfilesType  *DotfilesType `form:"dotfilesType" binding:"required_with=DotfilesPrice,omitempty,oneof=free one-time"`
+	DotfilesPrice *float64      `form:"dotfilesPrice" binding:"required_with=DotfilesType,omitempty,gt=0"`
 }
 
 type UpdateRiceDTO struct {
 	Title       *string `json:"title" binding:"omitempty,min=4,max=32,ricetitle"`
 	Description *string `json:"description" binding:"omitempty,min=4,max=10240"`
+}
+
+type AttachTagsDTO struct {
+	Tags []int `json:"tags" binding:"required"`
 }
 
 type UpdateRiceStateDTO struct {
@@ -207,6 +212,7 @@ type RiceWithRelationsDTO struct {
 	Screenshots []RiceScreenshotDTO `json:"screenshots"`
 	Dotfiles    RiceDotfilesDTO     `json:"dotfiles"`
 	Author      UserDTO             `json:"author"`
+	Tags        []string            `json:"tags"`
 	CreatedAt   time.Time           `json:"createdAt"`
 	UpdatedAt   time.Time           `json:"updatedAt"`
 }
@@ -229,6 +235,7 @@ func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
 		Screenshots: screenshots,
 		Dotfiles:    r.Dotfiles.ToDTO(),
 		Author:      r.User.ToDTO(),
+		Tags:        r.Tags,
 		CreatedAt:   r.Rice.CreatedAt.UTC(),
 		UpdatedAt:   r.Rice.UpdatedAt.UTC(),
 	}
@@ -325,6 +332,7 @@ type PartialRiceDTO struct {
 	State       RiceState `json:"state"`
 	CreatedAt   time.Time `json:"createdAt"`
 	Score       float32   `json:"score"`
+	Tags        []string  `json:"tags"`
 }
 
 func (r PartialRice) ToDTO() PartialRiceDTO {
@@ -343,6 +351,7 @@ func (r PartialRice) ToDTO() PartialRiceDTO {
 		State:       r.State,
 		CreatedAt:   r.CreatedAt.UTC(),
 		Score:       r.Score,
+		Tags:        r.Tags,
 	}
 }
 
