@@ -122,7 +122,7 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 		to_jsonb(base) AS rice,
 		to_jsonb(u) AS "user",
 		to_jsonb(df) AS dotfiles,
-		jsonb_agg(to_jsonb(p) ORDER BY p.id) AS previews,
+		jsonb_agg(p ORDER BY p.id) AS previews,
 		count(DISTINCT s.user_id) AS star_count,
 		coalesce(bool_or(s.user_id = $1), false) AS is_starred,
 		CASE WHEN df.type != 'free' AND u.id != $1
@@ -135,15 +135,19 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 			)
 			ELSE true
     	END AS is_owned,
-		array_remove(array_agg(DISTINCT t.name), NULL) AS tags
+		t.tags
 	FROM base
 	JOIN users_with_ban_status u ON u.id = base.author_id
 	JOIN rice_dotfiles df ON df.rice_id = base.id
 	JOIN rice_previews p ON p.rice_id = base.id
 	LEFT JOIN rice_stars s ON s.rice_id = base.id
-	LEFT JOIN rice_tag rt ON rt.rice_id = base.id
-	LEFT JOIN tags t on t.id = rt.tag_id
-	GROUP BY base.*, df.*, u.*, u.id, base.id, df.type
+	JOIN LATERAL (
+		SELECT coalesce(nullif(jsonb_agg(t), '[null]'), '[]') AS tags
+		FROM rice_tag rt
+		JOIN tags t ON t.id = rt.tag_id
+		WHERE rt.rice_id = base.id
+	) t on true
+	GROUP BY base.*, df.*, u.*, u.id, base.id, df.type, t.tags
 	`
 
 	switch findBy {

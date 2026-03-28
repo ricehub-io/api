@@ -243,19 +243,22 @@ func CreateRice(c *gin.Context) {
 		return
 	}
 
-	previews := form.File["previews[]"]
+	screenshots := form.File["screenshots[]"]
 	formDotfiles := form.File["dotfiles"]
 
-	if len(previews) == 0 {
-		c.Error(errs.UserError("At least one preview image is required", http.StatusBadRequest))
+	if len(screenshots) == 0 {
+		c.Error(errs.UserError(
+			"At least one screenshot is required",
+			http.StatusBadRequest,
+		))
 		return
 	}
 
 	maxPreviews := utils.Config.Limits.MaxPreviewsPerRice
-	if int64(len(previews)) > maxPreviews {
+	if int64(len(screenshots)) > maxPreviews {
 		c.Error(errs.UserError(
 			fmt.Sprintf(
-				"You cannot add more than %v previews",
+				"You cannot add more than %v screenshots",
 				maxPreviews,
 			),
 			http.StatusRequestEntityTooLarge,
@@ -269,8 +272,8 @@ func CreateRice(c *gin.Context) {
 	}
 	dotfilesFile := formDotfiles[0]
 
-	validPreviews := make(map[string]*multipart.FileHeader, len(previews))
-	for _, preview := range previews {
+	validPreviews := make(map[string]*multipart.FileHeader, len(screenshots))
+	for _, preview := range screenshots {
 		ext, err := utils.ValidateFileAsImage(preview)
 		if err != nil {
 			c.Error(err)
@@ -287,7 +290,7 @@ func CreateRice(c *gin.Context) {
 		return
 	}
 
-	hasTags := metadata.Tags != ""
+	hasTags := metadata.Tags != "" && metadata.Tags != "[]"
 
 	var tags []int
 	if hasTags {

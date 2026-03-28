@@ -216,7 +216,7 @@ type RiceWithRelationsDTO struct {
 	Screenshots []RiceScreenshotDTO `json:"screenshots"`
 	Dotfiles    RiceDotfilesDTO     `json:"dotfiles"`
 	Author      UserDTO             `json:"author"`
-	Tags        []string            `json:"tags"`
+	Tags        []TagDTO            `json:"tags"`
 	CreatedAt   time.Time           `json:"createdAt"`
 	UpdatedAt   time.Time           `json:"updatedAt"`
 }
@@ -225,6 +225,11 @@ func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
 	screenshots := make([]RiceScreenshotDTO, len(r.Screenshots))
 	for i, screenshot := range r.Screenshots {
 		screenshots[i] = screenshot.ToDTO()
+	}
+
+	tags := make([]TagDTO, len(r.Tags))
+	for i, tag := range r.Tags {
+		tags[i] = tag.ToDTO()
 	}
 
 	return RiceWithRelationsDTO{
@@ -239,7 +244,7 @@ func (r RiceWithRelations) ToDTO() RiceWithRelationsDTO {
 		Screenshots: screenshots,
 		Dotfiles:    r.Dotfiles.ToDTO(),
 		Author:      r.User.ToDTO(),
-		Tags:        r.Tags,
+		Tags:        tags,
 		CreatedAt:   r.Rice.CreatedAt.UTC(),
 		UpdatedAt:   r.Rice.UpdatedAt.UTC(),
 	}

@@ -115,7 +115,7 @@ type RiceWithRelations struct {
 	User        User
 	Dotfiles    RiceDotfiles
 	Screenshots []RiceScreenshot `db:"previews"`
-	Tags        []string
+	Tags        []Tag
 	StarCount   uint
 	IsStarred   bool
 	IsOwned     bool
