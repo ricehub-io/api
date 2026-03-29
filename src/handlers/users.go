@@ -82,10 +82,10 @@ func GetTokenFromRequest(c *gin.Context) *security.AccessToken {
 	return nil
 }
 
-func GetUserIDFromRequest(c *gin.Context) *string {
-	var userID *string = nil
+func GetUserIDFromRequest(c *gin.Context) (userID *uuid.UUID) {
 	if token := GetTokenFromRequest(c); token != nil {
-		userID = &token.Subject
+		parsedID, _ := uuid.Parse(token.Subject)
+		userID = &parsedID
 	}
 	return userID
 }
@@ -251,9 +251,10 @@ func FetchUserRices(c *gin.Context) {
 		return
 	}
 
+	userID, _ := uuid.Parse(path.UserID)
 	callerUserID := GetUserIDFromRequest(c)
 
-	rices, err := repository.FetchUserRices(path.UserID, callerUserID)
+	rices, err := repository.FetchUserRices(userID, callerUserID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return

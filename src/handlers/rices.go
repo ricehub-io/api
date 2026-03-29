@@ -62,14 +62,14 @@ func FetchRices(c *gin.Context) {
 
 	// TODO: make fields required if others are present (https://pkg.go.dev/github.com/go-playground/validator/v10#hdr-Baked_In_Validators_and_Tags)
 	var query struct {
-		Sort          string    `form:"sort,default=trending"`
-		State         string    `form:"state"`
-		LastID        *string   `form:"lastId" binding:"omitempty,uuid"`
-		LastScore     float32   `form:"lastScore,default=-1"`
-		LastCreatedAt time.Time `form:"lastCreatedAt"`
-		LastStars     int       `form:"lastStars,default=-1"`
-		LastDownloads int       `form:"lastDownloads,default=-1"`
-		Reverse       bool      `form:"reverse"`
+		Sort          string     `form:"sort,default=trending"`
+		State         string     `form:"state"`
+		LastID        *string    `form:"lastId" binding:"omitempty,uuid"`
+		LastScore     *float32   `form:"lastScore"`
+		LastCreatedAt *time.Time `form:"lastCreatedAt"`
+		LastStars     *int       `form:"lastStars"`
+		LastDownloads *int       `form:"lastDownloads"`
+		Reverse       bool       `form:"reverse"`
 	}
 	if err := c.ShouldBindQuery(&query); err != nil {
 		// TODO: return different message depending on which parameter was invalid
@@ -150,10 +150,7 @@ func GetRiceByID(c *gin.Context) {
 	}
 
 	token := GetTokenFromRequest(c)
-	var userID *string = nil
-	if token != nil {
-		userID = &token.Subject
-	}
+	userID := GetUserIDFromRequest(c)
 
 	rice, err := repository.FindRiceByID(userID, path.RiceID)
 	if err != nil {
@@ -192,6 +189,7 @@ func DownloadDotfiles(c *gin.Context) {
 		return
 	}
 
+	riceID, _ := uuid.Parse(path.RiceID)
 	userID := GetUserIDFromRequest(c)
 
 	// try to find the rice
@@ -212,6 +210,16 @@ func DownloadDotfiles(c *gin.Context) {
 	if err != nil {
 		c.Error(errs.FromDBError(err, errs.RiceNotFound))
 		return
+	}
+
+	// insert download event
+	if err := repository.InsertRiceDownload(riceID, userID); err != nil {
+		zap.L().Error(
+			"Failed to insert download event",
+			zap.Error(err),
+			zap.String("rice_id", path.RiceID),
+			zap.String("user_id", userID.String()),
+		)
 	}
 
 	fullPath := "./public" + filePath
@@ -970,9 +978,10 @@ func PurchaseDotfiles(c *gin.Context) {
 	}
 
 	token := c.MustGet("token").(*security.AccessToken)
+	userID, _ := uuid.Parse(token.Subject)
 
 	// check if rice exists
-	rice, err := repository.FindRiceByID(&token.Subject, path.RiceID)
+	rice, err := repository.FindRiceByID(&userID, path.RiceID)
 	if err != nil {
 		c.Error(errs.FromDBError(err, errs.RiceNotFound))
 		return

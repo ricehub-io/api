@@ -7,14 +7,62 @@ import (
 	"ricehub/src/utils"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
-// FIXME: score has to be fetched for all responses even when not needed because PartialRice requires it
 func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse bool) string {
-	argCount := 1
+	argIdx := 1
 
-	baseSelect := `
+	isStarred := "false AS is_starred"
+	if withUser {
+		isStarred = fmt.Sprintf(`EXISTS (
+				SELECT 1 FROM rice_stars rs
+				WHERE rs.rice_id = r.id AND rs.user_id = $%d
+			) AS is_starred`, argIdx)
+		argIdx++
+	}
+
+	scoreCol := "0 AS score"
+	downloadsJoin := ""
+	if sortBy == "trending" {
+		scoreCol = `(
+				(count(DISTINCT rd.user_id) + count(DISTINCT s.user_id))
+				/ pow(extract(EPOCH FROM (date_trunc('hour', current_timestamp) - r.created_at)) / 3600 + 2, 1.5)
+			) AS score`
+		downloadsJoin = "LEFT JOIN rice_downloads rd ON rd.rice_id = r.id"
+	}
+
+	ord, sign := "DESC", "<"
+	if reverse {
+		ord, sign = "ASC", ">"
+	}
+
+	var where, order string
+	switch sortBy {
+	case "trending":
+		if subsequent {
+			where = fmt.Sprintf("WHERE (score, id) %s ($%d, $%d)", sign, argIdx, argIdx+1)
+		}
+		order = fmt.Sprintf("ORDER BY score %s, id %s", ord, ord)
+	case "recent":
+		if subsequent {
+			where = fmt.Sprintf("WHERE (created_at, id) %s ($%d, $%d)", sign, argIdx, argIdx+1)
+		}
+		order = fmt.Sprintf("ORDER BY created_at %s, id %s", ord, ord)
+	case "downloads":
+		if subsequent {
+			where = fmt.Sprintf("WHERE (download_count, id) %s ($%d, $%d)", sign, argIdx, argIdx+1)
+		}
+		order = fmt.Sprintf("ORDER BY download_count %s, id %s", ord, ord)
+	case "stars":
+		if subsequent {
+			where = fmt.Sprintf("WHERE (star_count, id) %s ($%d, $%d)", sign, argIdx, argIdx+1)
+		}
+		order = fmt.Sprintf("ORDER BY star_count %s, id %s", ord, ord)
+	}
+
+	return fmt.Sprintf(`
 		WITH ranked AS (
 			SELECT
 				r.id, r.title, r.slug, r.created_at, r.state,
@@ -23,26 +71,9 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 				count(DISTINCT s.user_id) AS star_count,
 				count(DISTINCT c.id) AS comment_count,
 				df.download_count, df.type AS dotfiles_type,
-				(
-					(df.download_count + count(DISTINCT s.user_id))
-					/ pow(extract(EPOCH FROM (date_trunc('hour', current_timestamp) - r.created_at)) / 3600 + 2, 1.5)
-				) AS score,
+				%s,
 				array_remove(array_agg(DISTINCT t.name), NULL) AS tags,
-	`
-
-	userSelect := "false AS is_starred"
-	if withUser {
-		userSelect = fmt.Sprintf(`
-				EXISTS (
-					SELECT 1
-					FROM rice_stars rs
-					WHERE rs.rice_id = r.id AND rs.user_id = $%v
-				) AS is_starred
-		`, argCount)
-		argCount += 1
-	}
-
-	base := `
+				%s
 			FROM rices r
 			JOIN users u ON u.id = r.author_id
 			LEFT JOIN rice_stars s ON s.rice_id = r.id
@@ -55,58 +86,18 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 				ORDER BY p.created_at
 				LIMIT 1
 			) p ON TRUE
+			%s
 			LEFT JOIN rice_tag rt ON rt.rice_id = r.id
-			LEFT JOIN tags t on t.id = rt.tag_id
+			LEFT JOIN tags t ON t.id = rt.tag_id
 			WHERE r.state != 'waiting'
 			GROUP BY
-				r.id, r.slug, r.title, r.created_at,
+				r.id, r.state, r.slug, r.title, r.created_at,
 				df.download_count, df.type, u.display_name,
 				u.username, p.file_path
 		)
-	`
-
-	mainSelect := " SELECT * FROM ranked"
-	where := ""
-	order := ""
-
-	ord := "DESC"
-	if reverse {
-		ord = "ASC"
-	}
-
-	sign := "<"
-	if reverse {
-		sign = ">"
-	}
-
-	switch sortBy {
-	case "trending":
-		if subsequent {
-			where = fmt.Sprintf(" WHERE (score, id) %v ($%v, $%v)", sign, argCount, argCount+1)
-		}
-
-		order = fmt.Sprintf(" ORDER BY score %v, id %v", ord, ord)
-	case "recent":
-		if subsequent {
-			where = fmt.Sprintf(" WHERE (created_at, id) %v ($%v, $%v)", sign, argCount, argCount+1)
-		}
-
-		order = fmt.Sprintf(" ORDER BY created_at %v, id %v", ord, ord)
-	case "downloads":
-		if subsequent {
-			where = fmt.Sprintf(" WHERE (download_count, id) %v ($%v, $%v)", sign, argCount, argCount+1)
-		}
-
-		order = fmt.Sprintf(" ORDER BY download_count %v, id %v", ord, ord)
-	case "stars":
-		if subsequent {
-			where = fmt.Sprintf(" WHERE (star_count, id) %v ($%v, $%v)", sign, argCount, argCount+1)
-		}
-
-		order = fmt.Sprintf(" ORDER BY star_count %v, id %v", ord, ord)
-	}
-
-	return baseSelect + userSelect + base + mainSelect + where + order + fmt.Sprintf(" LIMIT %v", utils.Config.App.PaginationLimit)
+		SELECT * FROM ranked %s %s
+		LIMIT %d`,
+		scoreCol, isStarred, downloadsJoin, where, order, utils.Config.App.PaginationLimit)
 }
 
 type FindRiceBy uint8
@@ -183,10 +174,10 @@ RETURNING *
 type Pagination struct {
 	// LastID is stored here as string but its validated in the handler to make sure its a valid UUID
 	LastID        *string
-	LastScore     float32
-	LastCreatedAt time.Time
-	LastDownloads int
-	LastStars     int
+	LastScore     *float32
+	LastCreatedAt *time.Time
+	LastDownloads *int
+	LastStars     *int
 	Reverse       bool
 }
 
@@ -215,7 +206,7 @@ func RiceExists(riceID string) (exists bool, err error) {
 }
 
 func FetchTrendingRices(pag *Pagination, userID *string) ([]models.PartialRice, error) {
-	subsequent := pag.LastScore != -1
+	subsequent := pag.LastScore != nil
 	query := buildFetchRicesSql("trending", subsequent, userID != nil, pag.Reverse)
 
 	args := []any{}
@@ -223,14 +214,14 @@ func FetchTrendingRices(pag *Pagination, userID *string) ([]models.PartialRice, 
 		args = append(args, userID)
 	}
 	if subsequent {
-		args = append(args, pag.LastScore, pag.LastID)
+		args = append(args, *pag.LastScore, pag.LastID)
 	}
 
 	return rowsToStruct[models.PartialRice](query, args...)
 }
 
 func FetchRecentRices(pag *Pagination, userID *string) ([]models.PartialRice, error) {
-	subsequent := !pag.LastCreatedAt.IsZero()
+	subsequent := pag.LastCreatedAt != nil
 	query := buildFetchRicesSql("recent", subsequent, userID != nil, pag.Reverse)
 
 	args := []any{}
@@ -238,15 +229,14 @@ func FetchRecentRices(pag *Pagination, userID *string) ([]models.PartialRice, er
 		args = append(args, userID)
 	}
 	if subsequent {
-		args = append(args, pag.LastCreatedAt, pag.LastID)
+		args = append(args, *pag.LastCreatedAt, pag.LastID)
 	}
 
 	return rowsToStruct[models.PartialRice](query, args...)
 }
 
 func FetchMostDownloadedRices(pag *Pagination, userID *string) ([]models.PartialRice, error) {
-	subsequent := pag.LastDownloads != -1
-
+	subsequent := pag.LastDownloads != nil
 	query := buildFetchRicesSql("downloads", subsequent, userID != nil, pag.Reverse)
 
 	args := []any{}
@@ -254,14 +244,14 @@ func FetchMostDownloadedRices(pag *Pagination, userID *string) ([]models.Partial
 		args = append(args, userID)
 	}
 	if subsequent {
-		args = append(args, pag.LastDownloads, pag.LastID)
+		args = append(args, *pag.LastDownloads, pag.LastID)
 	}
 
 	return rowsToStruct[models.PartialRice](query, args...)
 }
 
 func FetchMostStarredRices(pag *Pagination, userID *string) ([]models.PartialRice, error) {
-	subsequent := pag.LastStars != -1
+	subsequent := pag.LastStars != nil
 	query := buildFetchRicesSql("stars", subsequent, userID != nil, pag.Reverse)
 
 	args := []any{}
@@ -269,7 +259,7 @@ func FetchMostStarredRices(pag *Pagination, userID *string) ([]models.PartialRic
 		args = append(args, userID)
 	}
 	if subsequent {
-		args = append(args, pag.LastStars, pag.LastID)
+		args = append(args, *pag.LastStars, pag.LastID)
 	}
 
 	return rowsToStruct[models.PartialRice](query, args...)
@@ -316,7 +306,7 @@ func FetchRiceScreenshotCount(riceID string) (count int, err error) {
 	return
 }
 
-func FindRiceByID(userID *string, riceID string) (models.RiceWithRelations, error) {
+func FindRiceByID(userID *uuid.UUID, riceID string) (models.RiceWithRelations, error) {
 	return rowToStruct[models.RiceWithRelations](findRiceSql, userID, riceID)
 }
 
@@ -324,7 +314,7 @@ func FindRiceBySlug(userID *string, slug string, username string) (models.RiceWi
 	return rowToStruct[models.RiceWithRelations](findRiceBySlugSql, userID, slug, username)
 }
 
-func FetchUserRices(userID string, callerID *string) ([]models.PartialRice, error) {
+func FetchUserRices(userID uuid.UUID, callerID *uuid.UUID) ([]models.PartialRice, error) {
 	where := "WHERE u.id = $1"
 	if callerID == nil || userID != *callerID {
 		where += " AND r.state = 'accepted'"
@@ -443,6 +433,12 @@ func InsertRiceScreenshot(riceID string, scrPath string) (models.RiceScreenshot,
 
 func InsertRiceScreenshotTx[T UUIDOrString](tx pgx.Tx, riceID T, scrPath string) error {
 	_, err := tx.Exec(context.Background(), insertScreenshotSql, riceID, scrPath)
+	return err
+}
+
+func InsertRiceDownload(riceID uuid.UUID, userID *uuid.UUID) error {
+	const query = "INSERT INTO rice_downloads (rice_id, user_id) VALUES ($1, $2)"
+	_, err := db.Exec(context.Background(), query, riceID, userID)
 	return err
 }
 

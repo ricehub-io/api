@@ -264,3 +264,27 @@ CREATE TABLE rice_tag (
     tag_id INT REFERENCES tags(id) ON DELETE CASCADE,
     PRIMARY KEY (rice_id, tag_id)
 );
+
+-- rice download events
+CREATE TABLE rice_downloads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rice_id UUID NOT NULL REFERENCES rices(id),
+    user_id UUID REFERENCES users(id), -- null if triggered by not signed in user
+    downloaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- leaderboard stuff
+CREATE TYPE leaderboard_period AS ENUM (
+    'week',
+    'month',
+    'year'
+);
+
+CREATE TABLE rice_leaderboard (
+    rice_id UUID REFERENCES rices(id) ON DELETE CASCADE,
+    period leaderboard_period NOT NULL,
+    position INT NOT NULL CHECK (position > 0),
+    score BIGINT NOT NULL CHECK (score > 0),
+    snapshot_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (rice_id, position)
+);

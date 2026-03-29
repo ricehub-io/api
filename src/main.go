@@ -191,7 +191,10 @@ func registerRiceRoutes(r *gin.Engine) {
 	rices.GET("", handlers.FetchRices)
 	rices.GET("/:id", handlers.GetRiceByID)
 	rices.GET("/:id/comments", handlers.GetRiceComments)
-	rices.GET("/:id/dotfiles", handlers.DownloadDotfiles)
+	rices.GET("/:id/dotfiles",
+		security.PathRateLimitMiddleware(3, time.Minute),
+		handlers.DownloadDotfiles,
+	)
 
 	// Authenticated
 	auth := rices.Group("", security.AuthMiddleware)

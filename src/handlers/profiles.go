@@ -33,7 +33,7 @@ func GetUserProfile(c *gin.Context) {
 	callerUserID := GetUserIDFromRequest(c)
 
 	// fetch user rices
-	rices, err := repository.FetchUserRices(user.ID.String(), callerUserID)
+	rices, err := repository.FetchUserRices(user.ID, callerUserID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
