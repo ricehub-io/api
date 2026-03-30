@@ -238,6 +238,48 @@ func TestUserBan_ToDTO_BannedAtIsUTC(t *testing.T) {
 }
 
 // #################################################
+// ############# LeaderboardRice.ToDTO #############
+// #################################################
+func TestLeaderboardRice_ToDTO_FreeType_IsFreeTrue(t *testing.T) {
+	r := LeaderboardRice{DotfilesType: Free}
+	if !r.ToDTO().IsFree {
+		t.Error("expected IsFree=true for free dotfiles type")
+	}
+}
+
+func TestLeaderboardRice_ToDTO_OneTimeType_IsFreeFalse(t *testing.T) {
+	r := LeaderboardRice{DotfilesType: OneTime}
+	if r.ToDTO().IsFree {
+		t.Error("expected IsFree=false for one-time dotfiles type")
+	}
+}
+
+func TestLeaderboardRice_ToDTO_ThumbnailPrefixedWithCDN(t *testing.T) {
+	r := LeaderboardRice{Thumbnail: "/thumbs/rice.jpg"}
+
+	want := "https://cdn.example.com/thumbs/rice.jpg"
+	if got := r.ToDTO().Thumbnail; got != want {
+		t.Errorf("want %q, got %q", want, got)
+	}
+}
+
+func TestLeaderboardRice_ToDTO_CountFieldsMapped(t *testing.T) {
+	r := LeaderboardRice{
+		StarCount:     10,
+		CommentCount:  5,
+		DownloadCount: 42,
+	}
+	dto := r.ToDTO()
+
+	if dto.Stars != 10 || dto.Comments != 5 || dto.Downloads != 42 {
+		t.Errorf(
+			"count fields not mapped correctly: stars=%d comments=%d downloads=%d",
+			dto.Stars, dto.Comments, dto.Downloads,
+		)
+	}
+}
+
+// #################################################
 // ############# bulk ToDTO functions ##############
 // #################################################
 func TestUsersToDTO_PreservesLength(t *testing.T) {
@@ -257,5 +299,12 @@ func TestPartialRicesToDTO_PreservesLength(t *testing.T) {
 	rices := []PartialRice{{}, {}}
 	if got := len(PartialRicesToDTO(rices)); got != 2 {
 		t.Errorf("want 2 DTOs, got %d", got)
+	}
+}
+
+func TestLeaderboardRices_ToDTO_PreservesLength(t *testing.T) {
+	rices := LeaderboardRices{{}, {}, {}, {}}
+	if got := len(rices.ToDTO()); got != 4 {
+		t.Errorf("want 4 DTOs, got %d", got)
 	}
 }
