@@ -473,3 +473,51 @@ func (b UserBan) ToDTO() UserBanDTO {
 		RevokedAt: b.RevokedAt,
 	}
 }
+
+type LeaderboardRiceDTO struct {
+	Position    uint      `json:"position"`
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Slug        string    `json:"slug"`
+	DisplayName string    `json:"displayName"`
+	Username    string    `json:"username"`
+	Thumbnail   string    `json:"thumbnail"`
+	Stars       uint      `json:"stars"`
+	Comments    uint      `json:"comments"`
+	Downloads   uint      `json:"downloads"`
+	IsStarred   bool      `json:"isStarred"`
+	IsFree      bool      `json:"isFree"`
+	State       RiceState `json:"state"`
+	CreatedAt   time.Time `json:"createdAt"`
+	Score       float32   `json:"score"`
+	Tags        []string  `json:"tags"`
+}
+
+func (r LeaderboardRice) ToDTO() LeaderboardRiceDTO {
+	return LeaderboardRiceDTO{
+		Position:    r.Position,
+		ID:          r.ID,
+		Title:       r.Title,
+		Slug:        r.Slug,
+		DisplayName: r.DisplayName,
+		Username:    r.Username,
+		Thumbnail:   utils.Config.App.CDNUrl + r.Thumbnail,
+		Stars:       r.StarCount,
+		Comments:    r.CommentCount,
+		Downloads:   r.DownloadCount,
+		IsStarred:   r.IsStarred,
+		IsFree:      r.DotfilesType == Free,
+		State:       r.State,
+		CreatedAt:   r.CreatedAt.UTC(),
+		Score:       r.Score,
+		Tags:        r.Tags,
+	}
+}
+
+func (rices LeaderboardRices) ToDTO() []LeaderboardRiceDTO {
+	dtos := make([]LeaderboardRiceDTO, len(rices))
+	for i, rice := range rices {
+		dtos[i] = rice.ToDTO()
+	}
+	return dtos
+}

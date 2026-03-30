@@ -284,7 +284,7 @@ CREATE TABLE rice_leaderboard (
     rice_id UUID REFERENCES rices(id) ON DELETE CASCADE,
     period leaderboard_period NOT NULL,
     position INT NOT NULL CHECK (position > 0),
-    score BIGINT NOT NULL CHECK (score > 0),
+    score BIGINT NOT NULL CHECK (score >= 0),
     snapshot_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (rice_id, position)
+    PRIMARY KEY (rice_id, period)
 );

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"ricehub/src/errs"
 	"ricehub/src/handlers"
+	"ricehub/src/models"
 	"ricehub/src/polar"
 	"ricehub/src/repository"
 	"ricehub/src/security"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -50,6 +53,8 @@ func run() error {
 	repository.Init(utils.Config.Database.DatabaseUrl)
 	defer repository.Close()
 
+	go updateLeaderboard()
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -81,6 +86,49 @@ func run() error {
 		zap.Uint16("port", port),
 	)
 	return r.Run(fmt.Sprintf(":%v", port))
+}
+
+func updateLeaderboard() {
+	update := func(tx pgx.Tx, period models.LeaderboardPeriod) error {
+		err := repository.UpsertRiceLeaderboard(tx, period)
+		if err != nil {
+			return err
+		}
+		return repository.CleanupRiceLeaderboard(tx, period)
+	}
+
+	logger := zap.L()
+	for {
+		logger.Info("Updating rice leaderboard...")
+
+		ctx := context.Background()
+		tx, err := repository.StartTx(ctx)
+		if err != nil {
+			logger.Error("Failed to start tx", zap.Error(err))
+			goto Skip
+		}
+
+		if err := update(tx, models.Week); err != nil {
+			logger.Error("Failed to update weekly leaderboard", zap.Error(err))
+			goto Skip
+		}
+
+		if err := update(tx, models.Month); err != nil {
+			logger.Error("Failed to update monthly leaderboard", zap.Error(err))
+			goto Skip
+		}
+
+		if err := update(tx, models.Year); err != nil {
+			logger.Error("Failed to update yearly leaderboard", zap.Error(err))
+			goto Skip
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			logger.Error("Failed to commit tx", zap.Error(err))
+		}
+	Skip:
+		time.Sleep(24 * time.Hour)
+	}
 }
 
 func setupLogger() *zap.Logger {
@@ -140,6 +188,7 @@ func setupRoutes(r *gin.Engine) {
 	registerProfileRoutes(r)
 	registerAdminRoutes(r)
 	registerLinkRoutes(r)
+	registerLeaderboardRoutes(r)
 
 	r.GET("/vars/:key", security.PathRateLimitMiddleware(5, time.Minute), handlers.GetWebsiteVariable)
 }
@@ -289,4 +338,13 @@ func registerLinkRoutes(r *gin.Engine) {
 		security.PathRateLimitMiddleware(5, time.Minute),
 		handlers.GetLinkByName,
 	)
+}
+
+func registerLeaderboardRoutes(r *gin.Engine) {
+	leaderboard := r.Group("/leaderboard")
+
+	rl := security.PathRateLimitMiddleware(10, time.Minute)
+	leaderboard.GET("/week", rl, handlers.GetWeeklyLeaderboard)
+	leaderboard.GET("/month", rl, handlers.GetMonthlyLeaderboard)
+	leaderboard.GET("/year", rl, handlers.GetYearlyLeaderboard)
 }

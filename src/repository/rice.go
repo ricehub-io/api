@@ -27,7 +27,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 	downloadsJoin := ""
 	if sortBy == "trending" {
 		scoreCol = `(
-				(count(DISTINCT rd.user_id) + count(DISTINCT s.user_id))
+				(count(DISTINCT coalesce(rd.user_id, r.id)) + count(DISTINCT s.user_id))
 				/ pow(extract(EPOCH FROM (date_trunc('hour', current_timestamp) - r.created_at)) / 3600 + 2, 1.5)
 			) AS score`
 		downloadsJoin = "LEFT JOIN rice_downloads rd ON rd.rice_id = r.id"

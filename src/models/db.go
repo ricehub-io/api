@@ -199,3 +199,43 @@ type UserSubscription struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
+
+type LeaderboardPeriod string
+
+const (
+	Week  LeaderboardPeriod = "week"
+	Month LeaderboardPeriod = "month"
+	Year  LeaderboardPeriod = "year"
+)
+
+var periodInterval = map[LeaderboardPeriod]string{
+	Week:  "7 days",
+	Month: "1 month",
+	Year:  "1 year",
+}
+
+// Interval converts the period into PostgreSQL interval string used in queries
+func (p LeaderboardPeriod) Interval() string {
+	return periodInterval[p]
+}
+
+type LeaderboardRice struct {
+	Position      uint
+	ID            uuid.UUID
+	Title         string
+	Slug          string
+	DisplayName   string
+	Username      string
+	Thumbnail     string
+	StarCount     uint
+	CommentCount  uint
+	DownloadCount uint
+	IsStarred     bool
+	DotfilesType  DotfilesType
+	State         RiceState
+	CreatedAt     time.Time
+	Score         float32
+	Tags          []string
+}
+
+type LeaderboardRices []LeaderboardRice
