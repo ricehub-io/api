@@ -65,7 +65,7 @@ jobs:
           cache: true
 
       - name: Run go vet
-        run: go vet ./...
+        run: make vet
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
@@ -90,7 +90,7 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: go test ./... -v -race -count=1
+        run: make test
 
   security:
     name: Security scan
@@ -134,7 +134,7 @@ jobs:
           cache: true
 
       - name: Compile source code
-        run: go build -o build/api ./src
+        run: make build
 
       - name: Copy executable via SSH
         uses: appleboy/scp-action@v1
