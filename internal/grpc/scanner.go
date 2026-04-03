@@ -2,8 +2,9 @@ package grpc
 
 import (
 	"context"
-	pb "ricehub/proto"
 	"time"
+
+	pb "ricehub/proto"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"

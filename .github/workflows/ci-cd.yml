@@ -22,8 +22,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-        with:
-          submodules: true
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -68,6 +66,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Compile proto
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          bash proto/compile.sh
+
       - name: Run go vet
         run: make vet
 
@@ -92,6 +97,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Compile proto
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          bash proto/compile.sh
+
       - name: Download dependencies
         run: go mod download
 
@@ -113,6 +125,13 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Compile proto
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          bash proto/compile.sh
 
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -142,6 +161,13 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Compile proto
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          bash proto/compile.sh
 
       - name: Compile source code
         run: make build
