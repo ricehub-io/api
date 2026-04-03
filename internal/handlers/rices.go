@@ -235,8 +235,11 @@ func DownloadDotfiles(c *gin.Context) {
 }
 
 // TODO: get that thing out of here right meow
-func handleDotfilesUpload(fileHeader *multipart.FileHeader, ext string) (string, error) {
-	// TODO: move validation here
+func handleDotfilesUpload(fileHeader *multipart.FileHeader) (string, error) {
+	ext, err := validation.ValidateFileAsArchive(fileHeader)
+	if err != nil {
+		return "", err
+	}
 
 	// open file
 	file, err := fileHeader.Open()
@@ -379,13 +382,7 @@ func CreateRice(c *gin.Context) {
 		validPreviews[previewPath] = preview
 	}
 
-	dotfilesExt, err := validation.ValidateFileAsArchive(dotfilesFile)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	dotfilesPath, err := handleDotfilesUpload(dotfilesFile, dotfilesExt)
+	dotfilesPath, err := handleDotfilesUpload(dotfilesFile)
 	if err != nil {
 		c.Error(err)
 		return
@@ -623,12 +620,6 @@ func UpdateDotfiles(c *gin.Context) {
 		return
 	}
 
-	ext, err := validation.ValidateFileAsArchive(file)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
 	// delete old dotfiles (if exist)
 	oldDotfiles, err := repository.FetchRiceDotfilesPath(path.RiceID)
 	if err != nil {
@@ -644,7 +635,7 @@ func UpdateDotfiles(c *gin.Context) {
 		}
 	}
 
-	filePath, err := handleDotfilesUpload(file, ext)
+	filePath, err := handleDotfilesUpload(file)
 	if err != nil {
 		c.Error(err)
 		return
