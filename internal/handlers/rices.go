@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"ricehub/internal/config"
 	"ricehub/internal/errs"
+	"ricehub/internal/grpc"
 	"ricehub/internal/models"
 	"ricehub/internal/polar"
 	"ricehub/internal/repository"
@@ -232,6 +234,90 @@ func DownloadDotfiles(c *gin.Context) {
 	c.FileAttachment(fullPath, fileName)
 }
 
+// TODO: get that thing out of here right meow
+func handleDotfilesUpload(fileHeader *multipart.FileHeader, ext string) (string, error) {
+	// TODO: move validation here
+
+	// open file
+	file, err := fileHeader.Open()
+	if err != nil {
+		return "", errs.InternalError(err)
+	}
+	defer file.Close()
+
+	// create new named temp file
+	tmp, err := os.CreateTemp("", "dotfiles-*.zip")
+	if err != nil {
+		return "", errs.InternalError(err)
+	}
+
+	// clean up
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	// copy dotfiles data into temp file
+	if _, err := io.Copy(tmp, file); err != nil {
+		tmp.Close()
+		return "", errs.InternalError(err)
+	}
+	tmp.Close()
+
+	// scan 'em
+	res, err := grpc.Scanner.ScanFile(tmpPath)
+	if err != nil {
+		return "", errs.InternalError(err)
+	}
+	if res.IsMalicious {
+		zap.L().Warn("Malicious dotfiles detected",
+			zap.Strings("findings", res.Reason),
+		)
+		return "", errs.UserError(
+			"Malicious content detected inside dotfiles",
+			http.StatusBadRequest,
+		)
+	}
+
+	// move to destination path if clean
+	dbPath := fmt.Sprintf("/dotfiles/%v%s", uuid.New(), ext)
+	destPath := filepath.Join("./public", dbPath)
+	if err := moveFile(tmpPath, destPath); err != nil {
+		return "", errs.InternalError(err)
+	}
+
+	return dbPath, nil
+}
+
+func moveFile(src, dst string) error {
+	if err := os.Rename(src, dst); err == nil {
+		return nil
+	}
+
+	// fallback: copy then delete
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+
+	if err := out.Sync(); err != nil {
+		return err
+	}
+
+	out.Close()
+	in.Close()
+	return os.Remove(src)
+}
+
 func CreateRice(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	if err := security.VerifyUserID(token.Subject); err != nil {
@@ -299,6 +385,12 @@ func CreateRice(c *gin.Context) {
 		return
 	}
 
+	dotfilesPath, err := handleDotfilesUpload(dotfilesFile, dotfilesExt)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
 	hasTags := metadata.Tags != "" && metadata.Tags != "[]"
 
 	var tags []int
@@ -319,6 +411,8 @@ func CreateRice(c *gin.Context) {
 		c.Error(errs.BlacklistedRiceDescription)
 		return
 	}
+
+	// scan dotfiles for malicious things
 
 	// end validating
 
@@ -353,14 +447,6 @@ func CreateRice(c *gin.Context) {
 			c.Error(errs.InternalError(err))
 			return
 		}
-	}
-
-	// save dotfiles on the disk
-	dotfilesPath := fmt.Sprintf("/dotfiles/%v%v", uuid.New(), dotfilesExt)
-	err = c.SaveUploadedFile(dotfilesFile, "./public"+dotfilesPath)
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
 	}
 
 	// create new polar product if dotfiles are paid
@@ -552,13 +638,15 @@ func UpdateDotfiles(c *gin.Context) {
 	if oldDotfiles != nil {
 		path := "./public" + *oldDotfiles
 		if err := os.Remove(path); err != nil {
-			zap.L().Warn("Failed to remove old dotfiles from storage", zap.String("path", path))
+			zap.L().Error("Failed to remove old dotfiles from storage",
+				zap.String("path", path),
+			)
 		}
 	}
 
-	filePath := fmt.Sprintf("/dotfiles/%v%v", uuid.New(), ext)
-	if err := c.SaveUploadedFile(file, "./public"+filePath); err != nil {
-		c.Error(errs.InternalError(err))
+	filePath, err := handleDotfilesUpload(file, ext)
+	if err != nil {
+		c.Error(err)
 		return
 	}
 

@@ -9,6 +9,7 @@ import (
 	"ricehub/internal/cache"
 	"ricehub/internal/config"
 	"ricehub/internal/errs"
+	"ricehub/internal/grpc"
 	"ricehub/internal/handlers"
 	"ricehub/internal/models"
 	"ricehub/internal/polar"
@@ -54,6 +55,10 @@ func run() error {
 
 	repository.Init(config.Config.Database.DatabaseUrl)
 	defer repository.Close()
+
+	// TODO: read gRPC url from config file
+	grpc.Scanner.Init("localhost:40400")
+	defer grpc.Scanner.Close()
 
 	go updateLeaderboard()
 
