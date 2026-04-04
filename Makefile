@@ -5,7 +5,7 @@ CMD     := ./cmd/api
 GOFLAGS := -trimpath
 LDFLAGS := -ldflags="-s -w"
 
-.PHONY: all build run test lint fmt vet tidy clean check install-tools
+.PHONY: all build run test security lint fmt vet tidy clean check install-tools
 
 all: check build
 
@@ -40,13 +40,13 @@ tidy:
 	go mod tidy
 	go mod verify
 
-## check: run fmt, vet, and lint (useful before committing)
-check: fmt vet lint
-
 ## security: scan for vulnerabilities
 security:
 	govulncheck ./...
 	gosec -exclude-generated ./...
+
+## check: run fmt, vet, lint, and security (useful before committing)
+check: fmt vet lint security
 
 ## clean: remove build artifacts
 clean:
