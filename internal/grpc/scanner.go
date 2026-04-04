@@ -41,8 +41,8 @@ func (s *FileScanner) Init(url string) {
 }
 
 // Closes internal gRPC connection.
-func (s *FileScanner) Close() {
-	s.conn.Close()
+func (s *FileScanner) Close() error {
+	return s.conn.Close()
 }
 
 func (s *FileScanner) ScanFile(filePath string) (res *pb.ScanResult, err error) {

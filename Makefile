@@ -43,6 +43,11 @@ tidy:
 ## check: run fmt, vet, and lint (useful before committing)
 check: fmt vet lint
 
+## security: scan for vulnerabilities
+security:
+	govulncheck ./...
+	gosec -exclude-generated ./...
+
 ## clean: remove build artifacts
 clean:
 	rm -rf $(BUILD)
@@ -52,6 +57,7 @@ install-tools:
 	go install golang.org/x/tools/cmd/goimports@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
+	go install github.com/securego/gosec/v2/cmd/gosec@latest
 
 ## help: list available targets
 help:

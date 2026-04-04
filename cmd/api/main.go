@@ -58,7 +58,7 @@ func run() error {
 
 	// TODO: read gRPC url from config file
 	grpc.Scanner.Init("localhost:40400")
-	defer grpc.Scanner.Close()
+	defer grpc.Scanner.Close() //nolint:errcheck
 
 	go updateLeaderboard()
 
