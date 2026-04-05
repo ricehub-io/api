@@ -166,16 +166,17 @@ func handleSubscriptionActive(rawData json.RawMessage) error {
 		return nil
 	}
 
-	userID := data.Customer.ExternalID
-	if userID == nil {
+	strCustomerID := data.Customer.ExternalID
+	if strCustomerID == nil {
 		logger.Warn(
 			"Received 'subscription.active' for nil external user",
 			zap.String("data", string(rawData)),
 		)
 		return nil
 	}
+	customerID, _ := uuid.Parse(*strCustomerID)
 
-	sub, err := repository.InsertUserSubscription(*userID, data.CurrentPeriodEnd)
+	sub, err := repository.InsertUserSubscription(customerID, data.CurrentPeriodEnd)
 	if err != nil {
 		logger.Error(
 			"Failed to insert user subscription",
@@ -187,7 +188,7 @@ func handleSubscriptionActive(rawData json.RawMessage) error {
 
 	logger.Info(
 		"New user subscription",
-		zap.Stringp("user_id", userID),
+		zap.Stringp("customer_id", strCustomerID),
 		zap.String("subscription_id", sub.ID.String()),
 	)
 

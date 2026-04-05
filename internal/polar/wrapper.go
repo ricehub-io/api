@@ -19,37 +19,31 @@ var (
 	sdk *polargo.Polar
 )
 
-func fixedPrice(cents int64) components.ProductPriceFixedCreate {
-	return components.ProductPriceFixedCreate{
-		PriceCurrency: components.PresentmentCurrencyUsd.ToPointer(),
-		PriceAmount:   cents,
-	}
-}
-
 // Init initializes the global polar variable by creating a new SDK instance
 func Init(token string, useSandbox bool) {
-	logger := zap.L()
+	l := zap.L()
 
 	opts := []polargo.SDKOption{polargo.WithSecurity(token)}
 
 	if useSandbox {
-		logger.Warn("Using sandbox server for Polar")
+		l.Warn("Using sandbox server for Polar")
 		opts = append(opts, polargo.WithServer(polargo.ServerSandbox))
 	}
 
 	ctx = context.Background()
 	sdk = polargo.New(opts...)
 
-	logger.Info("Polar has been successfully initialized")
+	l.Info("Polar has been successfully initialized")
 }
 
 // CreateProduct creates new product in Polar with provided name and price.
 func CreateProduct(name string, price float64) (res *operations.ProductsCreateResponse, err error) {
-	logger := zap.L()
+	polarCheck()
+	l := zap.L()
 
 	// convert price to cents
 	cents := priceToCents(price)
-	logger.Info(
+	l.Info(
 		"Creating new Polar product for dotfiles",
 		zap.String("name", name),
 		zap.Float64("price_org", price),
@@ -72,6 +66,8 @@ func CreateProduct(name string, price float64) (res *operations.ProductsCreateRe
 
 // UpdatePrice updates existing product's price to provided newPrice
 func UpdatePrice(productID string, newPrice float64) (res *operations.ProductsUpdateResponse, err error) {
+	polarCheck()
+
 	cents := priceToCents(newPrice)
 	zap.L().Info(
 		"Updating product's price",
@@ -91,6 +87,7 @@ func UpdatePrice(productID string, newPrice float64) (res *operations.ProductsUp
 }
 
 func updateVisibility(productID string, newVisibility components.ProductVisibility) (res *operations.ProductsUpdateResponse, err error) {
+	polarCheck()
 	zap.L().Info(
 		"Updating product's visibility",
 		zap.String("product_id", productID),
@@ -116,6 +113,8 @@ func HideProduct(productID string) (res *operations.ProductsUpdateResponse, err 
 }
 
 func ArchiveProduct(productID string) (res *operations.ProductsUpdateResponse, err error) {
+	polarCheck()
+
 	zap.L().Info(
 		"Archiving product",
 		zap.String("product_id", productID),
@@ -150,6 +149,8 @@ func CreateCheckoutSession(userID string, productID uuid.UUID) (res *operations.
 }
 
 func EventList(eventType components.SystemEventType, eventsAfter *time.Time) (events []components.SystemEvent, err error) {
+	polarCheck()
+
 	eventName := string(eventType)
 	zap.L().Info("Fetching Polar's event list",
 		zap.String("event_name", eventName),
@@ -193,7 +194,50 @@ func EventList(eventType components.SystemEventType, eventsAfter *time.Time) (ev
 	return
 }
 
+func SubscriptionList() (subs []components.Subscription, err error) {
+	polarCheck()
+
+	res, err := sdk.Subscriptions.List(ctx, operations.SubscriptionsListRequest{
+		Active: polargo.Bool(true),
+		Limit:  polargo.Int64(100),
+	})
+	if err != nil || res.ListResourceSubscription == nil {
+		return
+	}
+
+	for {
+		subs = append(subs, res.ListResourceSubscription.Items...)
+
+		// go to next page
+		res, err = res.Next()
+		if err != nil {
+			return
+		}
+
+		// end of list
+		if res == nil {
+			break
+		}
+	}
+
+	return
+}
+
+// polarCheck checks if Polar SDK has been initialized.
+func polarCheck() {
+	if sdk == nil {
+		zap.L().Fatal("Polar not initialized!")
+	}
+}
+
 // priceToCents converts price in normal format (e.g. 15.89) to cents (in this case 1589) and returns them.
 func priceToCents(price float64) int64 {
 	return int64(math.RoundToEven(price * 100.0))
+}
+
+func fixedPrice(cents int64) components.ProductPriceFixedCreate {
+	return components.ProductPriceFixedCreate{
+		PriceCurrency: components.PresentmentCurrencyUsd.ToPointer(),
+		PriceAmount:   cents,
+	}
 }

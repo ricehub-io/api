@@ -2,12 +2,14 @@ package polar
 
 import (
 	"context"
+	"errors"
 	"ricehub/internal/models"
 	"ricehub/internal/repository"
 	"slices"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/polarsource/polar-go/models/components"
 	"go.uber.org/zap"
 )
@@ -19,7 +21,9 @@ func StartSyncThread() {
 		if err := syncDotfilesPurchases(); err != nil {
 			logger.Error("Failed to sync dotfiles purchases", zap.Error(err))
 		}
-		syncSubscriptions()
+		if err := syncSubscriptions(); err != nil {
+			logger.Error("Failed to sync subscriptions", zap.Error(err))
+		}
 		time.Sleep(24 * time.Hour)
 	}
 }
@@ -48,29 +52,30 @@ func syncDotfilesPurchases() error {
 
 	new := 0
 	for _, event := range events {
-		data := event.OrderPaidEvent
-		if data == nil {
-			continue
-		}
+		order := event.OrderPaidEvent
 
-		strProductID := data.Metadata.GetProductID()
-		strUserID := data.Customer.GetExternalID()
-		if strProductID == nil || strUserID == nil {
+		meta := order.GetMetadata()
+		strProductID := meta.ProductID
+		strCustomerID := order.GetCustomer().ExternalID
+		if strProductID == nil || strCustomerID == nil {
 			continue
 		}
 		productID, _ := uuid.Parse(*strProductID)
-		userID, _ := uuid.Parse(*strUserID)
+		customerID, _ := uuid.Parse(*strCustomerID)
 
 		if !slices.ContainsFunc(stored, func(s models.DotfilesPurchase) bool {
-			return s.ProductID == productID && s.UserID == userID
+			return s.ProductID == productID && s.UserID == customerID
 		}) {
 			df, err := repository.FindDotfilesByProductID(productID)
 			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					continue
+				}
 				return err
 			}
 
-			paidAmount := centsToPrice(data.Metadata.GetAmount())
-			err = repository.InsertDotfilesPurchaseTx(tx, userID, df.RiceID, paidAmount, data.Timestamp)
+			paidAmount := centsToPrice(meta.Amount)
+			err = repository.InsertDotfilesPurchaseTx(tx, customerID, df.RiceID, paidAmount, order.Timestamp)
 			if err != nil {
 				return err
 			}
@@ -83,12 +88,55 @@ func syncDotfilesPurchases() error {
 		return err
 	}
 
-	zap.L().Sugar().Infof("Synchronized %d new 'order.paid' events", new)
+	zap.L().Sugar().Infof("Synchronized %d new dotfiles purchases", new)
 	return nil
 }
 
-func syncSubscriptions() {
+func syncSubscriptions() error {
+	subs, err := SubscriptionList()
+	if err != nil {
+		return err
+	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	tx, err := repository.StartTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// upsert active subscriptions
+	seen := []uuid.UUID{}
+	for _, sub := range subs {
+		strCustomerID := sub.Customer.ExternalID
+		if strCustomerID == nil {
+			continue
+		}
+		customerID, _ := uuid.Parse(*strCustomerID)
+		seen = append(seen, customerID)
+
+		err := repository.InsertUserSubscriptionTx(tx, customerID, sub.CurrentPeriodEnd)
+		if err != nil {
+			return err
+		}
+	}
+
+	// delete unseen
+	cancelled, err := repository.CancelUserSubscriptionsExcept(tx, seen)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	l := zap.L().Sugar()
+	l.Infof("Upserted %d subscriptions", len(seen))
+	l.Infof("Canceled %d subscriptions", cancelled)
+	return nil
 }
 
 func centsToPrice(cents int64) float32 {
