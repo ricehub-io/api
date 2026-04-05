@@ -288,3 +288,12 @@ CREATE TABLE rice_leaderboard (
     snapshot_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (rice_id, period)
 );
+
+-- user subscription status
+CREATE TYPE subscription_status AS ENUM (
+    'active',
+    'canceled'
+);
+
+ALTER TABLE user_subscriptions
+ADD COLUMN status subscription_status NOT NULL;

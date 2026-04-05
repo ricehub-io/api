@@ -8,6 +8,7 @@ import (
 	"ricehub/internal/repository"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/polarsource/polar-go/models/components"
 	svix "github.com/svix/svix-webhooks/go"
 	"go.uber.org/zap"
@@ -165,16 +166,17 @@ func handleSubscriptionActive(rawData json.RawMessage) error {
 		return nil
 	}
 
-	userID := data.Customer.ExternalID
-	if userID == nil {
+	strCustomerID := data.Customer.ExternalID
+	if strCustomerID == nil {
 		logger.Warn(
 			"Received 'subscription.active' for nil external user",
 			zap.String("data", string(rawData)),
 		)
 		return nil
 	}
+	customerID, _ := uuid.Parse(*strCustomerID)
 
-	sub, err := repository.InsertUserSubscription(*userID, data.CurrentPeriodEnd)
+	sub, err := repository.InsertUserSubscription(customerID, data.CurrentPeriodEnd)
 	if err != nil {
 		logger.Error(
 			"Failed to insert user subscription",
@@ -186,7 +188,7 @@ func handleSubscriptionActive(rawData json.RawMessage) error {
 
 	logger.Info(
 		"New user subscription",
-		zap.Stringp("user_id", userID),
+		zap.Stringp("customer_id", strCustomerID),
 		zap.String("subscription_id", sub.ID.String()),
 	)
 
@@ -205,21 +207,24 @@ func handleOrderPaid(rawData json.RawMessage) error {
 		return err
 	}
 
-	userID := data.Customer.ExternalID
-	if userID == nil {
+	strProductID := data.ProductID
+	if strProductID == nil ||
+		*strProductID == config.Config.Polar.SubscriptionProductID.String() {
+		return nil
+	}
+	productID, _ := uuid.Parse(*strProductID)
+
+	strUserID := data.Customer.ExternalID
+	if strUserID == nil {
 		logger.Warn(
 			"External customer ID from order data is nil",
 			zap.String("raw_data", string(rawData)),
 		)
 		return nil
 	}
+	userID, _ := uuid.Parse(*strUserID)
 
-	if *data.ProductID == config.Config.Polar.SubscriptionProductID.String() {
-		// subscription is handled elsewhere
-		return nil
-	}
-
-	df, err := repository.FindDotfilesByProductID(*data.ProductID)
+	df, err := repository.FindDotfilesByProductID(productID)
 	if err != nil {
 		logger.Error(
 			"Unexpected database error occurred when trying to find dotfiles by product ID",
@@ -232,17 +237,17 @@ func handleOrderPaid(rawData json.RawMessage) error {
 	paid_amount := float32(data.TotalAmount) / 100.0
 	logger.Info(
 		"Received order.paid event",
-		zap.Stringp("user_id", userID),
+		zap.Stringp("user_id", strUserID),
 		zap.String("rice_id", df.RiceID.String()),
 		zap.Float32("paid_amount", paid_amount),
 	)
 
-	err = repository.InsertDotfilesPurchase(*userID, df.RiceID, paid_amount)
+	err = repository.InsertDotfilesPurchase(userID, df.RiceID, paid_amount)
 	if err != nil {
 		logger.Error(
 			"Unexpected error received from database when inserting dotfiles purchase",
 			zap.Error(err),
-			zap.Stringp("user_id", userID),
+			zap.Stringp("user_id", strUserID),
 			zap.String("rice_id", df.RiceID.String()),
 			zap.Float32("paid_amount", paid_amount),
 		)
