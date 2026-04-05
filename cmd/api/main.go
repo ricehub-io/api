@@ -60,6 +60,7 @@ func run() error {
 	grpc.Scanner.Init("localhost:40400")
 	defer grpc.Scanner.Close() //nolint:errcheck
 
+	go polar.StartSyncThread()
 	go updateLeaderboard()
 
 	gin.SetMode(gin.ReleaseMode)

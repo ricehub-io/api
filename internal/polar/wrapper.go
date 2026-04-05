@@ -2,8 +2,10 @@ package polar
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"ricehub/internal/config"
+	"time"
 
 	"github.com/google/uuid"
 	polargo "github.com/polarsource/polar-go"
@@ -144,6 +146,50 @@ func CreateCheckoutSession(userID string, productID uuid.UUID) (res *operations.
 	}
 
 	res, err = sdk.Checkouts.Create(ctx, checkout)
+	return
+}
+
+func EventList(eventType components.SystemEventType, eventsAfter *time.Time) (events []components.SystemEvent, err error) {
+	eventName := string(eventType)
+	zap.L().Info("Fetching Polar's event list",
+		zap.String("event_name", eventName),
+		zap.Timep("events_after", eventsAfter),
+	)
+
+	request := operations.EventsListRequest{
+		Name: &operations.NameFilter{
+			Str: polargo.String(eventName),
+		},
+		StartTimestamp: eventsAfter,
+	}
+
+	res, err := sdk.Events.List(ctx, request)
+	if err != nil {
+		return
+	}
+
+	respList := res.GetResponseEventsList()
+	if respList == nil {
+		return events, fmt.Errorf("response events list is nil")
+	}
+
+	resList := respList.ListResourceEvent
+	if resList == nil {
+		return events, fmt.Errorf("resource event list is nil")
+	}
+	allEvents := resList.Items
+
+	// Make sure that only given event type is in the list
+	// because later on the function user needs to do some
+	// shenanigans with nullable fields to get the actual event data
+	// unaimeds: ik it might not be the best performance-wise but its called twice a day.
+	for _, ev := range allEvents {
+		if ev.Type != components.EventUnionTypeSystemEvent || ev.SystemEvent.Type != eventType {
+			continue
+		}
+		events = append(events, *ev.SystemEvent)
+	}
+
 	return
 }
 

@@ -239,3 +239,8 @@ type LeaderboardRice struct {
 }
 
 type LeaderboardRices []LeaderboardRice
+
+type DotfilesPurchase struct {
+	UserID    uuid.UUID
+	ProductID uuid.UUID
+}
