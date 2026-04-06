@@ -32,14 +32,14 @@ func CreateComment(userID uuid.UUID, dto models.CreateCommentDTO) (models.RiceCo
 func ListComments(limit int) ([]models.CommentWithUser, errs.AppError) {
 	comments, err := repository.FetchRecentComments(limit)
 	if err != nil {
-		return comments, errs.InternalError(err)
+		return nil, errs.InternalError(err)
 	}
 
 	return comments, nil
 }
 
-// GetComment fetches given comment and returns CommentNotFound if not found.
-func GetComment(commentID uuid.UUID) (models.RiceCommentWithSlug, errs.AppError) {
+// GetCommentByID fetches given comment and returns CommentNotFound if not found.
+func GetCommentByID(commentID uuid.UUID) (models.RiceCommentWithSlug, errs.AppError) {
 	comment, err := repository.FindCommentByID(commentID)
 	if err != nil {
 		return comment, errs.FromDBError(err, errs.CommentNotFound)

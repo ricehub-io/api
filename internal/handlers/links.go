@@ -3,24 +3,16 @@ package handlers
 import (
 	"net/http"
 	"ricehub/internal/config"
-	"ricehub/internal/errs"
-	"ricehub/internal/polar"
-	"ricehub/internal/repository"
 	"ricehub/internal/security"
+	"ricehub/internal/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func GetLinkByName(c *gin.Context) {
-	name := c.Param("name")
-
-	link, err := repository.FindLink(name)
+	link, err := services.GetLinkByName(c.Param("name"))
 	if err != nil {
-		c.Error(errs.FromDBError(err, errs.UserError(
-			"Link with provided name not found",
-			http.StatusNotFound,
-		)))
+		c.Error(err)
 		return
 	}
 
@@ -29,47 +21,17 @@ func GetLinkByName(c *gin.Context) {
 
 func GetSubscriptionLink(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, _ := uuid.Parse(token.Subject)
-
-	// check if user exists
-	user, err := repository.FindUserByID(userID)
+	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {
-		c.Error(errs.FromDBError(err, errs.UserNotFound))
+		c.Error(err)
 		return
 	}
 
-	// check if user is banned
-	if user.IsBanned {
-		c.Error(errs.UserError(
-			"Your account has been restricted",
-			http.StatusForbidden,
-		))
-		return
-	}
-
-	// check if user doesnt have existing subscription
-	subActive, err := repository.SubscriptionActive(user.ID)
+	checkoutURL, err := services.GetSubscriptionLink(userID, config.Config.Polar.SubscriptionProductID)
 	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-	if subActive {
-		c.Error(errs.UserError(
-			"You already have an active subscription",
-			http.StatusConflict,
-		))
+		c.Error(err)
 		return
 	}
 
-	// create new checkout session
-	res, err := polar.CreateCheckoutSession(token.Subject, config.Config.Polar.SubscriptionProductID)
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-
-	// return the checkoutUrl
-	c.JSON(http.StatusOK, gin.H{
-		"checkoutUrl": res.Checkout.URL,
-	})
+	c.JSON(http.StatusOK, gin.H{"checkoutUrl": checkoutURL})
 }

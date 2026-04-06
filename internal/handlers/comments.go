@@ -57,7 +57,7 @@ func ListComments(c *gin.Context) {
 	c.JSON(http.StatusOK, models.CommentsWithUserToDTO(comments))
 }
 
-func GetComment(c *gin.Context) {
+func GetCommentByID(c *gin.Context) {
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidCommentID)
@@ -65,7 +65,7 @@ func GetComment(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	comment, err := services.GetComment(commentID)
+	comment, err := services.GetCommentByID(commentID)
 	if err != nil {
 		c.Error(err)
 		return

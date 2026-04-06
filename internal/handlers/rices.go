@@ -1104,14 +1104,12 @@ func PurchaseDotfiles(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, _ := uuid.Parse(token.Subject)
 
-	// check if rice exists
 	rice, err := repository.FindRiceByID(&userID, path.RiceID)
 	if err != nil {
 		c.Error(errs.FromDBError(err, errs.RiceNotFound))
 		return
 	}
 
-	// check if dotfiles are paid
 	if rice.Dotfiles.Type == models.Free {
 		c.Error(errs.UserError(
 			"You can't purchase free dotfiles",
@@ -1120,7 +1118,6 @@ func PurchaseDotfiles(c *gin.Context) {
 		return
 	}
 
-	// check if user owns the dotfiles
 	if rice.IsOwned {
 		c.Error(errs.UserError(
 			"You already own these dotfiles",
@@ -1129,8 +1126,7 @@ func PurchaseDotfiles(c *gin.Context) {
 		return
 	}
 
-	// create new checkout session
-	res, err := polar.CreateCheckoutSession(token.Subject, *rice.Dotfiles.ProductID)
+	res, err := polar.CreateCheckoutSession(userID, *rice.Dotfiles.ProductID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return

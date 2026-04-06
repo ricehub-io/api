@@ -10,7 +10,7 @@ import (
 func ServiceStatistics() (models.ServiceStatistics, errs.AppError) {
 	stats, err := repository.FetchServiceStatistics()
 	if err != nil {
-		return stats, errs.InternalError(err)
+		return models.ServiceStatistics{}, errs.InternalError(err)
 	}
 
 	return stats, nil

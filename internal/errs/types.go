@@ -129,3 +129,10 @@ var QueryRequired = UserError(
 	"At least one query parameter is required",
 	http.StatusBadRequest,
 )
+
+// Links
+var LinkNotFound = UserError("Link not found", http.StatusNotFound)
+var ActiveSubscription = UserError(
+	"You already have an active subscription",
+	http.StatusConflict,
+)
