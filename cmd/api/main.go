@@ -309,15 +309,15 @@ func registerReportRoutes(r *gin.Engine) {
 	reports.POST("", security.PathRateLimitMiddleware(10, 24*time.Hour), handlers.CreateReport)
 
 	admin := reports.Group("", security.AdminMiddleware)
-	admin.GET("", handlers.FetchReports)
-	admin.GET("/:reportId", handlers.GetReportByID)
-	admin.POST("/:reportId/close", handlers.CloseReport)
+	admin.GET("", handlers.ListReports)
+	admin.GET("/:id", handlers.GetReportByID)
+	admin.POST("/:id/close", handlers.CloseReport)
 }
 
 func registerTagRoutes(r *gin.Engine) {
 	tags := r.Group("/tags")
 
-	tags.GET("", handlers.GetAllTags)
+	tags.GET("", handlers.ListTags)
 
 	admin := tags.Group("", security.AuthMiddleware, security.AdminMiddleware)
 	admin.POST("", handlers.CreateTag)
@@ -328,7 +328,7 @@ func registerTagRoutes(r *gin.Engine) {
 func registerProfileRoutes(r *gin.Engine) {
 	profiles := r.Group("/profiles")
 
-	profiles.GET("/:username", handlers.GetUserProfile)
+	profiles.GET("/:username", handlers.GetProfileByUsername)
 }
 
 func registerAdminRoutes(r *gin.Engine) {

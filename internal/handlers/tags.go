@@ -14,21 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func GetAllTags(c *gin.Context) {
-	tags, err := repository.FetchTags()
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-
-	dtos := make([]models.TagDTO, len(tags))
-	for i, tag := range tags {
-		dtos[i] = tag.ToDTO()
-	}
-
-	c.JSON(http.StatusOK, dtos)
-}
-
 func CreateTag(c *gin.Context) {
 	var newTag *models.TagNameDTO
 	if err := validation.ValidateJSON(c, &newTag); err != nil {
@@ -49,6 +34,21 @@ func CreateTag(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, tag.ToDTO())
+}
+
+func ListTags(c *gin.Context) {
+	tags, err := repository.FetchTags()
+	if err != nil {
+		c.Error(errs.InternalError(err))
+		return
+	}
+
+	dtos := make([]models.TagDTO, len(tags))
+	for i, tag := range tags {
+		dtos[i] = tag.ToDTO()
+	}
+
+	c.JSON(http.StatusOK, dtos)
 }
 
 func UpdateTag(c *gin.Context) {

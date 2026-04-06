@@ -38,6 +38,25 @@ The project has three layers, each with its own naming convention:
 
 Use a descriptive domain verb instead when the operation isn't plain CRUD (e.g. `PublishRice`, `BanUser`).
 
+### Service layer rules
+
+Services contain all business logic. Keep them free of HTTP concerns.
+
+**Do:**
+
+- Validate business rules (e.g. blacklist checks, ownership checks)
+- Coordinate multiple repository calls
+- Hash passwords, generate tokens, call external integrations (Polar, gRPC)
+- Return domain models (`models.User`, `models.Rice`, etc.)
+- Return predefined errors from the `errs` package
+- Use a result struct when returning more than two values
+
+**Don't:**
+
+- Import `github.com/gin-gonic/gin` or `net/http`
+- Return response DTOs (types with `json` tags meant for HTTP responses), instead return domain models and let handlers call `.ToDTO()`
+- Call the repository directly from a handler, all business logic goes through the service layer
+
 **Handlers** (`internal/handlers`) - maps to HTTP endpoints, uses the same verbs as services:
 
 | HTTP method  | Verb     | Example          |

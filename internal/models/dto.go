@@ -116,8 +116,8 @@ type UpdateCommentDTO struct {
 // REPORTS
 type CreateReportDTO struct {
 	Reason    string  `json:"reason" binding:"required,min=8,max=1024"`
-	RiceID    *string `json:"riceId" binding:"omitempty,uuid"`
-	CommentID *string `json:"commentId" binding:"omitempty,uuid"`
+	RiceID    *string `json:"riceId" binding:"omitempty,uuid,excluded_with=CommentID,required_without=CommentID"`
+	CommentID *string `json:"commentId" binding:"omitempty,uuid,excluded_with=RiceID,required_without=RiceID"`
 }
 
 // Responses

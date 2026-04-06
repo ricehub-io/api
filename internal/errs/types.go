@@ -93,6 +93,18 @@ var ReportNotFound = UserError(
 	"Report with provided ID not found!",
 	http.StatusNotFound,
 )
+var InvalidReportID = UserError(
+	"Invalid report ID path parameter! It must be a valid UUID.",
+	http.StatusBadRequest,
+)
+var ResourceNotFound = UserError(
+	"Resource with given ID not found",
+	http.StatusNotFound,
+)
+var AlreadyReported = UserError(
+	"You already submitted similar report",
+	http.StatusConflict,
+)
 
 // Rices
 var RiceNotFound = UserError("Rice not found", http.StatusNotFound)
