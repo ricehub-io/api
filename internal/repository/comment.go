@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"ricehub/internal/models"
+
+	"github.com/google/uuid"
 )
 
-func InsertComment(riceID string, authorID string, content string) (models.RiceComment, error) {
+func InsertComment(riceID, authorID uuid.UUID, content string) (models.RiceComment, error) {
 	const query = `
 	INSERT INTO rice_comments (rice_id, author_id, content)
 	VALUES ($1, $2, $3)
@@ -15,7 +17,7 @@ func InsertComment(riceID string, authorID string, content string) (models.RiceC
 	return rowToStruct[models.RiceComment](query, riceID, authorID, content)
 }
 
-func UserOwnsComment(commentID string, userID string) (exists bool, err error) {
+func UserOwnsComment(commentID, userID uuid.UUID) (exists bool, err error) {
 	const query = `
 	SELECT EXISTS (
 		SELECT 1
@@ -53,7 +55,7 @@ func FetchCommentsByRiceID(riceID string) ([]models.CommentWithUser, error) {
 }
 
 // deluxe version of find comment because it fetches username and slug too
-func FindCommentByID(commentID string) (models.RiceCommentWithSlug, error) {
+func FindCommentByID(commentID uuid.UUID) (models.RiceCommentWithSlug, error) {
 	const query = `
 	SELECT rc.*, r.slug AS rice_slug, u.username AS rice_author_username
 	FROM rice_comments rc
@@ -61,11 +63,10 @@ func FindCommentByID(commentID string) (models.RiceCommentWithSlug, error) {
 	JOIN users u ON u.id = r.author_id
 	WHERE rc.id = $1
 	`
-
 	return rowToStruct[models.RiceCommentWithSlug](query, commentID)
 }
 
-func UpdateComment(commentID string, content string) (models.RiceComment, error) {
+func UpdateComment(commentID uuid.UUID, content string) (models.RiceComment, error) {
 	const query = `
 	UPDATE rice_comments SET content = $1 WHERE id = $2
 	RETURNING *
@@ -74,7 +75,7 @@ func UpdateComment(commentID string, content string) (models.RiceComment, error)
 	return rowToStruct[models.RiceComment](query, content, commentID)
 }
 
-func DeleteComment(commentID string) error {
+func DeleteComment(commentID uuid.UUID) error {
 	const query = `
 	DELETE FROM rice_comments
 	WHERE id = $1

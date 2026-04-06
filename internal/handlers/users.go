@@ -26,20 +26,20 @@ type usersPath struct {
 	UserID string `uri:"id" binding:"required,uuid"`
 }
 
-func findUser(userID string) (models.User, error) {
+func findUser(userID uuid.UUID) (models.User, errs.AppError) {
 	user, err := repository.FindUserByID(userID)
 	if err != nil {
 		return user, errs.FromDBError(err, errs.UserNotFound)
 	}
-
 	return user, nil
 }
 
 // Checks if user can modify the resource.
 //
 // It protects user data from being modified by other non-admin users.
-func preCheck(token *security.AccessToken, userID string) (models.User, error) {
-	if token.Subject != userID && !token.IsAdmin {
+func preCheck(token *security.AccessToken, userID uuid.UUID) (models.User, errs.AppError) {
+	subID, _ := uuid.Parse(token.Subject)
+	if subID != userID && !token.IsAdmin {
 		return models.User{}, errs.UserError(
 			"You can't access this resource",
 			http.StatusForbidden,
@@ -194,10 +194,11 @@ func GetUserByID(c *gin.Context) {
 		c.Error(errs.InvalidUserID)
 		return
 	}
+	userID, _ := uuid.Parse(path.UserID)
 
 	token := c.MustGet("token").(*security.AccessToken)
 
-	user, err := preCheck(token, path.UserID)
+	user, err := preCheck(token, userID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -271,19 +272,22 @@ func FetchPurchasedRices(c *gin.Context) {
 		return
 	}
 
-	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
-		c.Error(err)
-		return
-	}
+	var err error
 
-	user, err := preCheck(token, path.UserID)
+	token := c.MustGet("token").(*security.AccessToken)
+	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	rices, err := repository.FetchUserPurchasedRices(user.ID.String())
+	user, err := preCheck(token, userID)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	rices, err := repository.FetchUserPurchasedRices(user.ID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return
@@ -302,13 +306,13 @@ func UpdateDisplayName(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 
 	// check if caller is banned
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	userID, err := security.VerifyUserID(token.Subject)
+	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	_, err := preCheck(token, path.UserID)
-	if err != nil {
+	if _, err := preCheck(token, userID); err != nil {
 		c.Error(err)
 		return
 	}
@@ -325,8 +329,7 @@ func UpdateDisplayName(c *gin.Context) {
 		return
 	}
 
-	err = repository.UpdateUserDisplayName(path.UserID, body.DisplayName)
-	if err != nil {
+	if err := repository.UpdateUserDisplayName(userID, body.DisplayName); err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
@@ -341,13 +344,16 @@ func UpdatePassword(c *gin.Context) {
 		return
 	}
 
+	var err error
+
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	userID, err := security.VerifyUserID(token.Subject)
+	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	user, err := preCheck(token, path.UserID)
+	user, err := preCheck(token, userID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -393,14 +399,16 @@ func UploadAvatar(c *gin.Context) {
 		return
 	}
 
+	var err error
+
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	userID, err := security.VerifyUserID(token.Subject)
+	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	_, err := preCheck(token, path.UserID)
-	if err != nil {
+	if _, err := preCheck(token, userID); err != nil {
 		c.Error(err)
 		return
 	}
@@ -555,19 +563,18 @@ func DeleteAvatar(c *gin.Context) {
 	}
 
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
-		c.Error(err)
-		return
-	}
-
-	_, err := preCheck(token, path.UserID)
+	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	err = repository.UpdateUserAvatarPath(path.UserID, nil)
-	if err != nil {
+	if _, err := preCheck(token, userID); err != nil {
+		c.Error(err)
+		return
+	}
+
+	if err := repository.UpdateUserAvatarPath(path.UserID, nil); err != nil {
 		c.Error(errs.InternalError(err))
 		return
 	}
@@ -582,13 +589,16 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
+	var err error
+
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	userID, err := security.VerifyUserID(token.Subject)
+	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	user, err := preCheck(token, path.UserID)
+	user, err := preCheck(token, userID)
 	if err != nil {
 		c.Error(err)
 		return

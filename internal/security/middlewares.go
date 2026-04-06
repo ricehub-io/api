@@ -67,7 +67,7 @@ func AdminMiddleware(c *gin.Context) {
 	}
 
 	// check if admin is banned
-	if err := VerifyUserID(token.Subject); err != nil {
+	if _, err := VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		c.Abort()
 		return

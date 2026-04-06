@@ -296,9 +296,9 @@ func registerCommentRoutes(r *gin.Engine) {
 
 	comments := r.Group("/comments", security.AuthMiddleware)
 
-	comments.GET("", security.AdminMiddleware, handlers.GetRecentComments)
-	comments.GET("/:id", security.PathRateLimitMiddleware(10, time.Minute), handlers.GetCommentByID)
-	comments.POST("", maintenance, security.PathRateLimitMiddleware(10, time.Hour), handlers.AddComment)
+	comments.GET("", security.AdminMiddleware, handlers.ListComments)
+	comments.GET("/:id", security.PathRateLimitMiddleware(10, time.Minute), handlers.GetComment)
+	comments.POST("", maintenance, security.PathRateLimitMiddleware(10, time.Hour), handlers.CreateComment)
 	comments.PATCH("/:id", maintenance, security.PathRateLimitMiddleware(10, time.Hour), handlers.UpdateComment)
 	comments.DELETE("/:id", maintenance, handlers.DeleteComment)
 }

@@ -82,6 +82,7 @@ var InvalidRefreshToken = UserError(
 )
 
 // Comments
+var CommentNotFound = UserError("Comment not found", http.StatusNotFound)
 var InvalidCommentID = UserError(
 	"Invalid comment ID path parameter! It must be a valid UUID.",
 	http.StatusBadRequest,

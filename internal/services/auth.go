@@ -94,8 +94,9 @@ func RefreshToken(refreshStr string) (string, errs.AppError) {
 
 		return "", errs.UserError(err.Error(), http.StatusUnauthorized)
 	}
+	userID, _ := uuid.Parse(refresh.Subject)
 
-	user, err := repository.FindUserByID(refresh.Subject)
+	user, err := repository.FindUserByID(userID)
 	if err != nil {
 		return "", errs.InvalidRefreshToken
 	}

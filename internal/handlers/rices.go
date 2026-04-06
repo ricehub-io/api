@@ -367,7 +367,7 @@ func moveFile(srcRoot, destRoot *os.Root, srcName, destName string) error {
 
 func CreateRice(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -529,7 +529,7 @@ func CreateRice(c *gin.Context) {
 
 func UpdateRiceMetadata(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -578,7 +578,7 @@ func UpdateRiceMetadata(c *gin.Context) {
 
 func AttachTags(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -609,7 +609,7 @@ func AttachTags(c *gin.Context) {
 
 func UnattachTags(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -642,7 +642,7 @@ func UnattachTags(c *gin.Context) {
 
 func UpdateDotfiles(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -698,7 +698,7 @@ func UpdateDotfiles(c *gin.Context) {
 // TODO: a lot of duplicated code in endpoints, please encapsulate it into separate function that will be called by all handlers
 func UpdateDotfilesType(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -797,7 +797,7 @@ func UpdateDotfilesType(c *gin.Context) {
 
 func UpdateDotfilesPrice(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -853,7 +853,7 @@ func UpdateDotfilesPrice(c *gin.Context) {
 
 func AddScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -998,7 +998,7 @@ func UpdateRiceState(c *gin.Context) {
 
 func DeleteScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -1141,7 +1141,7 @@ func PurchaseDotfiles(c *gin.Context) {
 
 func DeleteRice(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	if err := security.VerifyUserID(token.Subject); err != nil {
+	if _, err := security.VerifyUserID(token.Subject); err != nil {
 		c.Error(err)
 		return
 	}

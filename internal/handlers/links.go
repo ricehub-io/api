@@ -9,6 +9,7 @@ import (
 	"ricehub/internal/security"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func GetLinkByName(c *gin.Context) {
@@ -28,9 +29,10 @@ func GetLinkByName(c *gin.Context) {
 
 func GetSubscriptionLink(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
+	userID, _ := uuid.Parse(token.Subject)
 
 	// check if user exists
-	user, err := repository.FindUserByID(token.Subject)
+	user, err := repository.FindUserByID(userID)
 	if err != nil {
 		c.Error(errs.FromDBError(err, errs.UserNotFound))
 		return

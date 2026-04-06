@@ -360,7 +360,7 @@ func FetchUserRices(userID uuid.UUID, callerID *uuid.UUID) ([]models.PartialRice
 	return rowsToStruct[models.PartialRice](query, userID, callerID)
 }
 
-func FetchUserPurchasedRices(userID string) ([]models.PartialRice, error) {
+func FetchUserPurchasedRices(userID uuid.UUID) ([]models.PartialRice, error) {
 	const query = `
 	SELECT
 		r.id, r.title, r.slug, r.created_at, r.state,

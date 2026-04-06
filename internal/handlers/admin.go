@@ -2,16 +2,15 @@ package handlers
 
 import (
 	"net/http"
-	"ricehub/internal/errs"
-	"ricehub/internal/repository"
+	"ricehub/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
 func ServiceStatistics(c *gin.Context) {
-	stats, err := repository.FetchServiceStatistics()
+	stats, err := services.ServiceStatistics()
 	if err != nil {
-		c.Error(errs.InternalError(err))
+		c.Error(err)
 		return
 	}
 

@@ -104,7 +104,7 @@ type UpdateDotfilesPriceDTO struct {
 }
 
 // COMMENTS
-type AddCommentDTO struct {
+type CreateCommentDTO struct {
 	RiceID  string `json:"riceId" binding:"required,uuid"`
 	Content string `json:"content" binding:"required,min=8,max=128"`
 }

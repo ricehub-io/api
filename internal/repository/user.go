@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"ricehub/internal/models"
+
+	"github.com/google/uuid"
 )
 
 func UsernameExists(username string) (exists bool, err error) {
@@ -50,7 +52,7 @@ func FindUserByUsername(username string) (models.User, error) {
 	return rowToStruct[models.User](query, username)
 }
 
-func FindUserByID(userID string) (models.User, error) {
+func FindUserByID(userID uuid.UUID) (models.User, error) {
 	const query = "SELECT * FROM users_with_ban_status WHERE id = $1 LIMIT 1"
 	return rowToStruct[models.User](query, userID)
 }
@@ -62,7 +64,7 @@ func FetchUserAvatarPath(userID string) (avatarPath *string, err error) {
 }
 
 // should I just use single `UpdateUser` function with struct of fields to update and utilize COALESCE?
-func UpdateUserDisplayName(userID string, displayName string) error {
+func UpdateUserDisplayName(userID uuid.UUID, displayName string) error {
 	const query = "UPDATE users SET display_name = $1 WHERE id = $2"
 	_, err := db.Exec(context.Background(), query, displayName, userID)
 	return err
