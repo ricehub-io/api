@@ -38,7 +38,7 @@ func InsertUserSubscriptionTx(
 	return err
 }
 
-func SubscriptionActive(userID string) (active bool, err error) {
+func SubscriptionActive(userID uuid.UUID) (active bool, err error) {
 	const query = `
 	SELECT EXISTS (
 		SELECT 1

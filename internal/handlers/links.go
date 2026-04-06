@@ -46,7 +46,7 @@ func GetSubscriptionLink(c *gin.Context) {
 	}
 
 	// check if user doesnt have existing subscription
-	subActive, err := repository.SubscriptionActive(token.Subject)
+	subActive, err := repository.SubscriptionActive(user.ID)
 	if err != nil {
 		c.Error(errs.InternalError(err))
 		return

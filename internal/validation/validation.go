@@ -84,7 +84,7 @@ func InitValidator() {
 	}
 }
 
-func checkValidationErrors(err error) error {
+func checkValidationErrors(err error) *errs.AppError {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
 		translated := slices.Collect(maps.Values(ve.Translate(translator)))
@@ -96,7 +96,7 @@ func checkValidationErrors(err error) error {
 	return errs.UserError("Failed to parse and decode request body", http.StatusBadRequest)
 }
 
-func ValidateJSON(c *gin.Context, obj any) error {
+func ValidateJSON(c *gin.Context, obj any) *errs.AppError {
 	if err := c.ShouldBindJSON(obj); err != nil {
 		return checkValidationErrors(err)
 	}

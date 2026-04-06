@@ -43,14 +43,27 @@ var NoAccess = UserError(
 	http.StatusForbidden,
 )
 var MissingFile = UserError("Required file is missing", http.StatusBadRequest)
+var BlacklistedUsername = UserError(
+	"Username contains blacklisted words",
+	http.StatusUnprocessableEntity,
+)
 var BlacklistedDisplayName = UserError(
 	"Username contains blacklisted phrases",
 	http.StatusUnprocessableEntity,
 )
 
 // Auth
+var UsernameTaken = UserError("This username is not available", http.StatusConflict)
 var InvalidCredentials = UserError(
 	"Invalid credentials provided",
+	http.StatusUnauthorized,
+)
+var RefreshTokenExpired = UserError(
+	"Refresh token is expired, please authenticate again.",
+	http.StatusUnauthorized,
+)
+var InvalidRefreshToken = UserError(
+	"Invalid refresh token, please authenticate again.",
 	http.StatusUnauthorized,
 )
 

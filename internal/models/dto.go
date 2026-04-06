@@ -12,7 +12,7 @@ import (
 type RegisterDTO struct {
 	Username    string `json:"username" binding:"required,min=4,max=14,alphanum"`
 	DisplayName string `json:"displayName" binding:"required,min=3,max=20,displayname"`
-	Password    string `json:"password" binding:"required,min=6,max=512"`
+	Password    string `json:"password" binding:"required,min=6,max=128"`
 }
 
 type LoginDTO struct {
