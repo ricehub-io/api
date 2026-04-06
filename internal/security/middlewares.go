@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func ValidateToken(tokenStr string) (*AccessToken, *errs.AppError) {
+func ValidateToken(tokenStr string) (*AccessToken, errs.AppError) {
 	if len(tokenStr) == 0 {
 		return nil, errs.UserError("Authorization header is required", http.StatusForbidden)
 	}

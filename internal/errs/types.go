@@ -5,33 +5,47 @@ import (
 	"strings"
 )
 
-type AppError struct {
+type AppError interface {
+	error
+	StatusCode() int
+}
+
+type appError struct {
 	Code     int
 	Messages []string
 	Err      error
 }
 
-func (e *AppError) Error() string {
+func (e *appError) Error() string {
 	return strings.Join(e.Messages, ", ")
 }
 
-func InternalError(err error) *AppError {
-	return &AppError{
+func (e *appError) StatusCode() int {
+	return e.Code
+}
+
+// unaimeds: required for errors.Is to work
+func (e *appError) Unwrap() error {
+	return e.Err
+}
+
+func InternalError(err error) AppError {
+	return &appError{
 		Code:     http.StatusInternalServerError,
 		Messages: []string{"Unexpected internal server error occurred"},
 		Err:      err,
 	}
 }
 
-func UserError(message string, code int) *AppError {
-	return &AppError{
+func UserError(message string, code int) AppError {
+	return &appError{
 		Code:     code,
 		Messages: []string{message},
 	}
 }
 
-func UserErrors(messages []string, code int) *AppError {
-	return &AppError{
+func UserErrors(messages []string, code int) AppError {
+	return &appError{
 		Code:     code,
 		Messages: messages,
 	}

@@ -29,7 +29,7 @@ func ErrorHandler(logger *zap.Logger) gin.HandlerFunc {
 
 		err := errs.Last().Err
 
-		var appErr *AppError
+		var appErr *appError
 		if ok := errors.As(err, &appErr); ok {
 			if appErr.Err != nil {
 				logInternalError(logger, appErr.Err)

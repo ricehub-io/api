@@ -10,14 +10,14 @@ import (
 // ########### AppError (constructors) #############
 // #################################################
 func TestAppError_Error_SingleMessage(t *testing.T) {
-	err := &AppError{Messages: []string{"something went wrong"}}
+	err := &appError{Messages: []string{"something went wrong"}}
 	if err.Error() != "something went wrong" {
 		t.Errorf("unexpected: %q", err.Error())
 	}
 }
 
 func TestAppError_Error_MultipleMessages(t *testing.T) {
-	err := &AppError{
+	err := &appError{
 		Messages: []string{
 			"field a is required",
 			"field b is required",
@@ -32,7 +32,7 @@ func TestAppError_Error_MultipleMessages(t *testing.T) {
 }
 
 func TestUserError_SetsCodeAndMessage(t *testing.T) {
-	err := UserError("not found", http.StatusNotFound)
+	err := UserError("not found", http.StatusNotFound).(*appError)
 
 	if err.Code != http.StatusNotFound {
 		t.Errorf("want code 404, got %d", err.Code)
@@ -50,7 +50,7 @@ func TestUserError_SetsCodeAndMessage(t *testing.T) {
 func TestUserErrors_SetsMultipleMessages(t *testing.T) {
 	msgs := []string{"name too short", "email invalid"}
 
-	err := UserErrors(msgs, http.StatusBadRequest)
+	err := UserErrors(msgs, http.StatusBadRequest).(*appError)
 	if err.Code != http.StatusBadRequest {
 		t.Errorf("want 400, got %d", err.Code)
 	}
@@ -64,17 +64,17 @@ func TestInternalError_WrapsOriginalError(t *testing.T) {
 	original := errors.New("db connection lost")
 	err := InternalError(original)
 
-	if err.Code != http.StatusInternalServerError {
-		t.Errorf("want 500, got %d", err.Code)
+	if err.StatusCode() != http.StatusInternalServerError {
+		t.Errorf("want 500, got %d", err.StatusCode())
 	}
 
-	if !errors.Is(err.Err, original) {
+	if !errors.Is(err, original) {
 		t.Error("expected wrapped error to be the original")
 	}
 }
 
 func TestInternalError_MessageIsGeneric(t *testing.T) {
-	err := InternalError(errors.New("some db error"))
+	err := InternalError(errors.New("some db error")).(*appError)
 
 	// must not leak internal details to the caller
 	if len(err.Messages) != 1 {

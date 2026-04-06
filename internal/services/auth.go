@@ -19,8 +19,7 @@ type LoginResult struct {
 	AccessToken, RefreshToken string
 }
 
-// TODO: define an app error interface instead of returning built-in error type.
-func Register(dto models.RegisterDTO) error {
+func Register(dto models.RegisterDTO) errs.AppError {
 	if validation.IsUsernameBlacklisted(dto.Username) {
 		return errs.BlacklistedUsername
 	}
@@ -49,7 +48,7 @@ func Register(dto models.RegisterDTO) error {
 	return nil
 }
 
-func Login(dto models.LoginDTO) (LoginResult, error) {
+func Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
 	var res LoginResult
 
 	user, err := repository.FindUserByUsername(dto.Username)
@@ -86,7 +85,7 @@ func Login(dto models.LoginDTO) (LoginResult, error) {
 	return res, nil
 }
 
-func RefreshToken(refreshStr string) (string, error) {
+func RefreshToken(refreshStr string) (string, errs.AppError) {
 	refresh, err := security.DecodeRefreshToken(refreshStr)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {

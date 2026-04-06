@@ -48,8 +48,8 @@ func TestValidateToken_EmptyString_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty token, got nil")
 	}
-	if err.Code != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.Code)
+	if err.StatusCode() != http.StatusForbidden {
+		t.Errorf("want 403, got %d", err.StatusCode())
 	}
 }
 
@@ -61,8 +61,8 @@ func TestValidateToken_WhitespaceOnly_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for whitespace-only token")
 	}
-	if err.Code != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.Code)
+	if err.StatusCode() != http.StatusForbidden {
+		t.Errorf("want 403, got %d", err.StatusCode())
 	}
 }
 
@@ -73,8 +73,8 @@ func TestValidateToken_NoBearerPrefix_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for missing Bearer prefix")
 	}
-	if err.Code != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.Code)
+	if err.StatusCode() != http.StatusForbidden {
+		t.Errorf("want 403, got %d", err.StatusCode())
 	}
 	if !strings.Contains(err.Error(), "Bearer") {
 		t.Errorf("error message should mention 'Bearer', got: %s", err.Error())
@@ -89,8 +89,8 @@ func TestValidateToken_LowercaseBearer_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for lowercase 'bearer' prefix")
 	}
-	if err.Code != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.Code)
+	if err.StatusCode() != http.StatusForbidden {
+		t.Errorf("want 403, got %d", err.StatusCode())
 	}
 }
 
@@ -102,8 +102,8 @@ func TestValidateToken_BearerWithNoToken_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for 'Bearer ' with no token")
 	}
-	if err.Code != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.Code)
+	if err.StatusCode() != http.StatusForbidden {
+		t.Errorf("want 403, got %d", err.StatusCode())
 	}
 }
 
@@ -114,8 +114,8 @@ func TestValidateToken_GarbageToken_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for garbage JWT")
 	}
-	if err.Code != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.Code)
+	if err.StatusCode() != http.StatusForbidden {
+		t.Errorf("want 403, got %d", err.StatusCode())
 	}
 }
 
@@ -127,8 +127,8 @@ func TestValidateToken_TamperedToken_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for tampered token")
 	}
-	if err.Code != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.Code)
+	if err.StatusCode() != http.StatusForbidden {
+		t.Errorf("want 403, got %d", err.StatusCode())
 	}
 }
 
@@ -139,8 +139,8 @@ func TestValidateToken_ExpiredToken_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for expired token")
 	}
-	if err.Code != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.Code)
+	if err.StatusCode() != http.StatusForbidden {
+		t.Errorf("want 403, got %d", err.StatusCode())
 	}
 	if !strings.Contains(err.Error(), "expired") {
 		t.Errorf("error message should mention 'expired', got: %s", err.Error())

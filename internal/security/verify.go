@@ -10,7 +10,7 @@ import (
 )
 
 // checks whether user can access the API - i.e. is not banned
-func VerifyUser(user models.User) *errs.AppError {
+func VerifyUser(user models.User) errs.AppError {
 	if !user.IsBanned {
 		return nil
 	}
