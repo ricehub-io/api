@@ -1,4 +1,4 @@
-# Contributing to the website
+# Contributing to the API
 
 First off, thank you for considering contributing <3.
 All types of contributions are encouraged and valued.
@@ -38,6 +38,16 @@ The project has three layers, each with its own naming convention:
 
 Use a descriptive domain verb instead when the operation isn't plain CRUD (e.g. `PublishRice`, `BanUser`).
 
+**Handlers** (`internal/handlers`) - maps to HTTP endpoints, uses the same verbs as services:
+
+| HTTP method  | Verb     | Example          |
+| ------------ | -------- | ---------------- |
+| POST         | `Create` | `CreateComment`  |
+| GET (single) | `Get`    | `GetCommentByID` |
+| GET (list)   | `List`   | `ListComments`   |
+| PUT / PATCH  | `Update` | `UpdateComment`  |
+| DELETE       | `Delete` | `DeleteComment`  |
+
 ### Service layer rules
 
 Services contain all business logic. Keep them free of HTTP concerns.
@@ -56,16 +66,6 @@ Services contain all business logic. Keep them free of HTTP concerns.
 - Import `github.com/gin-gonic/gin` or `net/http`
 - Return response DTOs (types with `json` tags meant for HTTP responses), instead return domain models and let handlers call `.ToDTO()`
 - Call the repository directly from a handler, all business logic goes through the service layer
-
-**Handlers** (`internal/handlers`) - maps to HTTP endpoints, uses the same verbs as services:
-
-| HTTP method  | Verb     | Example          |
-| ------------ | -------- | ---------------- |
-| POST         | `Create` | `CreateComment`  |
-| GET (single) | `Get`    | `GetCommentByID` |
-| GET (list)   | `List`   | `ListComments`   |
-| PUT / PATCH  | `Update` | `UpdateComment`  |
-| DELETE       | `Delete` | `DeleteComment`  |
 
 ## Before submitting
 
