@@ -174,6 +174,14 @@ func (t Tag) ToDTO() TagDTO {
 	}
 }
 
+func (t Tags) ToDTO() []TagDTO {
+	dtos := make([]TagDTO, len(t))
+	for i, tag := range t {
+		dtos[i] = tag.ToDTO()
+	}
+	return dtos
+}
+
 type RiceDotfilesDTO struct {
 	FilePath  string       `json:"filePath"`
 	FileSize  int64        `json:"fileSize"`

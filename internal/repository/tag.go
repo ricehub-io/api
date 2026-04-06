@@ -5,7 +5,7 @@ import (
 	"ricehub/internal/models"
 )
 
-func FetchTags() ([]models.Tag, error) {
+func FetchTags() (models.Tags, error) {
 	const query = "SELECT * FROM tags ORDER BY id"
 	return rowsToStruct[models.Tag](query)
 }

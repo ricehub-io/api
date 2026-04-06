@@ -29,6 +29,7 @@ type Tag struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+type Tags []Tag
 
 type RiceState string
 

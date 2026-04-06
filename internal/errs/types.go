@@ -122,6 +122,7 @@ var BlacklistedRiceDescription = UserError(
 )
 
 // Tags
+var TagExists = UserError("Tag with that name already existis", http.StatusConflict)
 var InvalidTagID = UserError(
 	"Failed to parse tag ID! It must be an integer.",
 	http.StatusBadRequest,
@@ -144,6 +145,12 @@ var QueryRequired = UserError(
 
 // Links
 var LinkNotFound = UserError("Link not found", http.StatusNotFound)
+
+// Website variables
+var WebsiteVariableNotFound = UserError(
+	"Website variable with provided key not found",
+	http.StatusNotFound,
+)
 var ActiveSubscription = UserError(
 	"You already have an active subscription",
 	http.StatusConflict,

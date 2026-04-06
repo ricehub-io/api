@@ -198,7 +198,7 @@ func setupRoutes(r *gin.Engine) {
 	registerLinkRoutes(r)
 	registerLeaderboardRoutes(r)
 
-	r.GET("/vars/:key", security.PathRateLimitMiddleware(5, time.Minute), handlers.GetWebsiteVariable)
+	r.GET("/vars/:key", security.PathRateLimitMiddleware(5, time.Minute), handlers.GetWebVarByKey)
 }
 
 func registerAuthRoutes(r *gin.Engine) {

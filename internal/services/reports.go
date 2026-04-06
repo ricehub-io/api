@@ -13,22 +13,20 @@ import (
 // CreateReport inserts a new report for one given resource.
 // Returns an error if no resource with given id exists or user has already reported it.
 func CreateReport(userID uuid.UUID, riceID, commentID *string, reason string) (uuid.UUID, errs.AppError) {
-	reportID, err := repository.InsertReport(userID, reason, riceID, commentID)
+	repID, err := repository.InsertReport(userID, reason, riceID, commentID)
 	if err != nil {
-		var zero uuid.UUID
-
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
 			case pgerrcode.ForeignKeyViolation:
-				return zero, errs.ResourceNotFound
+				return repID, errs.ResourceNotFound
 			case pgerrcode.UniqueViolation:
-				return zero, errs.AlreadyReported
+				return repID, errs.AlreadyReported
 			}
 		}
 
-		return zero, errs.InternalError(err)
+		return repID, errs.InternalError(err)
 	}
 
-	return reportID, nil
+	return repID, nil
 }
