@@ -6,6 +6,7 @@ import (
 	"ricehub/internal/repository"
 )
 
+// ServiceStatistics fetches latest service statistics from database.
 func ServiceStatistics() (models.ServiceStatistics, errs.AppError) {
 	stats, err := repository.FetchServiceStatistics()
 	if err != nil {

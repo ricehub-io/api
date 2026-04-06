@@ -19,6 +19,8 @@ type LoginResult struct {
 	AccessToken, RefreshToken string
 }
 
+// Register creates a new user account with a hashed password.
+// Returns an error if the username is blacklisted, already taken, or insert fails.
 func Register(dto models.RegisterDTO) errs.AppError {
 	if validation.IsUsernameBlacklisted(dto.Username) {
 		return errs.BlacklistedUsername
@@ -48,6 +50,8 @@ func Register(dto models.RegisterDTO) errs.AppError {
 	return nil
 }
 
+// Login validates credentials, checks if user is banned, and issues an access and refresh token pair.
+// Returns InvalidCredentials if username or password is wrong.
 func Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
 	var res LoginResult
 
