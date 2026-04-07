@@ -140,6 +140,8 @@ type PartialRice struct {
 	Tags          []string
 }
 
+type PartialRices []PartialRice
+
 type ReportWithUser struct {
 	ID          uuid.UUID
 	ReporterID  uuid.UUID

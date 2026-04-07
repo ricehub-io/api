@@ -1,0 +1,204 @@
+package services
+
+import (
+	"context"
+	"fmt"
+	"mime/multipart"
+	"os"
+	"path/filepath"
+	"ricehub/internal/errs"
+	"ricehub/internal/models"
+	"ricehub/internal/polar"
+	"ricehub/internal/repository"
+	"ricehub/internal/storage"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/gosimple/slug"
+	"go.uber.org/zap"
+)
+
+type DownloadDotfilesResult struct {
+	FilePath string
+	FileName string
+}
+
+// PurchaseDotfiles creates a Polar checkout session for paid dotfiles.
+// Returns the checkout URL to redirect the user to, or create embedded checkout.
+func PurchaseDotfiles(userID, riceID uuid.UUID) (string, errs.AppError) {
+	rice, err := repository.FindRiceByID(&userID, riceID)
+	if err != nil {
+		return "", errs.FromDBError(err, errs.RiceNotFound)
+	}
+	if rice.Dotfiles.Type == models.Free {
+		return "", errs.FreeDotfilesNotPurchasable
+	}
+	if rice.IsOwned {
+		return "", errs.DotfilesAlreadyOwned
+	}
+
+	res, err := polar.CreateCheckoutSession(userID, *rice.Dotfiles.ProductID)
+	if err != nil {
+		return "", errs.InternalError(err)
+	}
+
+	return res.Checkout.URL, nil
+}
+
+// DownloadDotfiles verifies access, increments the download counter, logs the
+// download event, and returns the file path and attachment filename.
+func DownloadDotfiles(riceID uuid.UUID, userID *uuid.UUID) (DownloadDotfilesResult, errs.AppError) {
+	var res DownloadDotfilesResult
+
+	rice, err := repository.FindRiceByID(userID, riceID)
+	if err != nil {
+		return res, errs.FromDBError(err, errs.RiceNotFound)
+	}
+	if rice.Dotfiles.Type != models.Free && !rice.IsOwned {
+		return res, errs.DotfilesAccessDenied
+	}
+
+	filePath, err := repository.IncrementDownloadCount(riceID)
+	if err != nil {
+		return res, errs.FromDBError(err, errs.RiceNotFound)
+	}
+
+	if err := repository.InsertRiceDownload(riceID, userID); err != nil {
+		zap.L().Error(
+			"Failed to insert download event",
+			zap.Error(err),
+			zap.String("rice_id", riceID.String()),
+		)
+	}
+
+	ext := filepath.Ext(filePath)
+	timestamp := time.Now().UTC().Format("20060102-150405")
+
+	res.FilePath = "./public" + filePath
+	res.FileName = fmt.Sprintf("%s-%s%s", slug.Make(rice.Rice.Title), timestamp, ext)
+	return res, nil
+}
+
+// UpdateDotfiles replaces the dotfiles archive for a rice, deleting the old file
+// from disk first. Enforces ownership check before proceeding.
+func UpdateDotfiles(riceID, userID uuid.UUID, isAdmin bool, file *multipart.FileHeader) (models.RiceDotfiles, errs.AppError) {
+	var zero models.RiceDotfiles
+	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
+		return zero, err
+	}
+
+	oldPath, err := repository.FetchRiceDotfilesPath(riceID)
+	if err != nil {
+		return zero, errs.InternalError(err)
+	}
+	if oldPath != nil {
+		full := "./public" + *oldPath
+		if err := os.Remove(full); err != nil {
+			zap.L().Error("Failed to remove old dotfiles from storage", zap.String("path", full))
+		}
+	}
+
+	filePath, appErr := storage.HandleDotfilesUpload(file)
+	if appErr != nil {
+		return zero, appErr
+	}
+
+	df, err := repository.UpdateRiceDotfiles(riceID, filePath, file.Size)
+	if err != nil {
+		return zero, errs.InternalError(err)
+	}
+	return df, nil
+}
+
+// UpdateDotfilesType switches dotfiles between free and paid - creating, hiding,
+// or unhiding the corresponding Polar product as needed.
+// Enforces ownership check before proceeding.
+func UpdateDotfilesType(riceID, userID uuid.UUID, isAdmin bool, dto models.UpdateDotfilesTypeDTO) errs.AppError {
+	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	tx, err := repository.StartTx(ctx)
+	if err != nil {
+		return errs.InternalError(err)
+	}
+	defer tx.Rollback(ctx)
+
+	var productID *string
+
+	if dto.NewType == models.Free {
+		existingProdID, err := repository.FindDotfilesProductID(tx, riceID)
+		if err != nil {
+			return errs.InternalError(err)
+		}
+		if existingProdID != nil {
+			idStr := existingProdID.String()
+			productID = &idStr
+			if _, err = polar.HideProduct(idStr); err != nil {
+				return errs.InternalError(err)
+			}
+		}
+	} else {
+		data, err := repository.FindRiceWithDotfilesByID(tx, riceID)
+		if err != nil {
+			return errs.InternalError(err)
+		}
+		if data.Dotfiles.ProductID != nil {
+			idStr := data.Dotfiles.ProductID.String()
+			if _, err := polar.ShowProduct(idStr); err != nil {
+				return errs.InternalError(err)
+			}
+			productID = &idStr
+		} else {
+			res, err := polar.CreateProduct(data.Rice.Title, data.Dotfiles.Price)
+			if err != nil {
+				return errs.InternalError(err)
+			}
+			productID = &res.Product.ID
+		}
+	}
+
+	updated, err := repository.UpdateDotfilesType(tx, riceID, dto.NewType, productID)
+	if err != nil {
+		return errs.InternalError(err)
+	}
+	if !updated {
+		return errs.RiceNotFound
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return errs.InternalError(err)
+	}
+
+	return nil
+}
+
+// UpdateDotfilesPrice updates the price of paid dotfiles and syncs it with Polar.
+// Enforces ownership check before proceeding.
+func UpdateDotfilesPrice(riceID, userID uuid.UUID, isAdmin bool, dto models.UpdateDotfilesPriceDTO) errs.AppError {
+	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	tx, err := repository.StartTx(ctx)
+	if err != nil {
+		return errs.InternalError(err)
+	}
+	defer tx.Rollback(ctx)
+
+	productID, err := repository.UpdateDotfilesPrice(tx, riceID, dto.NewPrice)
+	if err != nil {
+		return errs.InternalError(err)
+	}
+	if _, err = polar.UpdatePrice(productID.String(), dto.NewPrice); err != nil {
+		return errs.InternalError(err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return errs.InternalError(err)
+	}
+
+	return nil
+}

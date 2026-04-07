@@ -296,8 +296,8 @@ func TestUsersToDTO_EmptySlice(t *testing.T) {
 }
 
 func TestPartialRicesToDTO_PreservesLength(t *testing.T) {
-	rices := []PartialRice{{}, {}}
-	if got := len(PartialRicesToDTO(rices)); got != 2 {
+	rices := PartialRices{{}, {}}
+	if got := len(rices.ToDTO()); got != 2 {
 		t.Errorf("want 2 DTOs, got %d", got)
 	}
 }

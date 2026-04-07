@@ -103,6 +103,15 @@ type UpdateDotfilesPriceDTO struct {
 	NewPrice float64 `json:"newPrice" binding:"required,gt=0"`
 }
 
+type SortBy string
+
+const (
+	Trending      SortBy = "trending"
+	Recent        SortBy = "recent"
+	MostDownloads SortBy = "mostDownloads"
+	MostStars     SortBy = "mostStars"
+)
+
 // COMMENTS
 type CreateCommentDTO struct {
 	RiceID  string `json:"riceId" binding:"required,uuid"`
@@ -381,7 +390,7 @@ func (r PartialRice) ToDTO() PartialRiceDTO {
 	}
 }
 
-func PartialRicesToDTO(rices []PartialRice) []PartialRiceDTO {
+func (rices PartialRices) ToDTO() []PartialRiceDTO {
 	dtos := make([]PartialRiceDTO, len(rices))
 	for i, r := range rices {
 		dtos[i] = r.ToDTO()

@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func IsUserBanned(userID string) (models.UserState, error) {
+func IsUserBanned(userID uuid.UUID) (models.UserState, error) {
 	const query = `
 	SELECT
 		EXISTS(
@@ -26,7 +26,7 @@ func IsUserBanned(userID string) (models.UserState, error) {
 	return rowToStruct[models.UserState](query, userID)
 }
 
-func InsertBan(userID string, adminID string, reason string, expiresAt *time.Time) (models.UserBan, error) {
+func InsertBan(userID, adminID uuid.UUID, reason string, expiresAt *time.Time) (models.UserBan, error) {
 	const query = `
 	INSERT INTO user_bans (user_id, admin_id, reason, expires_at)
 	VALUES ($1, $2, $3, $4)
@@ -47,8 +47,9 @@ func FindUserBan(userID uuid.UUID) (models.UserBan, error) {
 	return rowToStruct[models.UserBan](query, userID)
 }
 
-// revoke is an irreversible action therefore no need for generalized 'set is_revoked' function as it can only be updated to one state
-func RevokeBan(userID string) error {
+// Revoke is an irreversible action therefore no need for generalized 'set is_revoked'
+// function as it can only be updated to one state.
+func RevokeBan(userID uuid.UUID) error {
 	const query = `
 	UPDATE user_bans
 	SET is_revoked = true

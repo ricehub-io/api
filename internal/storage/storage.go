@@ -22,12 +22,14 @@ type namedCloser interface {
 	Name() string
 }
 
-func HandleDotfilesUpload(fileHeader *multipart.FileHeader) (string, error) {
-	logger := zap.L()
+func HandleDotfilesUpload(fileHeader *multipart.FileHeader) (string, errs.AppError) {
+	l := zap.L()
+
+	var err error
 
 	ext, err := validation.ValidateFileAsArchive(fileHeader)
 	if err != nil {
-		return "", err
+		return "", err.(errs.AppError)
 	}
 
 	// open file
@@ -47,7 +49,7 @@ func HandleDotfilesUpload(fileHeader *multipart.FileHeader) (string, error) {
 	tmpPath := tmp.Name()
 	defer func() {
 		if err := os.Remove(tmpPath); err != nil {
-			logger.Error("Failed to remove temp dotfiles",
+			l.Error("Failed to remove temp dotfiles",
 				zap.Error(err),
 				zap.String("path", tmpPath),
 			)
@@ -67,7 +69,7 @@ func HandleDotfilesUpload(fileHeader *multipart.FileHeader) (string, error) {
 		return "", errs.InternalError(err)
 	}
 	if res.IsMalicious {
-		logger.Warn("Malicious dotfiles detected",
+		l.Warn("Malicious dotfiles detected",
 			zap.Strings("findings", res.Reason),
 		)
 		return "", errs.UserError(
@@ -95,6 +97,33 @@ func HandleDotfilesUpload(fileHeader *multipart.FileHeader) (string, error) {
 	}
 
 	return fmt.Sprintf("/%s/%s", dotfilesDir, destName), nil
+}
+
+func SaveScreenshotFile(file *multipart.FileHeader, dst string) error {
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer closeSilent(src)
+
+	if err := os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
+		return err
+	}
+
+	// TODO: read from config or smth
+	root, err := os.OpenRoot("./public/previews")
+	if err != nil {
+		return err
+	}
+
+	out, err := root.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer closeLog(out)
+
+	_, err = io.Copy(out, src)
+	return err
 }
 
 func moveFile(srcRoot, destRoot *os.Root, srcName, destName string) error {

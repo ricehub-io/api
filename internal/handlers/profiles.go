@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 	"ricehub/internal/errs"
-	"ricehub/internal/models"
 	"ricehub/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -32,6 +31,6 @@ func GetProfileByUsername(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"user":  res.User.ToDTO(),
-		"rices": models.PartialRicesToDTO(res.Rices),
+		"rices": res.Rices.ToDTO(),
 	})
 }

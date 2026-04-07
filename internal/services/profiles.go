@@ -10,7 +10,7 @@ import (
 
 type GetProfileResult struct {
 	User  models.User
-	Rices []models.PartialRice
+	Rices models.PartialRices
 }
 
 // GetProfileByUsername fetches given user data and rices.

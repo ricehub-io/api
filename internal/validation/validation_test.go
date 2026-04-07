@@ -322,7 +322,7 @@ func TestValidateArchive_TarGz_NotAccepted(t *testing.T) {
 
 	_, err := validateArchive(o)
 	if err == nil {
-		t.Fatal("expected error for tar.gz — only zip is accepted")
+		t.Fatal("expected error for tar.gz (only zip is accepted)")
 	}
 }
 

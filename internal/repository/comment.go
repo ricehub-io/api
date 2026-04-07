@@ -42,7 +42,7 @@ func FetchRecentComments(limit int) ([]models.CommentWithUser, error) {
 	return rowsToStruct[models.CommentWithUser](query, limit)
 }
 
-func FetchCommentsByRiceID(riceID string) ([]models.CommentWithUser, error) {
+func FetchCommentsByRiceID(riceID uuid.UUID) ([]models.CommentWithUser, error) {
 	const query = `
 	SELECT c.id AS comment_id, c.content, c.created_at, c.updated_at, u.display_name, u.username, u.avatar_path, u.is_banned
 	FROM rice_comments c
