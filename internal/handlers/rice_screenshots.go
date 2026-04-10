@@ -11,7 +11,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func CreateScreenshot(c *gin.Context) {
+type RiceScreenshotHandler struct{}
+
+func NewRiceScreenshotHandler() *RiceScreenshotHandler {
+	return &RiceScreenshotHandler{}
+}
+
+func (h *RiceScreenshotHandler) CreateScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {
@@ -47,7 +53,7 @@ func CreateScreenshot(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"screenshots": scrs})
 }
 
-func DeleteScreenshot(c *gin.Context) {
+func (h *RiceScreenshotHandler) DeleteScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {

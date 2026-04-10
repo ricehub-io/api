@@ -12,11 +12,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type CommentHandler struct{}
+
+func NewCommentHandler() *CommentHandler {
+	return &CommentHandler{}
+}
+
 type commentsPath struct {
 	CommentID string `uri:"id" binding:"required,uuid"`
 }
 
-func CreateComment(c *gin.Context) {
+func (h *CommentHandler) CreateComment(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {
@@ -39,7 +45,7 @@ func CreateComment(c *gin.Context) {
 	c.JSON(http.StatusCreated, comment.ToDTO())
 }
 
-func ListComments(c *gin.Context) {
+func (h *CommentHandler) ListComments(c *gin.Context) {
 	var query struct {
 		Limit int `form:"limit,default=20" binding:"gt=0"`
 	}
@@ -57,7 +63,7 @@ func ListComments(c *gin.Context) {
 	c.JSON(http.StatusOK, models.CommentsWithUserToDTO(comments))
 }
 
-func GetCommentByID(c *gin.Context) {
+func (h *CommentHandler) GetCommentByID(c *gin.Context) {
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidCommentID)
@@ -74,7 +80,7 @@ func GetCommentByID(c *gin.Context) {
 	c.JSON(http.StatusOK, comment.ToDTO())
 }
 
-func UpdateComment(c *gin.Context) {
+func (h *CommentHandler) UpdateComment(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {
@@ -104,7 +110,7 @@ func UpdateComment(c *gin.Context) {
 	c.JSON(http.StatusOK, comment.ToDTO())
 }
 
-func DeleteComment(c *gin.Context) {
+func (h *CommentHandler) DeleteComment(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {

@@ -12,7 +12,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func AddRiceTags(c *gin.Context) {
+type RiceTagHandler struct{}
+
+func NewRiceTagHandler() *RiceTagHandler {
+	return &RiceTagHandler{}
+}
+
+func (h *RiceTagHandler) AddRiceTags(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {
@@ -41,7 +47,7 @@ func AddRiceTags(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func RemoveRiceTags(c *gin.Context) {
+func (h *RiceTagHandler) RemoveRiceTags(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {

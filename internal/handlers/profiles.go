@@ -8,11 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type ProfileHandler struct{}
+
+func NewProfileHandler() *ProfileHandler {
+	return &ProfileHandler{}
+}
+
 type profilesPath struct {
 	Username string `uri:"username" binding:"required,alphanum"`
 }
 
-func GetProfileByUsername(c *gin.Context) {
+func (h *ProfileHandler) GetProfileByUsername(c *gin.Context) {
 	var path profilesPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.UserError(

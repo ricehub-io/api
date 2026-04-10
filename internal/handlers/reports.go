@@ -13,11 +13,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type ReportHandler struct{}
+
+func NewReportHandler() *ReportHandler {
+	return &ReportHandler{}
+}
+
 type reportsPath struct {
 	ReportID string `uri:"id" binding:"required,uuid"`
 }
 
-func CreateReport(c *gin.Context) {
+func (h *ReportHandler) CreateReport(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, _ := uuid.Parse(token.Subject)
 
@@ -36,7 +42,7 @@ func CreateReport(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"reportId": reportID})
 }
 
-func ListReports(c *gin.Context) {
+func (h *ReportHandler) ListReports(c *gin.Context) {
 	reports, err := repository.FetchReports()
 	if err != nil {
 		c.Error(errs.InternalError(err))
@@ -46,7 +52,7 @@ func ListReports(c *gin.Context) {
 	c.JSON(http.StatusOK, models.ReportsToDTO(reports))
 }
 
-func GetReportByID(c *gin.Context) {
+func (h *ReportHandler) GetReportByID(c *gin.Context) {
 	var path reportsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidReportID)
@@ -62,7 +68,7 @@ func GetReportByID(c *gin.Context) {
 	c.JSON(http.StatusOK, report.ToDTO())
 }
 
-func CloseReport(c *gin.Context) {
+func (h *ReportHandler) CloseReport(c *gin.Context) {
 	var path reportsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidReportID)

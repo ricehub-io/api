@@ -10,11 +10,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type TagHandler struct{}
+
+func NewTagHandler() *TagHandler {
+	return &TagHandler{}
+}
+
 type tagsPath struct {
 	TagID int `uri:"id" binding:"required,gt=0"`
 }
 
-func CreateTag(c *gin.Context) {
+func (h *TagHandler) CreateTag(c *gin.Context) {
 	var body models.TagNameDTO
 	if err := validation.ValidateJSON(c, &body); err != nil {
 		c.Error(err)
@@ -30,7 +36,7 @@ func CreateTag(c *gin.Context) {
 	c.JSON(http.StatusCreated, tag.ToDTO())
 }
 
-func ListTags(c *gin.Context) {
+func (h *TagHandler) ListTags(c *gin.Context) {
 	tags, err := services.ListTags()
 	if err != nil {
 		c.Error(err)
@@ -40,7 +46,7 @@ func ListTags(c *gin.Context) {
 	c.JSON(http.StatusOK, tags.ToDTO())
 }
 
-func UpdateTag(c *gin.Context) {
+func (h *TagHandler) UpdateTag(c *gin.Context) {
 	var path tagsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidTagID)
@@ -62,7 +68,7 @@ func UpdateTag(c *gin.Context) {
 	c.JSON(http.StatusOK, tag.ToDTO())
 }
 
-func DeleteTag(c *gin.Context) {
+func (h *TagHandler) DeleteTag(c *gin.Context) {
 	var path tagsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidTagID)

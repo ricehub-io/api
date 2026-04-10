@@ -17,11 +17,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type RiceHandler struct{}
+
+func NewRiceHandler() *RiceHandler {
+	return &RiceHandler{}
+}
+
 type ricesPath struct {
 	RiceID string `uri:"id" binding:"required,uuid"`
 }
 
-func CreateRice(c *gin.Context) {
+func (h *RiceHandler) CreateRice(c *gin.Context) {
 	var err error
 
 	token := c.MustGet("token").(*security.AccessToken)
@@ -70,7 +76,7 @@ func CreateRice(c *gin.Context) {
 	c.Status(http.StatusCreated)
 }
 
-func ListRices(c *gin.Context) {
+func (h *RiceHandler) ListRices(c *gin.Context) {
 	token := GetTokenFromRequest(c)
 	isAdmin := token != nil && token.IsAdmin
 
@@ -158,7 +164,7 @@ func ListRices(c *gin.Context) {
 	})
 }
 
-func GetRiceByID(c *gin.Context) {
+func (h *RiceHandler) GetRiceByID(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidRiceID)
@@ -179,7 +185,7 @@ func GetRiceByID(c *gin.Context) {
 	c.JSON(http.StatusOK, rice.ToDTO())
 }
 
-func ListRiceComments(c *gin.Context) {
+func (h *RiceHandler) ListRiceComments(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidRiceID)
@@ -196,7 +202,7 @@ func ListRiceComments(c *gin.Context) {
 	c.JSON(http.StatusOK, models.CommentsWithUserToDTO(comments))
 }
 
-func UpdateRiceMetadata(c *gin.Context) {
+func (h *RiceHandler) UpdateRiceMetadata(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {
@@ -225,7 +231,7 @@ func UpdateRiceMetadata(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func UpdateRiceState(c *gin.Context) {
+func (h *RiceHandler) UpdateRiceState(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidRiceID)
@@ -252,7 +258,7 @@ func UpdateRiceState(c *gin.Context) {
 	}
 }
 
-func DeleteRice(c *gin.Context) {
+func (h *RiceHandler) DeleteRice(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {

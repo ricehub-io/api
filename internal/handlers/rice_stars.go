@@ -9,7 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CreateRiceStar(c *gin.Context) {
+type RiceStarHandler struct{}
+
+func NewRiceStarHandler() *RiceStarHandler {
+	return &RiceStarHandler{}
+}
+
+func (h *RiceStarHandler) CreateRiceStar(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 
 	var path ricesPath
@@ -26,7 +32,7 @@ func CreateRiceStar(c *gin.Context) {
 	c.Status(http.StatusCreated)
 }
 
-func DeleteRiceStar(c *gin.Context) {
+func (h *RiceStarHandler) DeleteRiceStar(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 
 	var path ricesPath

@@ -15,31 +15,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type UserHandler struct{}
+
+func NewUserHandler() *UserHandler {
+	return &UserHandler{}
+}
+
 type usersPath struct {
 	UserID string `uri:"id" binding:"required,uuid"`
 }
 
-// GetTokenFromRequest tries to extract and validate the access token from the
-// Authorization header. Returns nil if the token is missing or invalid.
-func GetTokenFromRequest(c *gin.Context) *security.AccessToken {
-	tokenStr := strings.TrimSpace(c.Request.Header.Get("Authorization"))
-	token, err := security.ValidateToken(tokenStr)
-	if err == nil {
-		return token
-	}
-	return nil
-}
-
-// GetUserIDFromRequest extracts the caller's UUID from the access token, if present.
-func GetUserIDFromRequest(c *gin.Context) *uuid.UUID {
-	if token := GetTokenFromRequest(c); token != nil {
-		id, _ := uuid.Parse(token.Subject)
-		return &id
-	}
-	return nil
-}
-
-func ListUsers(c *gin.Context) {
+func (h *UserHandler) ListUsers(c *gin.Context) {
 	var query struct {
 		Status   string `form:"status"`
 		Username string `form:"username"`
@@ -103,7 +89,7 @@ func ListUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, models.UsersToDTO(users))
 }
 
-func GetUserByID(c *gin.Context) {
+func (h *UserHandler) GetUserByID(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidUserID)
@@ -123,7 +109,7 @@ func GetUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, user.ToDTO())
 }
 
-func GetUserRiceBySlug(c *gin.Context) {
+func (h *UserHandler) GetUserRiceBySlug(c *gin.Context) {
 	// gin requires the param name to match the route definition, which uses :id here
 	username := c.Param("id")
 	slug := c.Param("slug")
@@ -141,7 +127,7 @@ func GetUserRiceBySlug(c *gin.Context) {
 	c.JSON(http.StatusOK, rice.ToDTO())
 }
 
-func ListUserRices(c *gin.Context) {
+func (h *UserHandler) ListUserRices(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidUserID)
@@ -159,7 +145,7 @@ func ListUserRices(c *gin.Context) {
 	c.JSON(http.StatusOK, rices.ToDTO())
 }
 
-func ListPurchasedRices(c *gin.Context) {
+func (h *UserHandler) ListPurchasedRices(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidUserID)
@@ -183,7 +169,7 @@ func ListPurchasedRices(c *gin.Context) {
 	c.JSON(http.StatusOK, rices.ToDTO())
 }
 
-func UpdateDisplayName(c *gin.Context) {
+func (h *UserHandler) UpdateDisplayName(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidUserID)
@@ -212,7 +198,7 @@ func UpdateDisplayName(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func UpdatePassword(c *gin.Context) {
+func (h *UserHandler) UpdatePassword(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidUserID)
@@ -241,7 +227,7 @@ func UpdatePassword(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func UpdateAvatar(c *gin.Context) {
+func (h *UserHandler) UpdateAvatar(c *gin.Context) {
 	var err error
 
 	var path usersPath
@@ -273,7 +259,7 @@ func UpdateAvatar(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"avatarUrl": avatarURL})
 }
 
-func DeleteAvatar(c *gin.Context) {
+func (h *UserHandler) DeleteAvatar(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidUserID)
@@ -298,7 +284,7 @@ func DeleteAvatar(c *gin.Context) {
 	})
 }
 
-func BanUser(c *gin.Context) {
+func (h *UserHandler) BanUser(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	adminID, _ := uuid.Parse(token.Subject)
 
@@ -324,7 +310,7 @@ func BanUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, userBan.ToDTO())
 }
 
-func UnbanUser(c *gin.Context) {
+func (h *UserHandler) UnbanUser(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidUserID)
@@ -340,7 +326,7 @@ func UnbanUser(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func DeleteUser(c *gin.Context) {
+func (h *UserHandler) DeleteUser(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidUserID)
@@ -367,4 +353,24 @@ func DeleteUser(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// GetTokenFromRequest tries to extract and validate the access token from the
+// Authorization header. Returns nil if the token is missing or invalid.
+func GetTokenFromRequest(c *gin.Context) *security.AccessToken {
+	tokenStr := strings.TrimSpace(c.Request.Header.Get("Authorization"))
+	token, err := security.ValidateToken(tokenStr)
+	if err == nil {
+		return token
+	}
+	return nil
+}
+
+// GetUserIDFromRequest extracts the caller's UUID from the access token, if present.
+func GetUserIDFromRequest(c *gin.Context) *uuid.UUID {
+	if token := GetTokenFromRequest(c); token != nil {
+		id, _ := uuid.Parse(token.Subject)
+		return &id
+	}
+	return nil
 }

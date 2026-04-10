@@ -9,7 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetLinkByName(c *gin.Context) {
+type LinkHandler struct{}
+
+func NewLinkHandler() *LinkHandler {
+	return &LinkHandler{}
+}
+
+func (h *LinkHandler) GetLinkByName(c *gin.Context) {
 	link, err := services.GetLinkByName(c.Param("name"))
 	if err != nil {
 		c.Error(err)
@@ -19,7 +25,7 @@ func GetLinkByName(c *gin.Context) {
 	c.JSON(http.StatusOK, link.ToDTO())
 }
 
-func GetSubscriptionLink(c *gin.Context) {
+func (h *LinkHandler) GetSubscriptionLink(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, err := security.VerifyUserID(token.Subject)
 	if err != nil {

@@ -7,7 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ServiceStatistics(c *gin.Context) {
+type AdminHandler struct{}
+
+func NewAdminHandler() *AdminHandler {
+	return &AdminHandler{}
+}
+
+func (h *AdminHandler) ServiceStatistics(c *gin.Context) {
 	stats, err := services.ServiceStatistics()
 	if err != nil {
 		c.Error(err)
