@@ -112,10 +112,6 @@ CREATE TRIGGER update_rice_dotfiles_updated_at
     BEFORE UPDATE ON rice_dotfiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-CREATE TRIGGER update_rice_previews_updated_at
-    BEFORE UPDATE ON rice_previews
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
 CREATE TRIGGER update_rice_comments_updated_at
     BEFORE UPDATE ON rice_comments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -301,3 +297,5 @@ ALTER TABLE user_subscriptions
 -- previews => screenshots refactor
 ALTER TABLE rice_previews
     RENAME TO rice_screenshots;
+
+DROP TRIGGER update_rice_previews_updated_at ON rice_screenshots;
