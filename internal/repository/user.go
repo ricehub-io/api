@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"ricehub/internal/models"
+
+	"github.com/google/uuid"
 )
 
 func UsernameExists(username string) (exists bool, err error) {
@@ -50,43 +52,43 @@ func FindUserByUsername(username string) (models.User, error) {
 	return rowToStruct[models.User](query, username)
 }
 
-func FindUserByID(userID string) (models.User, error) {
+func FindUserByID(userID uuid.UUID) (models.User, error) {
 	const query = "SELECT * FROM users_with_ban_status WHERE id = $1 LIMIT 1"
 	return rowToStruct[models.User](query, userID)
 }
 
-func FetchUserAvatarPath(userID string) (avatarPath *string, err error) {
+func FetchUserAvatarPath(userID uuid.UUID) (avatarPath *string, err error) {
 	const query = "SELECT avatar_path FROM users WHERE id = $1"
 	err = db.QueryRow(context.Background(), query, userID).Scan(&avatarPath)
 	return
 }
 
 // should I just use single `UpdateUser` function with struct of fields to update and utilize COALESCE?
-func UpdateUserDisplayName(userID string, displayName string) error {
+func UpdateUserDisplayName(userID uuid.UUID, displayName string) error {
 	const query = "UPDATE users SET display_name = $1 WHERE id = $2"
 	_, err := db.Exec(context.Background(), query, displayName, userID)
 	return err
 }
 
-func UpdateUserPassword(userID string, password string) error {
+func UpdateUserPassword(userID uuid.UUID, password string) error {
 	const query = "UPDATE users SET password = $1 WHERE id = $2"
 	_, err := db.Exec(context.Background(), query, password, userID)
 	return err
 }
 
-func UpdateUserAvatarPath(userID string, avatarPath *string) error {
+func UpdateUserAvatarPath(userID uuid.UUID, avatarPath *string) error {
 	const query = "UPDATE users SET avatar_path = $1 WHERE id = $2"
 	_, err := db.Exec(context.Background(), query, avatarPath, userID)
 	return err
 }
 
-func RevokeAdmin(userID string) error {
+func RevokeAdmin(userID uuid.UUID) error {
 	const query = "UPDATE users SET is_admin = false WHERE id = $1"
 	_, err := db.Exec(context.Background(), query, userID)
 	return err
 }
 
-func DeleteUser(userID string) error {
+func DeleteUser(userID uuid.UUID) error {
 	const query = "DELETE FROM users WHERE id = $1"
 	_, err := db.Exec(context.Background(), query, userID)
 	return err

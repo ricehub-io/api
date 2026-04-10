@@ -7,12 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ServiceStatistics(c *gin.Context) {
-	stats, err := services.ServiceStatistics()
+func GetWebVarByKey(c *gin.Context) {
+	key := c.Param("key")
+
+	v, err := services.GetWebVarByKey(key)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, stats.ToDTO())
+	c.JSON(http.StatusOK, v.ToDTO())
 }

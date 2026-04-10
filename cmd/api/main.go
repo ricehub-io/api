@@ -198,7 +198,7 @@ func setupRoutes(r *gin.Engine) {
 	registerLinkRoutes(r)
 	registerLeaderboardRoutes(r)
 
-	r.GET("/vars/:key", security.PathRateLimitMiddleware(5, time.Minute), handlers.GetWebsiteVariable)
+	r.GET("/vars/:key", security.PathRateLimitMiddleware(5, time.Minute), handlers.GetWebVarByKey)
 }
 
 func registerAuthRoutes(r *gin.Engine) {
@@ -217,14 +217,14 @@ func registerUserRoutes(r *gin.Engine) {
 	users := r.Group("/users")
 
 	// Public
-	users.GET("", handlers.FetchUsers)
-	users.GET("/:id/rices", security.PathRateLimitMiddleware(5, time.Minute), handlers.FetchUserRices)
+	users.GET("", handlers.ListUsers)
+	users.GET("/:id/rices", security.PathRateLimitMiddleware(5, time.Minute), handlers.ListUserRices)
 	users.GET("/:id/rices/:slug", security.PathRateLimitMiddleware(30, time.Minute), handlers.GetUserRiceBySlug)
 
 	// Authenticated
 	auth := users.Group("", security.AuthMiddleware)
 	auth.GET("/:id", security.PathRateLimitMiddleware(5, time.Minute), handlers.GetUserByID)
-	auth.GET("/:id/purchased", security.PathRateLimitMiddleware(20, time.Minute), handlers.FetchPurchasedRices)
+	auth.GET("/:id/purchased", security.PathRateLimitMiddleware(20, time.Minute), handlers.ListPurchasedRices)
 	auth.DELETE("/:id", maintenance, security.PathRateLimitMiddleware(5, time.Minute), handlers.DeleteUser)
 	auth.PATCH("/:id/displayName", maintenance, accountRL, handlers.UpdateDisplayName)
 	auth.PATCH("/:id/password", maintenance, accountRL, handlers.UpdatePassword)
@@ -232,7 +232,7 @@ func registerUserRoutes(r *gin.Engine) {
 		maintenance,
 		security.FileSizeLimitMiddleware(config.Config.Limits.UserAvatarSizeLimit),
 		accountRL,
-		handlers.UploadAvatar,
+		handlers.UpdateAvatar,
 	)
 	auth.DELETE("/:id/avatar", maintenance, accountRL, handlers.DeleteAvatar)
 
@@ -250,9 +250,9 @@ func registerRiceRoutes(r *gin.Engine) {
 	rices := r.Group("/rices")
 
 	// Public
-	rices.GET("", handlers.FetchRices)
+	rices.GET("", handlers.ListRices)
 	rices.GET("/:id", handlers.GetRiceByID)
-	rices.GET("/:id/comments", handlers.GetRiceComments)
+	rices.GET("/:id/comments", handlers.ListRiceComments)
 	rices.GET("/:id/dotfiles",
 		security.PathRateLimitMiddleware(3, time.Minute),
 		handlers.DownloadDotfiles,
@@ -267,8 +267,8 @@ func registerRiceRoutes(r *gin.Engine) {
 		handlers.CreateRice,
 	)
 	auth.PATCH("/:id", maintenance, updateRL, handlers.UpdateRiceMetadata)
-	auth.POST("/:id/tags", maintenance, updateRL, handlers.AttachTags)
-	auth.DELETE("/:id/tags", maintenance, updateRL, handlers.UnattachTags)
+	auth.POST("/:id/tags", maintenance, updateRL, handlers.AddRiceTags)
+	auth.DELETE("/:id/tags", maintenance, updateRL, handlers.RemoveRiceTags)
 	auth.POST("/:id/dotfiles",
 		maintenance,
 		security.PathRateLimitMiddleware(3, time.Hour),
@@ -281,11 +281,11 @@ func registerRiceRoutes(r *gin.Engine) {
 		maintenance,
 		security.FileSizeLimitMiddleware(limits.PreviewSizeLimit),
 		security.PathRateLimitMiddleware(25, time.Hour),
-		handlers.AddScreenshot,
+		handlers.CreateScreenshot,
 	)
 	auth.POST("/:id/purchase", maintenance, security.PathRateLimitMiddleware(5, time.Hour), handlers.PurchaseDotfiles)
 	auth.PATCH("/:id/state", maintenance, security.AdminMiddleware, handlers.UpdateRiceState)
-	auth.POST("/:id/star", maintenance, handlers.AddRiceStar)
+	auth.POST("/:id/star", maintenance, handlers.CreateRiceStar)
 	auth.DELETE("/:id/star", maintenance, handlers.DeleteRiceStar)
 	auth.DELETE("/:id/screenshots/:previewId", maintenance, handlers.DeleteScreenshot)
 	auth.DELETE("/:id", maintenance, handlers.DeleteRice)
@@ -296,9 +296,9 @@ func registerCommentRoutes(r *gin.Engine) {
 
 	comments := r.Group("/comments", security.AuthMiddleware)
 
-	comments.GET("", security.AdminMiddleware, handlers.GetRecentComments)
+	comments.GET("", security.AdminMiddleware, handlers.ListComments)
 	comments.GET("/:id", security.PathRateLimitMiddleware(10, time.Minute), handlers.GetCommentByID)
-	comments.POST("", maintenance, security.PathRateLimitMiddleware(10, time.Hour), handlers.AddComment)
+	comments.POST("", maintenance, security.PathRateLimitMiddleware(10, time.Hour), handlers.CreateComment)
 	comments.PATCH("/:id", maintenance, security.PathRateLimitMiddleware(10, time.Hour), handlers.UpdateComment)
 	comments.DELETE("/:id", maintenance, handlers.DeleteComment)
 }
@@ -309,15 +309,15 @@ func registerReportRoutes(r *gin.Engine) {
 	reports.POST("", security.PathRateLimitMiddleware(10, 24*time.Hour), handlers.CreateReport)
 
 	admin := reports.Group("", security.AdminMiddleware)
-	admin.GET("", handlers.FetchReports)
-	admin.GET("/:reportId", handlers.GetReportByID)
-	admin.POST("/:reportId/close", handlers.CloseReport)
+	admin.GET("", handlers.ListReports)
+	admin.GET("/:id", handlers.GetReportByID)
+	admin.POST("/:id/close", handlers.CloseReport)
 }
 
 func registerTagRoutes(r *gin.Engine) {
 	tags := r.Group("/tags")
 
-	tags.GET("", handlers.GetAllTags)
+	tags.GET("", handlers.ListTags)
 
 	admin := tags.Group("", security.AuthMiddleware, security.AdminMiddleware)
 	admin.POST("", handlers.CreateTag)
@@ -328,7 +328,7 @@ func registerTagRoutes(r *gin.Engine) {
 func registerProfileRoutes(r *gin.Engine) {
 	profiles := r.Group("/profiles")
 
-	profiles.GET("/:username", handlers.GetUserProfile)
+	profiles.GET("/:username", handlers.GetProfileByUsername)
 }
 
 func registerAdminRoutes(r *gin.Engine) {

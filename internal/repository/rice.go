@@ -187,7 +187,7 @@ func FetchPageCount() (pages float32, err error) {
 	return
 }
 
-func UserOwnsRice(riceID string, userID string) (exists bool, err error) {
+func UserOwnsRice(riceID, userID uuid.UUID) (exists bool, err error) {
 	const query = `
 	SELECT EXISTS (
 		SELECT 1
@@ -205,7 +205,7 @@ func RiceExists(riceID string) (exists bool, err error) {
 	return
 }
 
-func FetchTrendingRices(pag *Pagination, userID *string) ([]models.PartialRice, error) {
+func FetchTrendingRices(pag *Pagination, userID *uuid.UUID) ([]models.PartialRice, error) {
 	subsequent := pag.LastScore != nil
 	query := buildFetchRicesSql("trending", subsequent, userID != nil, pag.Reverse)
 
@@ -220,7 +220,7 @@ func FetchTrendingRices(pag *Pagination, userID *string) ([]models.PartialRice, 
 	return rowsToStruct[models.PartialRice](query, args...)
 }
 
-func FetchRecentRices(pag *Pagination, userID *string) ([]models.PartialRice, error) {
+func FetchRecentRices(pag *Pagination, userID *uuid.UUID) ([]models.PartialRice, error) {
 	subsequent := pag.LastCreatedAt != nil
 	query := buildFetchRicesSql("recent", subsequent, userID != nil, pag.Reverse)
 
@@ -235,7 +235,7 @@ func FetchRecentRices(pag *Pagination, userID *string) ([]models.PartialRice, er
 	return rowsToStruct[models.PartialRice](query, args...)
 }
 
-func FetchMostDownloadedRices(pag *Pagination, userID *string) ([]models.PartialRice, error) {
+func FetchMostDownloadedRices(pag *Pagination, userID *uuid.UUID) ([]models.PartialRice, error) {
 	subsequent := pag.LastDownloads != nil
 	query := buildFetchRicesSql("downloads", subsequent, userID != nil, pag.Reverse)
 
@@ -250,7 +250,7 @@ func FetchMostDownloadedRices(pag *Pagination, userID *string) ([]models.Partial
 	return rowsToStruct[models.PartialRice](query, args...)
 }
 
-func FetchMostStarredRices(pag *Pagination, userID *string) ([]models.PartialRice, error) {
+func FetchMostStarredRices(pag *Pagination, userID *uuid.UUID) ([]models.PartialRice, error) {
 	subsequent := pag.LastStars != nil
 	query := buildFetchRicesSql("stars", subsequent, userID != nil, pag.Reverse)
 
@@ -265,7 +265,7 @@ func FetchMostStarredRices(pag *Pagination, userID *string) ([]models.PartialRic
 	return rowsToStruct[models.PartialRice](query, args...)
 }
 
-func FetchWaitingRices() ([]models.PartialRice, error) {
+func FetchWaitingRices() (models.PartialRices, error) {
 	const query = `
 	SELECT
     	r.id, r.title, r.slug, r.created_at, r.state,
@@ -300,21 +300,21 @@ func FetchWaitingRices() ([]models.PartialRice, error) {
 	return rowsToStruct[models.PartialRice](query)
 }
 
-func FetchRiceScreenshotCount(riceID string) (count int, err error) {
+func FetchRiceScreenshotCount(riceID uuid.UUID) (count int, err error) {
 	const query = "SELECT count(*) FROM rice_previews WHERE rice_id = $1"
 	err = db.QueryRow(context.Background(), query, riceID).Scan(&count)
 	return
 }
 
-func FindRiceByID(userID *uuid.UUID, riceID string) (models.RiceWithRelations, error) {
+func FindRiceByID(userID *uuid.UUID, riceID uuid.UUID) (models.RiceWithRelations, error) {
 	return rowToStruct[models.RiceWithRelations](findRiceSql, userID, riceID)
 }
 
-func FindRiceBySlug(userID *string, slug string, username string) (models.RiceWithRelations, error) {
+func FindRiceBySlug(userID *uuid.UUID, slug string, username string) (models.RiceWithRelations, error) {
 	return rowToStruct[models.RiceWithRelations](findRiceBySlugSql, userID, slug, username)
 }
 
-func FetchUserRices(userID uuid.UUID, callerID *uuid.UUID) ([]models.PartialRice, error) {
+func FetchUserRices(userID uuid.UUID, callerID *uuid.UUID) (models.PartialRices, error) {
 	where := "WHERE u.id = $1"
 	if callerID == nil || userID != *callerID {
 		where += " AND r.state = 'accepted'"
@@ -360,7 +360,7 @@ func FetchUserRices(userID uuid.UUID, callerID *uuid.UUID) ([]models.PartialRice
 	return rowsToStruct[models.PartialRice](query, userID, callerID)
 }
 
-func FetchUserPurchasedRices(userID string) ([]models.PartialRice, error) {
+func FetchUserPurchasedRices(userID uuid.UUID) (models.PartialRices, error) {
 	const query = `
 	SELECT
 		r.id, r.title, r.slug, r.created_at, r.state,
@@ -402,7 +402,7 @@ func FetchUserPurchasedRices(userID string) ([]models.PartialRice, error) {
 	return rowsToStruct[models.PartialRice](query, userID)
 }
 
-func FindRiceWithDotfilesByID(tx pgx.Tx, riceID string) (models.RiceWithDotfiles, error) {
+func FindRiceWithDotfilesByID(tx pgx.Tx, riceID uuid.UUID) (models.RiceWithDotfiles, error) {
 	const query = `
 	SELECT to_jsonb(rices) AS rice, to_jsonb(dotfiles) AS dotfiles
 	FROM rices
@@ -413,7 +413,7 @@ func FindRiceWithDotfilesByID(tx pgx.Tx, riceID string) (models.RiceWithDotfiles
 	return txRowToStruct[models.RiceWithDotfiles](tx, query, riceID)
 }
 
-func InsertRice(tx pgx.Tx, authorID string, title string, slug string, description string, autoAccept bool) (models.Rice, error) {
+func InsertRice(tx pgx.Tx, authorID uuid.UUID, title, slug, description string, autoAccept bool) (models.Rice, error) {
 	const query = `
 	INSERT INTO rices (author_id, title, slug, description, state)
 	VALUES ($1, $2, $3, $4, $5)
@@ -431,7 +431,7 @@ func InsertRiceScreenshot(riceID string, scrPath string) (models.RiceScreenshot,
 	return rowToStruct[models.RiceScreenshot](insertScreenshotSql, riceID, scrPath)
 }
 
-func InsertRiceScreenshotTx[T UUIDOrString](tx pgx.Tx, riceID T, scrPath string) error {
+func InsertRiceScreenshotTx(tx pgx.Tx, riceID uuid.UUID, scrPath string) error {
 	_, err := tx.Exec(context.Background(), insertScreenshotSql, riceID, scrPath)
 	return err
 }
@@ -448,7 +448,7 @@ func InsertRiceStar(riceID string, userID string) error {
 	return err
 }
 
-func UpdateRice(riceID string, title *string, description *string) error {
+func UpdateRice(riceID uuid.UUID, title *string, description *string) error {
 	query := "UPDATE rices SET"
 	args := []any{riceID}
 
@@ -472,13 +472,13 @@ func UpdateRice(riceID string, title *string, description *string) error {
 	return err
 }
 
-func UpdateRiceState(riceID string, newState models.RiceState) error {
+func UpdateRiceState(riceID uuid.UUID, newState models.RiceState) error {
 	const query = "UPDATE rices SET state = $1 WHERE id = $2"
 	_, err := db.Exec(context.Background(), query, newState, riceID)
 	return err
 }
 
-func DeleteRiceScreenshot(riceID string, screenshotID string) (bool, error) {
+func DeleteRiceScreenshot(riceID, screenshotID uuid.UUID) (bool, error) {
 	const query = "DELETE FROM rice_previews WHERE id = $1 AND rice_id = $2"
 	cmd, err := db.Exec(context.Background(), query, screenshotID, riceID)
 	return cmd.RowsAffected() == 1, err
@@ -491,16 +491,16 @@ func DeleteRiceStar(riceID string, userID string) error {
 	return err
 }
 
-func deleteRice(exec DBExecutor, riceID string) (bool, error) {
+func deleteRice(exec DBExecutor, riceID uuid.UUID) (bool, error) {
 	const query = "DELETE FROM rices WHERE id = $1"
 	cmd, err := exec.Exec(context.Background(), query, riceID)
 	return cmd.RowsAffected() > 0, err
 }
 
-func DeleteRice(riceID string) (bool, error) {
+func DeleteRice(riceID uuid.UUID) (bool, error) {
 	return deleteRice(db, riceID)
 }
 
-func DeleteRiceTx(tx pgx.Tx, riceID string) (bool, error) {
+func DeleteRiceTx(tx pgx.Tx, riceID uuid.UUID) (bool, error) {
 	return deleteRice(tx, riceID)
 }

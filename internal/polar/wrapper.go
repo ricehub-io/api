@@ -128,17 +128,19 @@ func ArchiveProduct(productID string) (res *operations.ProductsUpdateResponse, e
 	return
 }
 
-func CreateCheckoutSession(userID string, productID uuid.UUID) (res *operations.CheckoutsCreateResponse, err error) {
+func CreateCheckoutSession(userID, productID uuid.UUID) (res *operations.CheckoutsCreateResponse, err error) {
+	strUserID := userID.String()
+	strProdID := productID.String()
 	zap.L().Info(
 		"Creating a new checkout session",
-		zap.String("user_id", userID),
-		zap.String("product_id", productID.String()),
+		zap.String("user_id", strUserID),
+		zap.String("product_id", strProdID),
 	)
 
 	checkout := components.CheckoutCreate{
-		ExternalCustomerID: polargo.String(userID),
-		Products:           []string{productID.String()},
-		EmbedOrigin:        polargo.String(config.Config.Server.CorsOrigin),
+		ExternalCustomerID: &strUserID,
+		Products:           []string{strProdID},
+		EmbedOrigin:        &config.Config.Server.CorsOrigin,
 		CustomerBillingAddress: &components.AddressInput{
 			Country: components.CountryAlpha2InputUs,
 		},

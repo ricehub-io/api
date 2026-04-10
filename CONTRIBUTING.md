@@ -1,6 +1,6 @@
-# Contributing to the website
+# Contributing to the API
 
-First off, thank you for considering contributing <3
+First off, thank you for considering contributing <3.
 All types of contributions are encouraged and valued.
 
 ## How to contribute
@@ -9,6 +9,63 @@ All types of contributions are encouraged and valued.
 - Create a new branch with clear and concise name (e.g. `feature/feature-name` or `fix/bug-name`)
 - Make your changes
 - Open a pull request and don't forget to provide a detailed description of changes you've made
+
+## Coding conventions
+
+### Function naming by layer
+
+The project has three layers, each with its own naming convention:
+
+**Repository** (`internal/repository`) - maps to database operations:
+
+| Action           | Verb     | Example               |
+| ---------------- | -------- | --------------------- |
+| Insert a row     | `Insert` | `InsertComment`       |
+| Select one row   | `Find`   | `FindCommentByID`     |
+| Select many rows | `Fetch`  | `FetchRecentComments` |
+| Update a row     | `Update` | `UpdateComment`       |
+| Delete a row     | `Delete` | `DeleteComment`       |
+
+**Service** (`internal/services`) - maps to business/domain operations:
+
+| Action             | Verb     | Example          |
+| ------------------ | -------- | ---------------- |
+| Create a resource  | `Create` | `CreateComment`  |
+| Get one resource   | `Get`    | `GetCommentByID` |
+| Get many resources | `List`   | `ListComments`   |
+| Update a resource  | `Update` | `UpdateComment`  |
+| Delete a resource  | `Delete` | `DeleteComment`  |
+
+Use a descriptive domain verb instead when the operation isn't plain CRUD (e.g. `PublishRice`, `BanUser`).
+
+**Handlers** (`internal/handlers`) - maps to HTTP endpoints, uses the same verbs as services:
+
+| HTTP method  | Verb     | Example          |
+| ------------ | -------- | ---------------- |
+| POST         | `Create` | `CreateComment`  |
+| GET (single) | `Get`    | `GetCommentByID` |
+| GET (list)   | `List`   | `ListComments`   |
+| PUT / PATCH  | `Update` | `UpdateComment`  |
+| DELETE       | `Delete` | `DeleteComment`  |
+
+### Service layer rules
+
+Services contain all business logic. Keep them free of HTTP concerns.
+
+**Do:**
+
+- Validate business rules (e.g. blacklist checks, ownership checks)
+- Coordinate multiple repository calls
+- Hash passwords, generate tokens, call external integrations (Polar, gRPC)
+- Return domain models (`models.User`, `models.Rice`, etc.)
+- Return predefined errors from the `errs` package
+- Use a result struct when returning more than two values
+
+**Don't:**
+
+- Import `github.com/gin-gonic/gin` or `net/http`
+- Return response DTOs (types with `json` tags meant for HTTP responses), instead return domain models and let handlers call `.ToDTO()`
+- Call the repository directly from a handler, all business logic goes through the service layer
 
 ## Before submitting
 

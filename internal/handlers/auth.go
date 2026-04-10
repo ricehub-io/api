@@ -7,14 +7,10 @@ import (
 	"ricehub/internal/config"
 	"ricehub/internal/errs"
 	"ricehub/internal/models"
-	"ricehub/internal/repository"
-	"ricehub/internal/security"
+	"ricehub/internal/services"
 	"ricehub/internal/validation"
 
-	"github.com/alexedwards/argon2id"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 func Register(c *gin.Context) {
@@ -24,38 +20,8 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	if validation.IsUsernameBlacklisted(body.Username) {
-		c.Error(errs.UserError(
-			"You can't use this username! Please try again with a different one.",
-			http.StatusUnprocessableEntity,
-		))
-		return
-	}
-
-	if validation.IsDisplayNameBlacklisted(body.DisplayName) {
-		c.Error(errs.BlacklistedDisplayName)
-		return
-	}
-
-	taken, err := repository.UsernameExists(body.Username)
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-	if taken {
-		c.Error(errs.UserError("Username is already taken", http.StatusConflict))
-		return
-	}
-
-	hashedPassword, err := argon2id.CreateHash(body.Password, argon2id.DefaultParams)
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-
-	err = repository.InsertUser(body.Username, body.DisplayName, hashedPassword)
-	if err != nil {
-		c.Error(errs.InternalError(err))
+	if err := services.Register(body); err != nil {
+		c.Error(err)
 		return
 	}
 
@@ -69,48 +35,21 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	user, err := repository.FindUserByUsername(body.Username)
+	res, err := services.Login(body)
 	if err != nil {
-		c.Error(errs.FromDBError(err, errs.InvalidCredentials))
-		return
-	}
-
-	match, err := argon2id.ComparePasswordAndHash(body.Password, user.Password)
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-	if !match {
-		c.Error(errs.InvalidCredentials)
-		return
-	}
-
-	if err := security.VerifyUser(user); err != nil {
 		c.Error(err)
 		return
 	}
 
-	subActive, err := repository.SubscriptionActive(user.ID.String())
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-
-	access, refresh, err := issueTokenPair(user.ID, user.IsAdmin, subActive)
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-
-	setRefreshCookie(c, refresh)
+	setRefreshCookie(c, res.RefreshToken)
 	c.JSON(http.StatusOK, gin.H{
-		"accessToken": access,
-		"user":        user.ToDTO(),
+		"accessToken": res.AccessToken,
+		"user":        res.User.ToDTO(),
 	})
 }
 
 func RefreshToken(c *gin.Context) {
-	tokenStr, err := c.Cookie("refresh_token")
+	refreshStr, err := c.Cookie("refresh_token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
 			c.Error(errs.UserError(
@@ -124,43 +63,9 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	refresh, err := security.DecodeRefreshToken(tokenStr)
+	access, err := services.RefreshToken(refreshStr)
 	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			c.Error(errs.UserError(
-				"Refresh token is expired! Please authenticate again.",
-				http.StatusForbidden,
-			))
-			return
-		}
-
-		c.Error(errs.UserError(err.Error(), http.StatusForbidden))
-		return
-	}
-
-	user, err := repository.FindUserByID(refresh.Subject)
-	if err != nil {
-		c.Error(errs.FromDBError(err, errs.UserError(
-			"Invalid refresh token! Log out and try again.",
-			http.StatusForbidden,
-		)))
-		return
-	}
-
-	if err := security.VerifyUser(user); err != nil {
 		c.Error(err)
-		return
-	}
-
-	subActive, err := repository.SubscriptionActive(user.ID.String())
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-
-	access, err := security.NewAccessToken(user.ID, user.IsAdmin, subActive)
-	if err != nil {
-		c.Error(errs.InternalError(err))
 		return
 	}
 
@@ -169,17 +74,6 @@ func RefreshToken(c *gin.Context) {
 
 func LogOut(c *gin.Context) {
 	clearRefreshCookie(c)
-}
-
-// issueTokenPair generates access and refresh token for given parameters.
-func issueTokenPair(userID uuid.UUID, isAdmin, hasSubscription bool) (access, refresh string, err error) {
-	refresh, err = security.NewRefreshToken(userID)
-	if err != nil {
-		return
-	}
-
-	access, err = security.NewAccessToken(userID, isAdmin, hasSubscription)
-	return
 }
 
 // setRefreshCookie writes refresh token to secure and http-only cookie header.

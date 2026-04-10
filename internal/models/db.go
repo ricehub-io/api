@@ -29,6 +29,7 @@ type Tag struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+type Tags []Tag
 
 type RiceState string
 
@@ -138,6 +139,8 @@ type PartialRice struct {
 	Score         float32
 	Tags          []string
 }
+
+type PartialRices []PartialRice
 
 type ReportWithUser struct {
 	ID          uuid.UUID

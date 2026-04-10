@@ -12,7 +12,7 @@ import (
 type RegisterDTO struct {
 	Username    string `json:"username" binding:"required,min=4,max=14,alphanum"`
 	DisplayName string `json:"displayName" binding:"required,min=3,max=20,displayname"`
-	Password    string `json:"password" binding:"required,min=6,max=512"`
+	Password    string `json:"password" binding:"required,min=6,max=128"`
 }
 
 type LoginDTO struct {
@@ -103,8 +103,17 @@ type UpdateDotfilesPriceDTO struct {
 	NewPrice float64 `json:"newPrice" binding:"required,gt=0"`
 }
 
+type SortBy string
+
+const (
+	Trending      SortBy = "trending"
+	Recent        SortBy = "recent"
+	MostDownloads SortBy = "mostDownloads"
+	MostStars     SortBy = "mostStars"
+)
+
 // COMMENTS
-type AddCommentDTO struct {
+type CreateCommentDTO struct {
 	RiceID  string `json:"riceId" binding:"required,uuid"`
 	Content string `json:"content" binding:"required,min=8,max=128"`
 }
@@ -116,8 +125,8 @@ type UpdateCommentDTO struct {
 // REPORTS
 type CreateReportDTO struct {
 	Reason    string  `json:"reason" binding:"required,min=8,max=1024"`
-	RiceID    *string `json:"riceId" binding:"omitempty,uuid"`
-	CommentID *string `json:"commentId" binding:"omitempty,uuid"`
+	RiceID    *string `json:"riceId" binding:"omitempty,uuid,excluded_with=CommentID,required_without=CommentID"`
+	CommentID *string `json:"commentId" binding:"omitempty,uuid,excluded_with=RiceID,required_without=RiceID"`
 }
 
 // Responses
@@ -172,6 +181,14 @@ func (t Tag) ToDTO() TagDTO {
 		ID:   t.ID,
 		Name: t.Name,
 	}
+}
+
+func (t Tags) ToDTO() []TagDTO {
+	dtos := make([]TagDTO, len(t))
+	for i, tag := range t {
+		dtos[i] = tag.ToDTO()
+	}
+	return dtos
 }
 
 type RiceDotfilesDTO struct {
@@ -373,7 +390,7 @@ func (r PartialRice) ToDTO() PartialRiceDTO {
 	}
 }
 
-func PartialRicesToDTO(rices []PartialRice) []PartialRiceDTO {
+func (rices PartialRices) ToDTO() []PartialRiceDTO {
 	dtos := make([]PartialRiceDTO, len(rices))
 	for i, r := range rices {
 		dtos[i] = r.ToDTO()

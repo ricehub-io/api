@@ -84,7 +84,7 @@ func InitValidator() {
 	}
 }
 
-func checkValidationErrors(err error) error {
+func checkValidationErrors(err error) errs.AppError {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
 		translated := slices.Collect(maps.Values(ve.Translate(translator)))
@@ -96,7 +96,7 @@ func checkValidationErrors(err error) error {
 	return errs.UserError("Failed to parse and decode request body", http.StatusBadRequest)
 }
 
-func ValidateJSON(c *gin.Context, obj any) error {
+func ValidateJSON(c *gin.Context, obj any) errs.AppError {
 	if err := c.ShouldBindJSON(obj); err != nil {
 		return checkValidationErrors(err)
 	}
@@ -112,7 +112,7 @@ func ValidateForm(c *gin.Context, obj any) error {
 
 var openFailed = errs.UserError("Couldn't open and read the uploaded file", http.StatusUnprocessableEntity)
 
-func ValidateFileAsImage(formFile *multipart.FileHeader) (string, error) {
+func ValidateFileAsImage(formFile *multipart.FileHeader) (string, errs.AppError) {
 	// file, err := formFile.Open()
 	// if err != nil {
 	// 	return "", openFailed
@@ -141,7 +141,7 @@ type opener interface {
 
 // validateArchive checks whether provided file (from opener interface) is a valid archive.
 // It's using a custom interface so it can be unit tested :p
-func validateArchive(o opener) (string, error) {
+func validateArchive(o opener) (string, errs.AppError) {
 	file, err := o.Open()
 	if err != nil {
 		return "", openFailed
@@ -166,7 +166,7 @@ func validateArchive(o opener) (string, error) {
 	return mtype.Extension(), nil
 }
 
-func ValidateFileAsArchive(formFile *multipart.FileHeader) (string, error) {
+func ValidateFileAsArchive(formFile *multipart.FileHeader) (string, errs.AppError) {
 	return validateArchive(formFile)
 }
 

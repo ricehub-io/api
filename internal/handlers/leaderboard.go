@@ -4,21 +4,10 @@ import (
 	"net/http"
 	"ricehub/internal/errs"
 	"ricehub/internal/models"
-	"ricehub/internal/repository"
+	"ricehub/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
-
-func fetchLeaderboard(c *gin.Context, period models.LeaderboardPeriod) ([]models.LeaderboardRiceDTO, *errs.AppError) {
-	userID := GetUserIDFromRequest(c)
-
-	rices, err := repository.FetchLeaderboard(period, userID)
-	if err != nil {
-		return nil, errs.InternalError(err)
-	}
-
-	return rices.ToDTO(), nil
-}
 
 func GetWeeklyLeaderboard(c *gin.Context) {
 	rices, err := fetchLeaderboard(c, models.Week)
@@ -48,4 +37,12 @@ func GetYearlyLeaderboard(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, rices)
+}
+
+func fetchLeaderboard(c *gin.Context, period models.LeaderboardPeriod) ([]models.LeaderboardRiceDTO, errs.AppError) {
+	lead, err := services.FetchLeaderboard(period, GetUserIDFromRequest(c))
+	if err != nil {
+		return nil, err
+	}
+	return lead.ToDTO(), nil
 }

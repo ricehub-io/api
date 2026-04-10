@@ -38,6 +38,7 @@ func (s *FileScanner) Init(url string) {
 
 	s.client = pb.NewScannerClient(s.conn)
 	logger.Info("Created gRPC connection with file scanner")
+	// TODO: check if server is available
 }
 
 // Closes internal gRPC connection.

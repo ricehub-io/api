@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func InsertReport(reporterID string, reason string, riceID *string, commentID *string) (id uuid.UUID, err error) {
+func InsertReport(reporterID uuid.UUID, reason string, riceID *string, commentID *string) (id uuid.UUID, err error) {
 	const query = `
 	INSERT INTO reports (reporter_id, reason, rice_id, comment_id)
 	VALUES ($1, $2, $3, $4)
