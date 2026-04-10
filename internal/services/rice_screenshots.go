@@ -27,7 +27,7 @@ func CreateScreenshot(userID, riceID uuid.UUID, files []*multipart.FileHeader, i
 		return nil, errs.InternalError(err)
 	}
 
-	maxScreenshots := config.Config.Limits.MaxPreviewsPerRice
+	maxScreenshots := config.Config.Limits.MaxScreenshotsPerRice
 	if int64(count+len(files)) > maxScreenshots {
 		return nil, errs.TooManyScreenshots(maxScreenshots)
 	}
@@ -44,7 +44,7 @@ func CreateScreenshot(userID, riceID uuid.UUID, files []*multipart.FileHeader, i
 			return nil, err
 		}
 		validFiles = append(validFiles, validFile{
-			path:   fmt.Sprintf("/previews/%v%v", uuid.New(), ext),
+			path:   fmt.Sprintf("/screenshots/%v%v", uuid.New(), ext),
 			header: file,
 		})
 	}

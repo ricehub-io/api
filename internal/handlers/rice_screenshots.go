@@ -38,13 +38,13 @@ func CreateScreenshot(c *gin.Context) {
 		return
 	}
 
-	previews, err := services.CreateScreenshot(userID, riceID, files, token.IsAdmin)
+	scrs, err := services.CreateScreenshot(userID, riceID, files, token.IsAdmin)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"previews": previews})
+	c.JSON(http.StatusCreated, gin.H{"screenshots": scrs})
 }
 
 func DeleteScreenshot(c *gin.Context) {

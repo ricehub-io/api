@@ -124,7 +124,7 @@ INSERT INTO tags (name)
 VALUES ('AwesomeWM'), ('Arch Linux'), ('KDE'), ('Hyprland'), ('i3'), ('bspwm');
 
 ALTER TABLE rice_dotfiles
-ADD COLUMN file_size BIGINT NOT NULL CHECK (file_size > 0);
+    ADD COLUMN file_size BIGINT NOT NULL CHECK (file_size > 0);
 
 CREATE TABLE website_variables (
     key TEXT PRIMARY KEY CHECK (key ~ '^[a-z0-9_]+$'),
@@ -206,7 +206,7 @@ CREATE TYPE rice_state AS ENUM (
 );
 
 ALTER TABLE rices
-ADD COLUMN "state" rice_state NOT NULL DEFAULT 'waiting';
+    ADD COLUMN "state" rice_state NOT NULL DEFAULT 'waiting';
 
 -- create dotfiles type enum and add column to the table
 CREATE TYPE dotfiles_type AS ENUM (
@@ -215,11 +215,11 @@ CREATE TYPE dotfiles_type AS ENUM (
 );
 
 ALTER TABLE rice_dotfiles
-ADD COLUMN "type" dotfiles_type NOT NULL DEFAULT 'free';
+    ADD COLUMN "type" dotfiles_type NOT NULL DEFAULT 'free';
 
 -- add price column to dotfiles
 ALTER TABLE rice_dotfiles
-ADD COLUMN price NUMERIC(5, 2) NOT NULL DEFAULT 1.0 CHECK (price > 0.0);
+    ADD COLUMN price NUMERIC(5, 2) NOT NULL DEFAULT 1.0 CHECK (price > 0.0);
 
 -- create table to keep track of dotfiles purchased by users
 CREATE TABLE dotfiles_purchases (
@@ -232,7 +232,7 @@ CREATE TABLE dotfiles_purchases (
 
 -- add polar product id to rice dotfiles
 ALTER TABLE rice_dotfiles
-ADD COLUMN product_id UUID CHECK (product_id IS NOT NULL OR "type" = 'free');
+    ADD COLUMN product_id UUID CHECK (product_id IS NOT NULL OR "type" = 'free');
 
 -- create table to keep track of users' subscription
 CREATE TABLE user_subscriptions (
@@ -296,4 +296,8 @@ CREATE TYPE subscription_status AS ENUM (
 );
 
 ALTER TABLE user_subscriptions
-ADD COLUMN status subscription_status NOT NULL;
+    ADD COLUMN status subscription_status NOT NULL;
+
+-- previews => screenshots refactor
+ALTER TABLE rice_previews
+    RENAME TO rice_screenshots;

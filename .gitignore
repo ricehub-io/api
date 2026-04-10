@@ -7,6 +7,6 @@ build/
 public/avatars/*.png
 public/avatars/*.jpg
 !public/avatars/default.png
-public/previews/*.png
-public/previews/*.jpg
+public/screenshots/*.png
+public/screenshots/*.jpg
 public/dotfiles/*.zip
