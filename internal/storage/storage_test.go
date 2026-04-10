@@ -70,7 +70,7 @@ func openTempRoot(t *testing.T) (string, *os.Root) {
 	if err != nil {
 		t.Fatalf("os.OpenRoot(%s): %v", dir, err)
 	}
-	t.Cleanup(func() { root.Close() })
+	t.Cleanup(func() { _ = root.Close() })
 	return dir, root
 }
 
@@ -81,7 +81,7 @@ func writeToRoot(t *testing.T, root *os.Root, name, content string) {
 		t.Fatalf("root.Create(%s): %v", name, err)
 	}
 	if _, err := io.WriteString(f, content); err != nil {
-		f.Close()
+		_ = f.Close()
 		t.Fatalf("write %s: %v", name, err)
 	}
 	if err := f.Close(); err != nil {
@@ -182,7 +182,7 @@ func TestMoveFile_SameRootDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.OpenRoot: %v", err)
 	}
-	t.Cleanup(func() { root2.Close() })
+	t.Cleanup(func() { _ = root2.Close() })
 
 	writeToRoot(t, root, "a.zip", "payload")
 
