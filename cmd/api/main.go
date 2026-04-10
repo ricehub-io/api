@@ -15,6 +15,7 @@ import (
 	"ricehub/internal/polar"
 	"ricehub/internal/repository"
 	"ricehub/internal/security"
+	"ricehub/internal/services"
 	"ricehub/internal/validation"
 	"time"
 
@@ -63,22 +64,39 @@ func run() error {
 	go polar.StartSyncThread()
 	go updateLeaderboard()
 
+	// services
+	adminService := services.NewAdminService()
+	authService := services.NewAuthService()
+	commentService := services.NewCommentService()
+	leaderboardService := services.NewLeaderboardService()
+	linkService := services.NewLinkService()
+	profileService := services.NewProfileService()
+	reportService := services.NewReportService()
+	riceDotfilesService := services.NewRiceDotfilesService()
+	riceScreenshotService := services.NewRiceScreenshotService()
+	riceStarService := services.NewRiceStarService()
+	riceTagService := services.NewRiceTagService()
+	riceService := services.NewRiceService()
+	tagService := services.NewTagService()
+	userService := services.NewUserService()
+	webVarService := services.NewWebVarService()
+
 	// handlers
-	adminHandler := handlers.NewAdminHandler()
-	authHandler := handlers.NewAuthHandler()
-	commentHandler := handlers.NewCommentHandler()
-	leaderboardHandler := handlers.NewLeaderboardHandler()
-	linkHandler := handlers.NewLinkHandler()
-	profileHandler := handlers.NewProfileHandler()
-	reportHandler := handlers.NewReportHandler()
-	riceDotfilesHandler := handlers.NewRiceDotfilesHandler()
-	riceScreenshotHandler := handlers.NewRiceScreenshotHandler()
-	riceStarHandler := handlers.NewRiceStarHandler()
-	riceTagHandler := handlers.NewRiceTagHandler()
-	riceHandler := handlers.NewRiceHandler()
-	tagHandler := handlers.NewTagHandler()
-	userHandler := handlers.NewUserHandler()
-	webVarHandler := handlers.NewWebVarHandler()
+	adminHandler := handlers.NewAdminHandler(adminService)
+	authHandler := handlers.NewAuthHandler(authService)
+	commentHandler := handlers.NewCommentHandler(commentService)
+	leaderboardHandler := handlers.NewLeaderboardHandler(leaderboardService)
+	linkHandler := handlers.NewLinkHandler(linkService)
+	profileHandler := handlers.NewProfileHandler(profileService)
+	reportHandler := handlers.NewReportHandler(reportService)
+	riceDotfilesHandler := handlers.NewRiceDotfilesHandler(riceDotfilesService)
+	riceScreenshotHandler := handlers.NewRiceScreenshotHandler(riceScreenshotService)
+	riceStarHandler := handlers.NewRiceStarHandler(riceStarService)
+	riceTagHandler := handlers.NewRiceTagHandler(riceTagService)
+	riceHandler := handlers.NewRiceHandler(riceService)
+	tagHandler := handlers.NewTagHandler(tagService)
+	userHandler := handlers.NewUserHandler(userService)
+	webVarHandler := handlers.NewWebVarHandler(webVarService)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()

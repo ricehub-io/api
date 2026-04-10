@@ -7,9 +7,15 @@ import (
 	"github.com/google/uuid"
 )
 
+type RiceTagService struct{}
+
+func NewRiceTagService() *RiceTagService {
+	return &RiceTagService{}
+}
+
 // AddRiceTags attaches the given tag IDs to a rice.
 // Enforces ownership check before proceeding.
-func AddRiceTags(riceID, userID uuid.UUID, isAdmin bool, tags []int) errs.AppError {
+func (s *RiceTagService) AddRiceTags(riceID, userID uuid.UUID, isAdmin bool, tags []int) errs.AppError {
 	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
 		return err
 	}
@@ -21,7 +27,7 @@ func AddRiceTags(riceID, userID uuid.UUID, isAdmin bool, tags []int) errs.AppErr
 
 // RemoveRiceTags detaches the given tag IDs from a rice.
 // Enforces ownership check before proceeding.
-func RemoveRiceTags(riceID, userID uuid.UUID, isAdmin bool, tags []int) errs.AppError {
+func (s *RiceTagService) RemoveRiceTags(riceID, userID uuid.UUID, isAdmin bool, tags []int) errs.AppError {
 	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
 		return err
 	}

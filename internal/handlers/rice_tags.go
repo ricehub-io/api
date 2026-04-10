@@ -12,10 +12,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type RiceTagHandler struct{}
+type RiceTagHandler struct {
+	svc *services.RiceTagService
+}
 
-func NewRiceTagHandler() *RiceTagHandler {
-	return &RiceTagHandler{}
+func NewRiceTagHandler(svc *services.RiceTagService) *RiceTagHandler {
+	return &RiceTagHandler{svc}
 }
 
 func (h *RiceTagHandler) AddRiceTags(c *gin.Context) {
@@ -39,7 +41,7 @@ func (h *RiceTagHandler) AddRiceTags(c *gin.Context) {
 		return
 	}
 
-	if err := services.AddRiceTags(riceID, userID, token.IsAdmin, body.Tags); err != nil {
+	if err := h.svc.AddRiceTags(riceID, userID, token.IsAdmin, body.Tags); err != nil {
 		c.Error(err)
 		return
 	}
@@ -68,7 +70,7 @@ func (h *RiceTagHandler) RemoveRiceTags(c *gin.Context) {
 		return
 	}
 
-	if err := services.RemoveRiceTags(riceID, userID, token.IsAdmin, body.Tags); err != nil {
+	if err := h.svc.RemoveRiceTags(riceID, userID, token.IsAdmin, body.Tags); err != nil {
 		c.Error(err)
 		return
 	}

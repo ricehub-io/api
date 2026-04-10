@@ -8,10 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type ProfileHandler struct{}
+type ProfileHandler struct {
+	svc *services.ProfileService
+}
 
-func NewProfileHandler() *ProfileHandler {
-	return &ProfileHandler{}
+func NewProfileHandler(svc *services.ProfileService) *ProfileHandler {
+	return &ProfileHandler{svc}
 }
 
 type profilesPath struct {
@@ -29,7 +31,7 @@ func (h *ProfileHandler) GetProfileByUsername(c *gin.Context) {
 	}
 
 	callerID := GetUserIDFromRequest(c)
-	res, err := services.GetProfileByUsername(path.Username, callerID)
+	res, err := h.svc.GetProfileByUsername(path.Username, callerID)
 	if err != nil {
 		c.Error(err)
 		return

@@ -18,6 +18,12 @@ import (
 	"go.uber.org/zap"
 )
 
+type RiceDotfilesService struct{}
+
+func NewRiceDotfilesService() *RiceDotfilesService {
+	return &RiceDotfilesService{}
+}
+
 type DownloadDotfilesResult struct {
 	FilePath string
 	FileName string
@@ -25,7 +31,7 @@ type DownloadDotfilesResult struct {
 
 // PurchaseDotfiles creates a Polar checkout session for paid dotfiles.
 // Returns the checkout URL to redirect the user to, or create embedded checkout.
-func PurchaseDotfiles(userID, riceID uuid.UUID) (string, errs.AppError) {
+func (s *RiceDotfilesService) PurchaseDotfiles(userID, riceID uuid.UUID) (string, errs.AppError) {
 	rice, err := repository.FindRiceByID(&userID, riceID)
 	if err != nil {
 		return "", errs.FromDBError(err, errs.RiceNotFound)
@@ -47,7 +53,7 @@ func PurchaseDotfiles(userID, riceID uuid.UUID) (string, errs.AppError) {
 
 // DownloadDotfiles verifies access, increments the download counter, logs the
 // download event, and returns the file path and attachment filename.
-func DownloadDotfiles(riceID uuid.UUID, userID *uuid.UUID) (DownloadDotfilesResult, errs.AppError) {
+func (s *RiceDotfilesService) DownloadDotfiles(riceID uuid.UUID, userID *uuid.UUID) (DownloadDotfilesResult, errs.AppError) {
 	var res DownloadDotfilesResult
 
 	rice, err := repository.FindRiceByID(userID, riceID)
@@ -81,7 +87,7 @@ func DownloadDotfiles(riceID uuid.UUID, userID *uuid.UUID) (DownloadDotfilesResu
 
 // UpdateDotfiles replaces the dotfiles archive for a rice, deleting the old file
 // from disk first. Enforces ownership check before proceeding.
-func UpdateDotfiles(riceID, userID uuid.UUID, isAdmin bool, file *multipart.FileHeader) (models.RiceDotfiles, errs.AppError) {
+func (s *RiceDotfilesService) UpdateDotfiles(riceID, userID uuid.UUID, isAdmin bool, file *multipart.FileHeader) (models.RiceDotfiles, errs.AppError) {
 	var zero models.RiceDotfiles
 	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
 		return zero, err
@@ -113,7 +119,7 @@ func UpdateDotfiles(riceID, userID uuid.UUID, isAdmin bool, file *multipart.File
 // UpdateDotfilesType switches dotfiles between free and paid - creating, hiding,
 // or unhiding the corresponding Polar product as needed.
 // Enforces ownership check before proceeding.
-func UpdateDotfilesType(riceID, userID uuid.UUID, isAdmin bool, dto models.UpdateDotfilesTypeDTO) errs.AppError {
+func (s *RiceDotfilesService) UpdateDotfilesType(riceID, userID uuid.UUID, isAdmin bool, dto models.UpdateDotfilesTypeDTO) errs.AppError {
 	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
 		return err
 	}
@@ -176,7 +182,7 @@ func UpdateDotfilesType(riceID, userID uuid.UUID, isAdmin bool, dto models.Updat
 
 // UpdateDotfilesPrice updates the price of paid dotfiles and syncs it with Polar.
 // Enforces ownership check before proceeding.
-func UpdateDotfilesPrice(riceID, userID uuid.UUID, isAdmin bool, dto models.UpdateDotfilesPriceDTO) errs.AppError {
+func (s *RiceDotfilesService) UpdateDotfilesPrice(riceID, userID uuid.UUID, isAdmin bool, dto models.UpdateDotfilesPriceDTO) errs.AppError {
 	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
 		return err
 	}

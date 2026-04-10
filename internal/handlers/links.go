@@ -9,14 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type LinkHandler struct{}
+type LinkHandler struct {
+	svc *services.LinkService
+}
 
-func NewLinkHandler() *LinkHandler {
-	return &LinkHandler{}
+func NewLinkHandler(svc *services.LinkService) *LinkHandler {
+	return &LinkHandler{svc}
 }
 
 func (h *LinkHandler) GetLinkByName(c *gin.Context) {
-	link, err := services.GetLinkByName(c.Param("name"))
+	link, err := h.svc.GetLinkByName(c.Param("name"))
 	if err != nil {
 		c.Error(err)
 		return
@@ -33,7 +35,7 @@ func (h *LinkHandler) GetSubscriptionLink(c *gin.Context) {
 		return
 	}
 
-	checkoutURL, err := services.GetSubscriptionLink(userID, config.Config.Polar.SubscriptionProductID)
+	checkoutURL, err := h.svc.GetSubscriptionLink(userID, config.Config.Polar.SubscriptionProductID)
 	if err != nil {
 		c.Error(err)
 		return

@@ -15,10 +15,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type UserHandler struct{}
+type UserHandler struct {
+	svc *services.UserService
+}
 
-func NewUserHandler() *UserHandler {
-	return &UserHandler{}
+func NewUserHandler(svc *services.UserService) *UserHandler {
+	return &UserHandler{svc}
 }
 
 type usersPath struct {
@@ -41,7 +43,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 
 	// public
 	if query.Username != "" {
-		user, err := services.GetUserByUsername(query.Username)
+		user, err := h.svc.GetUserByUsername(query.Username)
 		if err != nil {
 			c.Error(err)
 			return
@@ -66,7 +68,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 			return
 		}
 
-		users, err := services.ListBannedUsers()
+		users, err := h.svc.ListBannedUsers()
 		if err != nil {
 			c.Error(err)
 			return
@@ -80,7 +82,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 	if limit <= 0 {
 		limit = 20
 	}
-	users, err := services.ListRecentUsers(limit)
+	users, err := h.svc.ListRecentUsers(limit)
 	if err != nil {
 		c.Error(err)
 		return
@@ -100,7 +102,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	callerID, _ := uuid.Parse(token.Subject)
 
-	user, err := services.GetUserByID(targetID, callerID, token.IsAdmin)
+	user, err := h.svc.GetUserByID(targetID, callerID, token.IsAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -118,7 +120,7 @@ func (h *UserHandler) GetUserRiceBySlug(c *gin.Context) {
 	isAdmin := token != nil && token.IsAdmin
 	callerID := GetUserIDFromRequest(c)
 
-	rice, err := services.GetUserRiceBySlug(callerID, slug, username, isAdmin)
+	rice, err := h.svc.GetUserRiceBySlug(callerID, slug, username, isAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -136,7 +138,7 @@ func (h *UserHandler) ListUserRices(c *gin.Context) {
 	userID, _ := uuid.Parse(path.UserID)
 	callerID := GetUserIDFromRequest(c)
 
-	rices, err := services.ListUserRices(userID, callerID)
+	rices, err := h.svc.ListUserRices(userID, callerID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -160,7 +162,7 @@ func (h *UserHandler) ListPurchasedRices(c *gin.Context) {
 		return
 	}
 
-	rices, err := services.ListPurchasedRices(targetID, callerID, token.IsAdmin)
+	rices, err := h.svc.ListPurchasedRices(targetID, callerID, token.IsAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -190,7 +192,7 @@ func (h *UserHandler) UpdateDisplayName(c *gin.Context) {
 		return
 	}
 
-	if err := services.UpdateDisplayName(targetID, callerID, token.IsAdmin, body); err != nil {
+	if err := h.svc.UpdateDisplayName(targetID, callerID, token.IsAdmin, body); err != nil {
 		c.Error(err)
 		return
 	}
@@ -219,7 +221,7 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	if err := services.UpdatePassword(targetID, callerID, token.IsAdmin, body); err != nil {
+	if err := h.svc.UpdatePassword(targetID, callerID, token.IsAdmin, body); err != nil {
 		c.Error(err)
 		return
 	}
@@ -250,7 +252,7 @@ func (h *UserHandler) UpdateAvatar(c *gin.Context) {
 		return
 	}
 
-	avatarURL, err := services.UpdateAvatar(targetID, callerID, token.IsAdmin, file)
+	avatarURL, err := h.svc.UpdateAvatar(targetID, callerID, token.IsAdmin, file)
 	if err != nil {
 		c.Error(err)
 		return
@@ -274,7 +276,7 @@ func (h *UserHandler) DeleteAvatar(c *gin.Context) {
 		return
 	}
 
-	if err := services.DeleteAvatar(targetID, callerID, token.IsAdmin); err != nil {
+	if err := h.svc.DeleteAvatar(targetID, callerID, token.IsAdmin); err != nil {
 		c.Error(err)
 		return
 	}
@@ -301,7 +303,7 @@ func (h *UserHandler) BanUser(c *gin.Context) {
 		return
 	}
 
-	userBan, err := services.BanUser(targetID, adminID, ban)
+	userBan, err := h.svc.BanUser(targetID, adminID, ban)
 	if err != nil {
 		c.Error(err)
 		return
@@ -318,7 +320,7 @@ func (h *UserHandler) UnbanUser(c *gin.Context) {
 	}
 	targetID, _ := uuid.Parse(path.UserID)
 
-	if err := services.UnbanUser(targetID); err != nil {
+	if err := h.svc.UnbanUser(targetID); err != nil {
 		c.Error(err)
 		return
 	}
@@ -347,7 +349,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	if err := services.DeleteUser(targetID, callerID, token.IsAdmin, body); err != nil {
+	if err := h.svc.DeleteUser(targetID, callerID, token.IsAdmin, body); err != nil {
 		c.Error(err)
 		return
 	}

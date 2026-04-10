@@ -11,10 +11,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type RiceScreenshotHandler struct{}
+type RiceScreenshotHandler struct {
+	svc *services.RiceScreenshotService
+}
 
-func NewRiceScreenshotHandler() *RiceScreenshotHandler {
-	return &RiceScreenshotHandler{}
+func NewRiceScreenshotHandler(svc *services.RiceScreenshotService) *RiceScreenshotHandler {
+	return &RiceScreenshotHandler{svc}
 }
 
 func (h *RiceScreenshotHandler) CreateScreenshot(c *gin.Context) {
@@ -44,7 +46,7 @@ func (h *RiceScreenshotHandler) CreateScreenshot(c *gin.Context) {
 		return
 	}
 
-	scrs, err := services.CreateScreenshot(userID, riceID, files, token.IsAdmin)
+	scrs, err := h.svc.CreateScreenshot(userID, riceID, files, token.IsAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -79,7 +81,7 @@ func (h *RiceScreenshotHandler) DeleteScreenshot(c *gin.Context) {
 	riceID, _ := uuid.Parse(path.RiceID)
 	screenshotID, _ := uuid.Parse(path.ScreenshotID)
 
-	if err := services.DeleteScreenshot(riceID, screenshotID, userID, token.IsAdmin); err != nil {
+	if err := h.svc.DeleteScreenshot(riceID, screenshotID, userID, token.IsAdmin); err != nil {
 		c.Error(err)
 		return
 	}

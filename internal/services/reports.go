@@ -10,9 +10,15 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+type ReportService struct{}
+
+func NewReportService() *ReportService {
+	return &ReportService{}
+}
+
 // CreateReport inserts a new report for one given resource.
 // Returns an error if no resource with given id exists or user has already reported it.
-func CreateReport(userID uuid.UUID, riceID, commentID *string, reason string) (uuid.UUID, errs.AppError) {
+func (s *ReportService) CreateReport(userID uuid.UUID, riceID, commentID *string, reason string) (uuid.UUID, errs.AppError) {
 	repID, err := repository.InsertReport(userID, reason, riceID, commentID)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -24,7 +30,6 @@ func CreateReport(userID uuid.UUID, riceID, commentID *string, reason string) (u
 				return repID, errs.AlreadyReported
 			}
 		}
-
 		return repID, errs.InternalError(err)
 	}
 

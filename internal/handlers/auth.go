@@ -13,10 +13,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AuthHandler struct{}
+type AuthHandler struct {
+	svc *services.AuthService
+}
 
-func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{}
+func NewAuthHandler(svc *services.AuthService) *AuthHandler {
+	return &AuthHandler{svc}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -26,7 +28,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	if err := services.Register(body); err != nil {
+	if err := h.svc.Register(body); err != nil {
 		c.Error(err)
 		return
 	}
@@ -41,7 +43,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	res, err := services.Login(body)
+	res, err := h.svc.Login(body)
 	if err != nil {
 		c.Error(err)
 		return
@@ -69,7 +71,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	access, err := services.RefreshToken(refreshStr)
+	access, err := h.svc.RefreshToken(refreshStr)
 	if err != nil {
 		c.Error(err)
 		return

@@ -7,16 +7,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type WebVarHandler struct{}
+type WebVarHandler struct {
+	svc *services.WebVarService
+}
 
-func NewWebVarHandler() *WebVarHandler {
-	return &WebVarHandler{}
+func NewWebVarHandler(svc *services.WebVarService) *WebVarHandler {
+	return &WebVarHandler{svc}
 }
 
 func (h *WebVarHandler) GetWebVarByKey(c *gin.Context) {
 	key := c.Param("key")
 
-	v, err := services.GetWebVarByKey(key)
+	v, err := h.svc.GetWebVarByKey(key)
 	if err != nil {
 		c.Error(err)
 		return

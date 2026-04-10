@@ -12,10 +12,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type CommentHandler struct{}
+type CommentHandler struct {
+	svc *services.CommentService
+}
 
-func NewCommentHandler() *CommentHandler {
-	return &CommentHandler{}
+func NewCommentHandler(svc *services.CommentService) *CommentHandler {
+	return &CommentHandler{svc}
 }
 
 type commentsPath struct {
@@ -36,7 +38,7 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	comment, err := services.CreateComment(userID, body)
+	comment, err := h.svc.CreateComment(userID, body)
 	if err != nil {
 		c.Error(err)
 		return
@@ -54,7 +56,7 @@ func (h *CommentHandler) ListComments(c *gin.Context) {
 		return
 	}
 
-	comments, err := services.ListComments(query.Limit)
+	comments, err := h.svc.ListComments(query.Limit)
 	if err != nil {
 		c.Error(err)
 		return
@@ -71,7 +73,7 @@ func (h *CommentHandler) GetCommentByID(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	comment, err := services.GetCommentByID(commentID)
+	comment, err := h.svc.GetCommentByID(commentID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -101,7 +103,7 @@ func (h *CommentHandler) UpdateComment(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	comment, err := services.UpdateComment(token.IsAdmin, userID, commentID, body.Content)
+	comment, err := h.svc.UpdateComment(token.IsAdmin, userID, commentID, body.Content)
 	if err != nil {
 		c.Error(err)
 		return
@@ -125,7 +127,7 @@ func (h *CommentHandler) DeleteComment(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	if err := services.DeleteComment(token.IsAdmin, userID, commentID); err != nil {
+	if err := h.svc.DeleteComment(token.IsAdmin, userID, commentID); err != nil {
 		c.Error(err)
 		return
 	}

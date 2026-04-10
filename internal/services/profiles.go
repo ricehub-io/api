@@ -8,6 +8,12 @@ import (
 	"github.com/google/uuid"
 )
 
+type ProfileService struct{}
+
+func NewProfileService() *ProfileService {
+	return &ProfileService{}
+}
+
 type GetProfileResult struct {
 	User  models.User
 	Rices models.PartialRices
@@ -16,7 +22,7 @@ type GetProfileResult struct {
 // GetProfileByUsername fetches given user data and rices.
 // The caller's userID is optional and used to include user-specific data in result.
 // Returns an error if no user with the given username exists.
-func GetProfileByUsername(username string, callerID *uuid.UUID) (GetProfileResult, errs.AppError) {
+func (s *ProfileService) GetProfileByUsername(username string, callerID *uuid.UUID) (GetProfileResult, errs.AppError) {
 	var res GetProfileResult
 
 	user, err := repository.FindUserByUsername(username)

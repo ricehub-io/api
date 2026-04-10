@@ -9,10 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type LeaderboardHandler struct{}
+type LeaderboardHandler struct {
+	svc *services.LeaderboardService
+}
 
-func NewLeaderboardHandler() *LeaderboardHandler {
-	return &LeaderboardHandler{}
+func NewLeaderboardHandler(svc *services.LeaderboardService) *LeaderboardHandler {
+	return &LeaderboardHandler{svc}
 }
 
 func (h *LeaderboardHandler) GetWeeklyLeaderboard(c *gin.Context) {
@@ -46,7 +48,7 @@ func (h *LeaderboardHandler) GetYearlyLeaderboard(c *gin.Context) {
 }
 
 func (h *LeaderboardHandler) fetchLeaderboard(c *gin.Context, period models.LeaderboardPeriod) ([]models.LeaderboardRiceDTO, errs.AppError) {
-	lead, err := services.FetchLeaderboard(period, GetUserIDFromRequest(c))
+	lead, err := h.svc.FetchLeaderboard(period, GetUserIDFromRequest(c))
 	if err != nil {
 		return nil, err
 	}

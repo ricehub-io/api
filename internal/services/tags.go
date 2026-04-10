@@ -10,9 +10,15 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+type TagService struct{}
+
+func NewTagService() *TagService {
+	return &TagService{}
+}
+
 // CreateTag inserts a new tag with the given name.
 // Returns an error if a tag with that name already exists.
-func CreateTag(name string) (models.Tag, errs.AppError) {
+func (s *TagService) CreateTag(name string) (models.Tag, errs.AppError) {
 	tag, err := repository.InsertTag(name)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -26,7 +32,7 @@ func CreateTag(name string) (models.Tag, errs.AppError) {
 }
 
 // ListTags returns all tags ordered by ID.
-func ListTags() (models.Tags, errs.AppError) {
+func (s *TagService) ListTags() (models.Tags, errs.AppError) {
 	tags, err := repository.FetchTags()
 	if err != nil {
 		return nil, errs.InternalError(err)
@@ -37,7 +43,7 @@ func ListTags() (models.Tags, errs.AppError) {
 
 // UpdateTag updates the name of the tag with the given ID.
 // Returns TagNotFound if no tag with that ID exists.
-func UpdateTag(id int, name string) (models.Tag, errs.AppError) {
+func (s *TagService) UpdateTag(id int, name string) (models.Tag, errs.AppError) {
 	tag, err := repository.UpdateTag(id, name)
 	if err != nil {
 		return tag, errs.FromDBError(err, errs.TagNotFound)
@@ -48,7 +54,7 @@ func UpdateTag(id int, name string) (models.Tag, errs.AppError) {
 
 // DeleteTag deletes the tag with the given ID.
 // Returns TagNotFound if no tag with that ID exists.
-func DeleteTag(id int) errs.AppError {
+func (s *TagService) DeleteTag(id int) errs.AppError {
 	deleted, err := repository.DeleteTag(id)
 	if err != nil {
 		return errs.InternalError(err)

@@ -20,8 +20,14 @@ import (
 	"go.uber.org/zap"
 )
 
+type UserService struct{}
+
+func NewUserService() *UserService {
+	return &UserService{}
+}
+
 // GetUserByUsername returns a user by their username.
-func GetUserByUsername(username string) (models.User, errs.AppError) {
+func (s *UserService) GetUserByUsername(username string) (models.User, errs.AppError) {
 	user, err := repository.FindUserByUsername(username)
 	if err != nil {
 		return user, errs.FromDBError(err, errs.UserNotFound)
@@ -30,7 +36,7 @@ func GetUserByUsername(username string) (models.User, errs.AppError) {
 }
 
 // ListBannedUsers returns all currently banned users with their ban info.
-func ListBannedUsers() ([]models.UserWithBan, errs.AppError) {
+func (s *UserService) ListBannedUsers() ([]models.UserWithBan, errs.AppError) {
 	users, err := repository.FetchBannedUsers()
 	if err != nil {
 		return nil, errs.InternalError(err)
@@ -39,7 +45,7 @@ func ListBannedUsers() ([]models.UserWithBan, errs.AppError) {
 }
 
 // ListRecentUsers returns the most recently registered users up to the given limit.
-func ListRecentUsers(limit int) ([]models.User, errs.AppError) {
+func (s *UserService) ListRecentUsers(limit int) ([]models.User, errs.AppError) {
 	users, err := repository.FetchRecentUsers(limit)
 	if err != nil {
 		return nil, errs.InternalError(err)
@@ -48,9 +54,9 @@ func ListRecentUsers(limit int) ([]models.User, errs.AppError) {
 }
 
 // GetUserByID fetches a user by ID, enforcing that only the owner or an admin can access it.
-func GetUserByID(targetID, callerID uuid.UUID, isAdmin bool) (models.User, errs.AppError) {
+func (s *UserService) GetUserByID(targetID, callerID uuid.UUID, isAdmin bool) (models.User, errs.AppError) {
 	var zero models.User
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return zero, err
 	}
 
@@ -64,7 +70,7 @@ func GetUserByID(targetID, callerID uuid.UUID, isAdmin bool) (models.User, errs.
 
 // GetUserRiceBySlug fetches a rice by the author's username and rice slug.
 // Waiting rices are only visible to admins.
-func GetUserRiceBySlug(callerID *uuid.UUID, slug, username string, isAdmin bool) (models.RiceWithRelations, errs.AppError) {
+func (s *UserService) GetUserRiceBySlug(callerID *uuid.UUID, slug, username string, isAdmin bool) (models.RiceWithRelations, errs.AppError) {
 	var zero models.RiceWithRelations
 
 	taken, err := repository.UsernameExists(username)
@@ -87,7 +93,7 @@ func GetUserRiceBySlug(callerID *uuid.UUID, slug, username string, isAdmin bool)
 }
 
 // ListUserRices returns all accepted rices for the given user.
-func ListUserRices(userID uuid.UUID, callerID *uuid.UUID) (models.PartialRices, errs.AppError) {
+func (s *UserService) ListUserRices(userID uuid.UUID, callerID *uuid.UUID) (models.PartialRices, errs.AppError) {
 	rices, err := repository.FetchUserRices(userID, callerID)
 	if err != nil {
 		return nil, errs.InternalError(err)
@@ -97,8 +103,8 @@ func ListUserRices(userID uuid.UUID, callerID *uuid.UUID) (models.PartialRices, 
 
 // ListPurchasedRices returns all rices the target user has purchased.
 // Enforces that only the owner or an admin can fetch purchases.
-func ListPurchasedRices(targetID, callerID uuid.UUID, isAdmin bool) (models.PartialRices, errs.AppError) {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) ListPurchasedRices(targetID, callerID uuid.UUID, isAdmin bool) (models.PartialRices, errs.AppError) {
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return nil, err
 	}
 
@@ -112,8 +118,8 @@ func ListPurchasedRices(targetID, callerID uuid.UUID, isAdmin bool) (models.Part
 
 // UpdateDisplayName changes a user's display name after blacklist validation.
 // Enforces that only the owner or an admin can update.
-func UpdateDisplayName(targetID, callerID uuid.UUID, isAdmin bool, dto models.UpdateDisplayNameDTO) errs.AppError {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) UpdateDisplayName(targetID, callerID uuid.UUID, isAdmin bool, dto models.UpdateDisplayNameDTO) errs.AppError {
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}
 
@@ -131,8 +137,8 @@ func UpdateDisplayName(targetID, callerID uuid.UUID, isAdmin bool, dto models.Up
 // UpdatePassword changes a user's password after verifying the current one.
 // Admins bypass the current password check.
 // Enforces that only the owner or an admin can update.
-func UpdatePassword(targetID, callerID uuid.UUID, isAdmin bool, dto models.UpdatePasswordDTO) errs.AppError {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) UpdatePassword(targetID, callerID uuid.UUID, isAdmin bool, dto models.UpdatePasswordDTO) errs.AppError {
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}
 
@@ -166,10 +172,10 @@ func UpdatePassword(targetID, callerID uuid.UUID, isAdmin bool, dto models.Updat
 // UpdateAvatar saves a new avatar, removes the old one from disk, and updates the DB.
 // Returns the CDN URL of the uploaded avatar.
 // Enforces that only the owner or an admin can upload.
-func UpdateAvatar(targetID, callerID uuid.UUID, isAdmin bool, file *multipart.FileHeader) (string, errs.AppError) {
+func (s *UserService) UpdateAvatar(targetID, callerID uuid.UUID, isAdmin bool, file *multipart.FileHeader) (string, errs.AppError) {
 	var err error
 
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return "", err
 	}
 
@@ -207,8 +213,8 @@ func UpdateAvatar(targetID, callerID uuid.UUID, isAdmin bool, file *multipart.Fi
 
 // DeleteAvatar removes the user's custom avatar from the DB.
 // Enforces that only the owner or an admin can delete.
-func DeleteAvatar(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) DeleteAvatar(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}
 
@@ -221,8 +227,8 @@ func DeleteAvatar(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
 
 // DeleteUser deletes an account after verifying the user's password.
 // Enforces that only the owner or an admin can delete.
-func DeleteUser(targetID, callerID uuid.UUID, isAdmin bool, dto models.DeleteUserDTO) errs.AppError {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) DeleteUser(targetID, callerID uuid.UUID, isAdmin bool, dto models.DeleteUserDTO) errs.AppError {
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}
 
@@ -247,11 +253,11 @@ func DeleteUser(targetID, callerID uuid.UUID, isAdmin bool, dto models.DeleteUse
 }
 
 // BanUser creates a ban record for a user and revokes their admin role if applicable.
-func BanUser(targetID, adminID uuid.UUID, dto models.BanUserDTO) (models.UserBan, errs.AppError) {
+func (s *UserService) BanUser(targetID, adminID uuid.UUID, dto models.BanUserDTO) (models.UserBan, errs.AppError) {
 	var zero models.UserBan
 	var err error
 
-	expiresAt, err := computeExpiration(dto.Duration)
+	expiresAt, err := s.computeExpiration(dto.Duration)
 	if err != nil {
 		return zero, err.(errs.AppError)
 	}
@@ -289,7 +295,7 @@ func BanUser(targetID, adminID uuid.UUID, dto models.BanUserDTO) (models.UserBan
 }
 
 // UnbanUser revokes an active ban from a user.
-func UnbanUser(targetID uuid.UUID) errs.AppError {
+func (s *UserService) UnbanUser(targetID uuid.UUID) errs.AppError {
 	state, err := repository.IsUserBanned(targetID)
 	if err != nil {
 		return errs.InternalError(err)
@@ -311,7 +317,7 @@ func UnbanUser(targetID uuid.UUID) errs.AppError {
 
 // canAccessUser checks whether the caller is allowed to access the target user's data.
 // Admins bypass the ownership check.
-func canAccessUser(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
+func (s *UserService) canAccessUser(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
 	if !isAdmin && callerID != targetID {
 		return errs.NoAccess
 	}
@@ -319,7 +325,7 @@ func canAccessUser(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
 }
 
 // computeExpiration parses an optional duration string into an absolute expiry time.
-func computeExpiration(duration *string) (*time.Time, errs.AppError) {
+func (s *UserService) computeExpiration(duration *string) (*time.Time, errs.AppError) {
 	if duration == nil {
 		return nil, nil
 	}

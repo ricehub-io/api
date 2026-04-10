@@ -14,6 +14,12 @@ import (
 	"github.com/google/uuid"
 )
 
+type AuthService struct{}
+
+func NewAuthService() *AuthService {
+	return &AuthService{}
+}
+
 type LoginResult struct {
 	User                      models.User
 	AccessToken, RefreshToken string
@@ -21,7 +27,7 @@ type LoginResult struct {
 
 // Register creates a new user account with a hashed password.
 // Returns an error if the username is blacklisted, already taken, or insert fails.
-func Register(dto models.RegisterDTO) errs.AppError {
+func (s *AuthService) Register(dto models.RegisterDTO) errs.AppError {
 	if validation.IsUsernameBlacklisted(dto.Username) {
 		return errs.BlacklistedUsername
 	}
@@ -52,7 +58,7 @@ func Register(dto models.RegisterDTO) errs.AppError {
 
 // Login validates credentials, checks if user is banned, and issues an access and refresh token pair.
 // Returns InvalidCredentials if username or password is wrong.
-func Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
+func (s *AuthService) Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
 	var res LoginResult
 
 	user, err := repository.FindUserByUsername(dto.Username)
@@ -77,7 +83,7 @@ func Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
 		return res, errs.InternalError(err)
 	}
 
-	access, refresh, err := issueTokenPair(user.ID, user.IsAdmin, subActive)
+	access, refresh, err := s.issueTokenPair(user.ID, user.IsAdmin, subActive)
 	if err != nil {
 		return res, errs.InternalError(err)
 	}
@@ -89,7 +95,7 @@ func Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
 	return res, nil
 }
 
-func RefreshToken(refreshStr string) (string, errs.AppError) {
+func (s *AuthService) RefreshToken(refreshStr string) (string, errs.AppError) {
 	refresh, err := security.DecodeRefreshToken(refreshStr)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
@@ -123,7 +129,7 @@ func RefreshToken(refreshStr string) (string, errs.AppError) {
 }
 
 // issueTokenPair generates access and refresh token for given parameters.
-func issueTokenPair(userID uuid.UUID, isAdmin, hasSubscription bool) (access, refresh string, err error) {
+func (s *AuthService) issueTokenPair(userID uuid.UUID, isAdmin, hasSubscription bool) (access, refresh string, err error) {
 	refresh, err = security.NewRefreshToken(userID)
 	if err != nil {
 		return

@@ -13,10 +13,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type ReportHandler struct{}
+type ReportHandler struct {
+	svc *services.ReportService
+}
 
-func NewReportHandler() *ReportHandler {
-	return &ReportHandler{}
+func NewReportHandler(svc *services.ReportService) *ReportHandler {
+	return &ReportHandler{svc}
 }
 
 type reportsPath struct {
@@ -33,7 +35,7 @@ func (h *ReportHandler) CreateReport(c *gin.Context) {
 		return
 	}
 
-	reportID, err := services.CreateReport(userID, body.RiceID, body.CommentID, body.Reason)
+	reportID, err := h.svc.CreateReport(userID, body.RiceID, body.CommentID, body.Reason)
 	if err != nil {
 		c.Error(err)
 		return

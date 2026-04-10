@@ -6,8 +6,14 @@ import (
 	"ricehub/internal/repository"
 )
 
+type AdminService struct{}
+
+func NewAdminService() *AdminService {
+	return &AdminService{}
+}
+
 // ServiceStatistics fetches latest service statistics from database.
-func ServiceStatistics() (models.ServiceStatistics, errs.AppError) {
+func (s *AdminService) ServiceStatistics() (models.ServiceStatistics, errs.AppError) {
 	stats, err := repository.FetchServiceStatistics()
 	if err != nil {
 		return models.ServiceStatistics{}, errs.InternalError(err)

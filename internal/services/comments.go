@@ -11,9 +11,15 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+type CommentService struct{}
+
+func NewCommentService() *CommentService {
+	return &CommentService{}
+}
+
 // CreateComment inserts a new comment under the given rice post.
 // Returns RiceNotFound if the rice doesn't exist.
-func CreateComment(userID uuid.UUID, dto models.CreateCommentDTO) (models.RiceComment, errs.AppError) {
+func (s *CommentService) CreateComment(userID uuid.UUID, dto models.CreateCommentDTO) (models.RiceComment, errs.AppError) {
 	riceID, _ := uuid.Parse(dto.RiceID)
 
 	comment, err := repository.InsertComment(riceID, userID, dto.Content)
@@ -29,7 +35,7 @@ func CreateComment(userID uuid.UUID, dto models.CreateCommentDTO) (models.RiceCo
 }
 
 // ListComments fetches limited amount of comments sorted by creation date.
-func ListComments(limit int) ([]models.CommentWithUser, errs.AppError) {
+func (s *CommentService) ListComments(limit int) ([]models.CommentWithUser, errs.AppError) {
 	comments, err := repository.FetchRecentComments(limit)
 	if err != nil {
 		return nil, errs.InternalError(err)
@@ -39,7 +45,7 @@ func ListComments(limit int) ([]models.CommentWithUser, errs.AppError) {
 }
 
 // GetCommentByID fetches given comment and returns CommentNotFound if not found.
-func GetCommentByID(commentID uuid.UUID) (models.RiceCommentWithSlug, errs.AppError) {
+func (s *CommentService) GetCommentByID(commentID uuid.UUID) (models.RiceCommentWithSlug, errs.AppError) {
 	comment, err := repository.FindCommentByID(commentID)
 	if err != nil {
 		return comment, errs.FromDBError(err, errs.CommentNotFound)
@@ -48,8 +54,8 @@ func GetCommentByID(commentID uuid.UUID) (models.RiceCommentWithSlug, errs.AppEr
 }
 
 // UpdateComment checks if user can modify the comment and updates it with given content.
-func UpdateComment(isAdmin bool, userID, commentID uuid.UUID, content string) (models.RiceComment, errs.AppError) {
-	if err := canModifyComment(isAdmin, userID, commentID); err != nil {
+func (s *CommentService) UpdateComment(isAdmin bool, userID, commentID uuid.UUID, content string) (models.RiceComment, errs.AppError) {
+	if err := s.canModifyComment(isAdmin, userID, commentID); err != nil {
 		return models.RiceComment{}, err
 	}
 
@@ -62,8 +68,8 @@ func UpdateComment(isAdmin bool, userID, commentID uuid.UUID, content string) (m
 }
 
 // DeleteComment checks if user can modify the comment and deletes it if so.
-func DeleteComment(isAdmin bool, userID, commentID uuid.UUID) errs.AppError {
-	if err := canModifyComment(isAdmin, userID, commentID); err != nil {
+func (s *CommentService) DeleteComment(isAdmin bool, userID, commentID uuid.UUID) errs.AppError {
+	if err := s.canModifyComment(isAdmin, userID, commentID); err != nil {
 		return err
 	}
 
@@ -76,7 +82,7 @@ func DeleteComment(isAdmin bool, userID, commentID uuid.UUID) errs.AppError {
 
 // canModifyComment checks whether user is either an admin or author of the given comment.
 // Returns NoAccess if user is not allowed to modify it.
-func canModifyComment(isAdmin bool, userID, commentID uuid.UUID) errs.AppError {
+func (s *CommentService) canModifyComment(isAdmin bool, userID, commentID uuid.UUID) errs.AppError {
 	if isAdmin {
 		return nil
 	}

@@ -7,14 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AdminHandler struct{}
+type AdminHandler struct {
+	svc *services.AdminService
+}
 
-func NewAdminHandler() *AdminHandler {
-	return &AdminHandler{}
+func NewAdminHandler(svc *services.AdminService) *AdminHandler {
+	return &AdminHandler{svc}
 }
 
 func (h *AdminHandler) ServiceStatistics(c *gin.Context) {
-	stats, err := services.ServiceStatistics()
+	stats, err := h.svc.ServiceStatistics()
 	if err != nil {
 		c.Error(err)
 		return

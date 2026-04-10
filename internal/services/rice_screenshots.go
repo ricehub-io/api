@@ -14,10 +14,16 @@ import (
 	"github.com/google/uuid"
 )
 
+type RiceScreenshotService struct{}
+
+func NewRiceScreenshotService() *RiceScreenshotService {
+	return &RiceScreenshotService{}
+}
+
 // CreateScreenshot validates and saves new screenshot files for a rice, then
 // inserts them into the database. Returns the CDN URLs of the created screenshots.
 // Enforces ownership and screenshot limit checks.
-func CreateScreenshot(userID, riceID uuid.UUID, files []*multipart.FileHeader, isAdmin bool) ([]string, errs.AppError) {
+func (s *RiceScreenshotService) CreateScreenshot(userID, riceID uuid.UUID, files []*multipart.FileHeader, isAdmin bool) ([]string, errs.AppError) {
 	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
 		return nil, err
 	}
@@ -77,7 +83,7 @@ func CreateScreenshot(userID, riceID uuid.UUID, files []*multipart.FileHeader, i
 
 // DeleteScreenshot removes a screenshot from a rice, enforcing a minimum of one
 // screenshot per rice. Enforces ownership check before proceeding.
-func DeleteScreenshot(riceID, screenshotID, userID uuid.UUID, isAdmin bool) errs.AppError {
+func (s *RiceScreenshotService) DeleteScreenshot(riceID, screenshotID, userID uuid.UUID, isAdmin bool) errs.AppError {
 	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
 		return err
 	}

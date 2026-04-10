@@ -10,10 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type TagHandler struct{}
+type TagHandler struct {
+	svc *services.TagService
+}
 
-func NewTagHandler() *TagHandler {
-	return &TagHandler{}
+func NewTagHandler(svc *services.TagService) *TagHandler {
+	return &TagHandler{svc}
 }
 
 type tagsPath struct {
@@ -27,7 +29,7 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 		return
 	}
 
-	tag, err := services.CreateTag(body.Name)
+	tag, err := h.svc.CreateTag(body.Name)
 	if err != nil {
 		c.Error(err)
 		return
@@ -37,7 +39,7 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 }
 
 func (h *TagHandler) ListTags(c *gin.Context) {
-	tags, err := services.ListTags()
+	tags, err := h.svc.ListTags()
 	if err != nil {
 		c.Error(err)
 		return
@@ -59,7 +61,7 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 		return
 	}
 
-	tag, err := services.UpdateTag(path.TagID, body.Name)
+	tag, err := h.svc.UpdateTag(path.TagID, body.Name)
 	if err != nil {
 		c.Error(err)
 		return
@@ -75,7 +77,7 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 		return
 	}
 
-	if err := services.DeleteTag(path.TagID); err != nil {
+	if err := h.svc.DeleteTag(path.TagID); err != nil {
 		c.Error(err)
 		return
 	}

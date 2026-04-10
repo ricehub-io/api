@@ -9,10 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type RiceStarHandler struct{}
+type RiceStarHandler struct {
+	svc *services.RiceStarService
+}
 
-func NewRiceStarHandler() *RiceStarHandler {
-	return &RiceStarHandler{}
+func NewRiceStarHandler(svc *services.RiceStarService) *RiceStarHandler {
+	return &RiceStarHandler{svc}
 }
 
 func (h *RiceStarHandler) CreateRiceStar(c *gin.Context) {
@@ -24,7 +26,7 @@ func (h *RiceStarHandler) CreateRiceStar(c *gin.Context) {
 		return
 	}
 
-	if err := services.CreateRiceStar(path.RiceID, token.Subject); err != nil {
+	if err := h.svc.CreateRiceStar(path.RiceID, token.Subject); err != nil {
 		c.Error(err)
 		return
 	}
@@ -41,7 +43,7 @@ func (h *RiceStarHandler) DeleteRiceStar(c *gin.Context) {
 		return
 	}
 
-	if err := services.DeleteRiceStar(path.RiceID, token.Subject); err != nil {
+	if err := h.svc.DeleteRiceStar(path.RiceID, token.Subject); err != nil {
 		c.Error(err)
 		return
 	}

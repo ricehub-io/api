@@ -20,6 +20,12 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+type RiceService struct{}
+
+func NewRiceService() *RiceService {
+	return &RiceService{}
+}
+
 type ListRicesResult struct {
 	Rices models.PartialRices
 	// unaimeds: why is it f32??? why did i do that??
@@ -30,7 +36,7 @@ type ListRicesResult struct {
 // autoAccept skips the waiting state and immediately publishes the rice.
 // If the dotfiles type is paid, a Polar product is created for the purchase flow.
 // TODO: remove uploaded files if tx failed
-func CreateRice(
+func (s *RiceService) CreateRice(
 	userID uuid.UUID,
 	dto models.CreateRiceDTO,
 	screenshots []*multipart.FileHeader,
@@ -133,7 +139,7 @@ func CreateRice(
 // ListRices fetches a paginated list of accepted rices for the given sort method.
 // userID is optional and used to populate IsStarred/IsOwned fields per rice.
 // Results are reversed in memory when pag.Reverse is set.
-func ListRices(sort models.SortBy, pag repository.Pagination, userID *uuid.UUID) (ListRicesResult, errs.AppError) {
+func (s *RiceService) ListRices(sort models.SortBy, pag repository.Pagination, userID *uuid.UUID) (ListRicesResult, errs.AppError) {
 	var res ListRicesResult
 
 	var rices models.PartialRices
@@ -173,7 +179,7 @@ func ListRices(sort models.SortBy, pag repository.Pagination, userID *uuid.UUID)
 }
 
 // ListWaitingRices returns all rices pending admin review.
-func ListWaitingRices() (models.PartialRices, errs.AppError) {
+func (s *RiceService) ListWaitingRices() (models.PartialRices, errs.AppError) {
 	rices, err := repository.FetchWaitingRices()
 	if err != nil {
 		return nil, errs.InternalError(err)
@@ -182,7 +188,7 @@ func ListWaitingRices() (models.PartialRices, errs.AppError) {
 }
 
 // GetRiceByID fetches a rice by ID. Waiting rices are only visible to admins.
-func GetRiceByID(userID *uuid.UUID, riceID uuid.UUID, isAdmin bool) (models.RiceWithRelations, errs.AppError) {
+func (s *RiceService) GetRiceByID(userID *uuid.UUID, riceID uuid.UUID, isAdmin bool) (models.RiceWithRelations, errs.AppError) {
 	rice, err := repository.FindRiceByID(userID, riceID)
 	if err != nil {
 		return rice, errs.FromDBError(err, errs.RiceNotFound)
@@ -195,7 +201,7 @@ func GetRiceByID(userID *uuid.UUID, riceID uuid.UUID, isAdmin bool) (models.Rice
 }
 
 // ListRiceComments returns all comments for a given rice.
-func ListRiceComments(riceID uuid.UUID) ([]models.CommentWithUser, errs.AppError) {
+func (s *RiceService) ListRiceComments(riceID uuid.UUID) ([]models.CommentWithUser, errs.AppError) {
 	comments, err := repository.FetchCommentsByRiceID(riceID)
 	if err != nil {
 		return nil, errs.InternalError(err)
@@ -205,7 +211,7 @@ func ListRiceComments(riceID uuid.UUID) ([]models.CommentWithUser, errs.AppError
 
 // UpdateRiceMetadata updates the title and/or description of a rice.
 // Enforces ownership and blacklist checks.
-func UpdateRiceMetadata(riceID, userID uuid.UUID, isAdmin bool, dto models.UpdateRiceDTO) errs.AppError {
+func (s *RiceService) UpdateRiceMetadata(riceID, userID uuid.UUID, isAdmin bool, dto models.UpdateRiceDTO) errs.AppError {
 	if dto.Title == nil && dto.Description == nil {
 		return errs.NoRiceFieldsToUpdate
 	}
@@ -231,7 +237,7 @@ func UpdateRiceMetadata(riceID, userID uuid.UUID, isAdmin bool, dto models.Updat
 
 // UpdateRiceState updates a rice's state to accepted or rejected (deleted).
 // Returns true if the rice was rejected.
-func UpdateRiceState(riceID uuid.UUID, dto models.UpdateRiceStateDTO) (rejected bool, _ errs.AppError) {
+func (s *RiceService) UpdateRiceState(riceID uuid.UUID, dto models.UpdateRiceStateDTO) (rejected bool, _ errs.AppError) {
 	rice, err := repository.FindRiceByID(nil, riceID)
 	if err != nil {
 		return false, errs.FromDBError(err, errs.RiceNotFound)
@@ -257,7 +263,7 @@ func UpdateRiceState(riceID uuid.UUID, dto models.UpdateRiceStateDTO) (rejected 
 
 // DeleteRice deletes a rice and archives its Polar product if one exists.
 // Enforces ownership check before proceeding.
-func DeleteRice(riceID, userID uuid.UUID, isAdmin bool) errs.AppError {
+func (s *RiceService) DeleteRice(riceID, userID uuid.UUID, isAdmin bool) errs.AppError {
 	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
 		return err
 	}
