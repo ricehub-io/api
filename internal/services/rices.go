@@ -44,7 +44,7 @@ func CreateRice(
 		return errs.NotEnoughScreenshots
 	}
 
-	maxScreenshots := config.Config.Limits.MaxPreviewsPerRice
+	maxScreenshots := config.Config.Limits.MaxScreenshotsPerRice
 	if int64(len(screenshots)) > maxScreenshots {
 		return errs.TooManyScreenshots(maxScreenshots)
 	}
@@ -57,15 +57,15 @@ func CreateRice(
 		return errs.BlacklistedRiceDescription
 	}
 
-	validPreviews := make(map[string]*multipart.FileHeader, len(screenshots))
-	for _, preview := range screenshots {
-		ext, err := validation.ValidateFileAsImage(preview)
+	validScreenshots := make(map[string]*multipart.FileHeader, len(screenshots))
+	for _, scr := range screenshots {
+		ext, err := validation.ValidateFileAsImage(scr)
 		if err != nil {
 			return err
 		}
 
-		previewPath := fmt.Sprintf("/previews/%v%v", uuid.New(), ext)
-		validPreviews[previewPath] = preview
+		scrPath := fmt.Sprintf("/screenshots/%v%v", uuid.New(), ext)
+		validScreenshots[scrPath] = scr
 	}
 
 	dfPath, err := storage.HandleDotfilesUpload(dotfiles)
@@ -89,7 +89,7 @@ func CreateRice(
 		return errs.InternalError(err)
 	}
 
-	for path, file := range validPreviews {
+	for path, file := range validScreenshots {
 		filename := filepath.Base(path)
 		if err := storage.SaveScreenshotFile(file, filename); err != nil {
 			return errs.InternalError(err)

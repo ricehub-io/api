@@ -46,13 +46,13 @@ subscription_product_id = "a890950e-1633-49cc-9f3a-cae5266996b6"
 
 # ------ UPLOAD LIMITS ------
 [limits]
-max_previews_per_rice = 10
+max_screenshots_per_rice = 10
 user_avatar_size_limit = 5_000_000 # 5MB
 dotfiles_size_limit = 500_000_000 # 500MB
 
-# Per-preview size limit. User can upload more than that
-# because the total is preview_size_limit * max_previews_per_rice.
-preview_size_limit = 10_000_000 # 10MB
+# Per-screenshot size limit. User can upload more than that
+# because the total is: screenshot_size_limit * max_screenshots_per_rice.
+screenshot_size_limit = 10_000_000 # 10MB
 
 
 # ------- BLACKLISTS --------

@@ -262,7 +262,7 @@ func registerRiceRoutes(r *gin.Engine) {
 	auth := rices.Group("", security.AuthMiddleware)
 	auth.POST("",
 		maintenance,
-		security.FileSizeLimitMiddleware(limits.DotfilesSizeLimit+limits.MaxPreviewsPerRice*limits.PreviewSizeLimit),
+		security.FileSizeLimitMiddleware(limits.DotfilesSizeLimit+limits.MaxScreenshotsPerRice*limits.ScreenshotSizeLimit),
 		security.PathRateLimitMiddleware(15, 24*time.Hour),
 		handlers.CreateRice,
 	)
@@ -279,7 +279,7 @@ func registerRiceRoutes(r *gin.Engine) {
 	auth.PATCH("/:id/dotfiles/price", maintenance, updateRL, handlers.UpdateDotfilesPrice)
 	auth.POST("/:id/screenshots",
 		maintenance,
-		security.FileSizeLimitMiddleware(limits.PreviewSizeLimit),
+		security.FileSizeLimitMiddleware(limits.ScreenshotSizeLimit),
 		security.PathRateLimitMiddleware(25, time.Hour),
 		handlers.CreateScreenshot,
 	)

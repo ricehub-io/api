@@ -52,10 +52,10 @@ type (
 	}
 
 	limitsConfig struct {
-		MaxPreviewsPerRice  int64 `toml:"max_previews_per_rice"`
-		UserAvatarSizeLimit int64 `toml:"user_avatar_size_limit"`
-		DotfilesSizeLimit   int64 `toml:"dotfiles_size_limit"`
-		PreviewSizeLimit    int64 `toml:"preview_size_limit"`
+		MaxScreenshotsPerRice int64 `toml:"max_screenshots_per_rice"`
+		UserAvatarSizeLimit   int64 `toml:"user_avatar_size_limit"`
+		DotfilesSizeLimit     int64 `toml:"dotfiles_size_limit"`
+		ScreenshotSizeLimit   int64 `toml:"screenshot_size_limit"`
 	}
 
 	blacklistConfig struct {
@@ -83,8 +83,8 @@ func InitConfig(configPath string) {
 		log.Fatal("Missing required config fields (database.database_url, database.redis_url, server.port)")
 	}
 
-	if Config.Limits.MaxPreviewsPerRice <= 0 {
-		log.Fatal("limits.max_previews_per_rice must be greater than zero")
+	if Config.Limits.MaxScreenshotsPerRice <= 0 {
+		log.Fatal("limits.max_screenshots_per_rice must be greater than zero")
 	}
 
 	log.Info("Config variables successfully loaded")

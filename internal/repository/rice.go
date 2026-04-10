@@ -81,7 +81,7 @@ func buildFetchRicesSql(sortBy string, subsequent bool, withUser bool, reverse b
 			JOIN rice_dotfiles df ON df.rice_id = r.id
 			JOIN LATERAL (
 				SELECT p.file_path
-				FROM rice_previews p
+				FROM rice_screenshots p
 				WHERE p.rice_id = r.id
 				ORDER BY p.created_at
 				LIMIT 1
@@ -113,7 +113,7 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 		to_jsonb(base) AS rice,
 		to_jsonb(u) AS "user",
 		to_jsonb(df) AS dotfiles,
-		jsonb_agg(p ORDER BY p.id) AS previews,
+		jsonb_agg(p ORDER BY p.id) AS screenshots,
 		count(DISTINCT s.user_id) AS star_count,
 		coalesce(bool_or(s.user_id = $1), false) AS is_starred,
 		CASE WHEN df.type != 'free' AND u.id != $1
@@ -130,7 +130,7 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 	FROM base
 	JOIN users_with_ban_status u ON u.id = base.author_id
 	JOIN rice_dotfiles df ON df.rice_id = base.id
-	JOIN rice_previews p ON p.rice_id = base.id
+	JOIN rice_screenshots p ON p.rice_id = base.id
 	LEFT JOIN rice_stars s ON s.rice_id = base.id
 	JOIN LATERAL (
 		SELECT coalesce(nullif(jsonb_agg(t), '[null]'), '[]') AS tags
@@ -166,7 +166,7 @@ var findRiceSql = buildFindRiceSql(RiceID)
 var findRiceBySlugSql = buildFindRiceSql(SlugAndUsername)
 
 const insertScreenshotSql = `
-INSERT INTO rice_previews (rice_id, file_path)
+INSERT INTO rice_screenshots (rice_id, file_path)
 VALUES ($1, $2)
 RETURNING *
 `
@@ -282,7 +282,7 @@ func FetchWaitingRices() (models.PartialRices, error) {
 	JOIN rice_dotfiles df ON df.rice_id = r.id
 	JOIN LATERAL (
 		SELECT p.file_path
-		FROM rice_previews p
+		FROM rice_screenshots p
 		WHERE p.rice_id = r.id
 		ORDER BY p.created_at
 		LIMIT 1
@@ -301,7 +301,7 @@ func FetchWaitingRices() (models.PartialRices, error) {
 }
 
 func FetchRiceScreenshotCount(riceID uuid.UUID) (count int, err error) {
-	const query = "SELECT count(*) FROM rice_previews WHERE rice_id = $1"
+	const query = "SELECT count(*) FROM rice_screenshots WHERE rice_id = $1"
 	err = db.QueryRow(context.Background(), query, riceID).Scan(&count)
 	return
 }
@@ -342,7 +342,7 @@ func FetchUserRices(userID uuid.UUID, callerID *uuid.UUID) (models.PartialRices,
 	JOIN rice_dotfiles df ON df.rice_id = r.id
 	JOIN LATERAL (
 		SELECT p.file_path
-		FROM rice_previews p
+		FROM rice_screenshots p
 		WHERE p.rice_id = r.id
 		ORDER BY p.created_at
 		LIMIT 1
@@ -384,7 +384,7 @@ func FetchUserPurchasedRices(userID uuid.UUID) (models.PartialRices, error) {
 	JOIN rice_dotfiles df ON df.rice_id = r.id
 	JOIN LATERAL (
 		SELECT p.file_path
-		FROM rice_previews p
+		FROM rice_screenshots p
 		WHERE p.rice_id = r.id
 		ORDER BY p.created_at
 		LIMIT 1
@@ -479,7 +479,7 @@ func UpdateRiceState(riceID uuid.UUID, newState models.RiceState) error {
 }
 
 func DeleteRiceScreenshot(riceID, screenshotID uuid.UUID) (bool, error) {
-	const query = "DELETE FROM rice_previews WHERE id = $1 AND rice_id = $2"
+	const query = "DELETE FROM rice_screenshots WHERE id = $1 AND rice_id = $2"
 	cmd, err := db.Exec(context.Background(), query, screenshotID, riceID)
 	return cmd.RowsAffected() == 1, err
 }

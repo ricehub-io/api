@@ -114,10 +114,10 @@ var FreeDotfilesNotPurchasable = UserError("You can't purchase free dotfiles", h
 var DotfilesAlreadyOwned = UserError("You already own these dotfiles", http.StatusConflict)
 var DotfilesAccessDenied = UserError("You don't have access to these dotfiles", http.StatusForbidden)
 var MinimumScreenshotRequired = UserError(
-	"You cannot delete this preview! At least one preview is required for a rice.",
+	"You cannot delete this screenshot! At least one is required",
 	http.StatusUnprocessableEntity,
 )
-var ScreenshotNotFound = UserError("Rice preview with provided ID not found", http.StatusNotFound)
+var ScreenshotNotFound = UserError("Screenshot with provided ID not found", http.StatusNotFound)
 var NotEnoughScreenshots = UserError(
 	"At least one screenshot is required",
 	http.StatusBadRequest,

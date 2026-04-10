@@ -111,7 +111,7 @@ func SaveScreenshotFile(file *multipart.FileHeader, dst string) error {
 	}
 
 	// TODO: read from config or smth
-	root, err := os.OpenRoot("./public/previews")
+	root, err := os.OpenRoot("./public/screenshots")
 	if err != nil {
 		return err
 	}

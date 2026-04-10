@@ -75,7 +75,7 @@ func FetchLeaderboard(period models.LeaderboardPeriod, user *uuid.UUID) (models.
 	JOIN users author ON author.id = rice.author_id
 	JOIN LATERAL (
 		SELECT file_path
-		FROM rice_previews
+		FROM rice_screenshots
 		WHERE rice_id = rice.id
 		ORDER BY created_at
 		LIMIT 1
