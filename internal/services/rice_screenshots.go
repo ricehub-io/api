@@ -12,23 +12,36 @@ import (
 	"ricehub/internal/validation"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type RiceScreenshotService struct{}
+type RiceScreenshotService struct {
+	dbPool *pgxpool.Pool
+	rices  *repository.RiceRepository
+}
 
-func NewRiceScreenshotService() *RiceScreenshotService {
-	return &RiceScreenshotService{}
+func NewRiceScreenshotService(
+	dbPool *pgxpool.Pool,
+	rices *repository.RiceRepository,
+) *RiceScreenshotService {
+	return &RiceScreenshotService{dbPool, rices}
 }
 
 // CreateScreenshot validates and saves new screenshot files for a rice, then
 // inserts them into the database. Returns the CDN URLs of the created screenshots.
 // Enforces ownership and screenshot limit checks.
-func (s *RiceScreenshotService) CreateScreenshot(userID, riceID uuid.UUID, files []*multipart.FileHeader, isAdmin bool) ([]string, errs.AppError) {
-	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
+func (s *RiceScreenshotService) CreateScreenshot(
+	ctx context.Context,
+	userID, riceID uuid.UUID,
+	files []*multipart.FileHeader,
+	isAdmin bool,
+) ([]string, errs.AppError) {
+	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return nil, err
 	}
 
-	count, err := repository.FetchRiceScreenshotCount(riceID)
+	count, err := s.rices.FetchRiceScreenshotCount(ctx, riceID)
 	if err != nil {
 		return nil, errs.InternalError(err)
 	}
@@ -55,12 +68,13 @@ func (s *RiceScreenshotService) CreateScreenshot(userID, riceID uuid.UUID, files
 		})
 	}
 
-	ctx := context.Background()
-	tx, err := repository.StartTx(ctx)
+	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, errs.InternalError(err)
 	}
 	defer tx.Rollback(ctx)
+
+	txRepo := s.rices.WithTx(tx)
 
 	screenshots := make([]string, 0, len(validFiles))
 	for _, vf := range validFiles {
@@ -68,7 +82,7 @@ func (s *RiceScreenshotService) CreateScreenshot(userID, riceID uuid.UUID, files
 		if err := storage.SaveScreenshotFile(vf.header, filename); err != nil {
 			return nil, errs.InternalError(err)
 		}
-		if err := repository.InsertRiceScreenshotTx(tx, riceID, vf.path); err != nil {
+		if err := txRepo.InsertRiceScreenshotTx(ctx, riceID, vf.path); err != nil {
 			return nil, errs.InternalError(err)
 		}
 		screenshots = append(screenshots, config.Config.App.CDNUrl+vf.path)
@@ -83,12 +97,16 @@ func (s *RiceScreenshotService) CreateScreenshot(userID, riceID uuid.UUID, files
 
 // DeleteScreenshot removes a screenshot from a rice, enforcing a minimum of one
 // screenshot per rice. Enforces ownership check before proceeding.
-func (s *RiceScreenshotService) DeleteScreenshot(riceID, screenshotID, userID uuid.UUID, isAdmin bool) errs.AppError {
-	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
+func (s *RiceScreenshotService) DeleteScreenshot(
+	ctx context.Context,
+	riceID, screenshotID, userID uuid.UUID,
+	isAdmin bool,
+) errs.AppError {
+	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return err
 	}
 
-	count, err := repository.FetchRiceScreenshotCount(riceID)
+	count, err := s.rices.FetchRiceScreenshotCount(ctx, riceID)
 	if err != nil {
 		return errs.InternalError(err)
 	}
@@ -96,7 +114,7 @@ func (s *RiceScreenshotService) DeleteScreenshot(riceID, screenshotID, userID uu
 		return errs.MinimumScreenshotRequired
 	}
 
-	deleted, err := repository.DeleteRiceScreenshot(riceID, screenshotID)
+	deleted, err := s.rices.DeleteRiceScreenshot(ctx, riceID, screenshotID)
 	if err != nil {
 		return errs.InternalError(err)
 	}

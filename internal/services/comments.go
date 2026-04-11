@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"ricehub/internal/errs"
 	"ricehub/internal/models"
@@ -11,18 +12,24 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-type CommentService struct{}
+type CommentService struct {
+	comments *repository.CommentRepository
+}
 
-func NewCommentService() *CommentService {
-	return &CommentService{}
+func NewCommentService(comments *repository.CommentRepository) *CommentService {
+	return &CommentService{comments}
 }
 
 // CreateComment inserts a new comment under the given rice post.
 // Returns RiceNotFound if the rice doesn't exist.
-func (s *CommentService) CreateComment(userID uuid.UUID, dto models.CreateCommentDTO) (models.RiceComment, errs.AppError) {
+func (s *CommentService) CreateComment(
+	ctx context.Context,
+	userID uuid.UUID,
+	dto models.CreateCommentDTO,
+) (models.RiceComment, errs.AppError) {
 	riceID, _ := uuid.Parse(dto.RiceID)
 
-	comment, err := repository.InsertComment(riceID, userID, dto.Content)
+	comment, err := s.comments.InsertComment(ctx, riceID, userID, dto.Content)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
@@ -35,8 +42,8 @@ func (s *CommentService) CreateComment(userID uuid.UUID, dto models.CreateCommen
 }
 
 // ListComments fetches limited amount of comments sorted by creation date.
-func (s *CommentService) ListComments(limit int) ([]models.CommentWithUser, errs.AppError) {
-	comments, err := repository.FetchRecentComments(limit)
+func (s *CommentService) ListComments(ctx context.Context, limit int) ([]models.CommentWithUser, errs.AppError) {
+	comments, err := s.comments.FetchRecentComments(ctx, limit)
 	if err != nil {
 		return nil, errs.InternalError(err)
 	}
@@ -45,8 +52,8 @@ func (s *CommentService) ListComments(limit int) ([]models.CommentWithUser, errs
 }
 
 // GetCommentByID fetches given comment and returns CommentNotFound if not found.
-func (s *CommentService) GetCommentByID(commentID uuid.UUID) (models.RiceCommentWithSlug, errs.AppError) {
-	comment, err := repository.FindCommentByID(commentID)
+func (s *CommentService) GetCommentByID(ctx context.Context, commentID uuid.UUID) (models.RiceCommentWithSlug, errs.AppError) {
+	comment, err := s.comments.FindCommentByID(ctx, commentID)
 	if err != nil {
 		return comment, errs.FromDBError(err, errs.CommentNotFound)
 	}
@@ -54,12 +61,17 @@ func (s *CommentService) GetCommentByID(commentID uuid.UUID) (models.RiceComment
 }
 
 // UpdateComment checks if user can modify the comment and updates it with given content.
-func (s *CommentService) UpdateComment(isAdmin bool, userID, commentID uuid.UUID, content string) (models.RiceComment, errs.AppError) {
-	if err := s.canModifyComment(isAdmin, userID, commentID); err != nil {
+func (s *CommentService) UpdateComment(
+	ctx context.Context,
+	isAdmin bool,
+	userID, commentID uuid.UUID,
+	content string,
+) (models.RiceComment, errs.AppError) {
+	if err := s.canModifyComment(ctx, isAdmin, userID, commentID); err != nil {
 		return models.RiceComment{}, err
 	}
 
-	comment, err := repository.UpdateComment(commentID, content)
+	comment, err := s.comments.UpdateComment(ctx, commentID, content)
 	if err != nil {
 		return comment, errs.InternalError(err)
 	}
@@ -68,12 +80,16 @@ func (s *CommentService) UpdateComment(isAdmin bool, userID, commentID uuid.UUID
 }
 
 // DeleteComment checks if user can modify the comment and deletes it if so.
-func (s *CommentService) DeleteComment(isAdmin bool, userID, commentID uuid.UUID) errs.AppError {
-	if err := s.canModifyComment(isAdmin, userID, commentID); err != nil {
+func (s *CommentService) DeleteComment(
+	ctx context.Context,
+	isAdmin bool,
+	userID, commentID uuid.UUID,
+) errs.AppError {
+	if err := s.canModifyComment(ctx, isAdmin, userID, commentID); err != nil {
 		return err
 	}
 
-	if err := repository.DeleteComment(commentID); err != nil {
+	if err := s.comments.DeleteComment(ctx, commentID); err != nil {
 		return errs.InternalError(err)
 	}
 
@@ -82,12 +98,16 @@ func (s *CommentService) DeleteComment(isAdmin bool, userID, commentID uuid.UUID
 
 // canModifyComment checks whether user is either an admin or author of the given comment.
 // Returns NoAccess if user is not allowed to modify it.
-func (s *CommentService) canModifyComment(isAdmin bool, userID, commentID uuid.UUID) errs.AppError {
+func (s *CommentService) canModifyComment(
+	ctx context.Context,
+	isAdmin bool,
+	userID, commentID uuid.UUID,
+) errs.AppError {
 	if isAdmin {
 		return nil
 	}
 
-	isAuthor, err := repository.UserOwnsComment(commentID, userID)
+	isAuthor, err := s.comments.UserOwnsComment(ctx, commentID, userID)
 	if err != nil {
 		return errs.InternalError(err)
 	}

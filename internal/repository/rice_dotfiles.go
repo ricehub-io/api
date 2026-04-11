@@ -8,8 +8,20 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func InsertRiceDotfiles(
-	tx pgx.Tx,
+type RiceDotfilesRepository struct {
+	db DBExecutor
+}
+
+func NewRiceDotfilesRepository(db DBExecutor) *RiceDotfilesRepository {
+	return &RiceDotfilesRepository{db}
+}
+
+func (r *RiceDotfilesRepository) WithTx(tx pgx.Tx) *RiceDotfilesRepository {
+	return &RiceDotfilesRepository{tx}
+}
+
+func (r *RiceDotfilesRepository) InsertRiceDotfiles(
+	ctx context.Context,
 	riceID uuid.UUID,
 	filePath string,
 	fileSize int64,
@@ -31,50 +43,72 @@ func InsertRiceDotfiles(
 		price = &temp
 	}
 
-	_, err := tx.Exec(context.Background(), query, riceID, filePath, fileSize, dfType, price, productID)
+	_, err := r.db.Exec(ctx, query, riceID, filePath, fileSize, dfType, price, productID)
 	return err
 }
 
-func FindDotfilesByProductID(productID uuid.UUID) (models.RiceDotfiles, error) {
+func (r *RiceDotfilesRepository) FindDotfilesByProductID(
+	ctx context.Context,
+	productID uuid.UUID,
+) (models.RiceDotfiles, error) {
 	const query = "SELECT * FROM rice_dotfiles WHERE product_id = $1"
-	return rowToStruct[models.RiceDotfiles](query, productID)
+	return rowToStruct[models.RiceDotfiles](ctx, r.db, query, productID)
 }
 
-func FindDotfilesProductID(tx pgx.Tx, riceID uuid.UUID) (productID *uuid.UUID, err error) {
+func (r *RiceDotfilesRepository) FindDotfilesProductID(
+	ctx context.Context,
+	riceID uuid.UUID,
+) (productID *uuid.UUID, err error) {
 	const query = "SELECT product_id FROM rice_dotfiles WHERE rice_id = $1"
-	err = tx.QueryRow(context.Background(), query, riceID).Scan(&productID)
+	err = r.db.QueryRow(ctx, query, riceID).Scan(&productID)
 	return
 }
 
-func FetchRiceDotfilesPath(riceID uuid.UUID) (filePath *string, err error) {
+func (r *RiceDotfilesRepository) FetchRiceDotfilesPath(
+	ctx context.Context,
+	riceID uuid.UUID,
+) (filePath *string, err error) {
 	const query = "SELECT file_path FROM rice_dotfiles WHERE rice_id = $1"
-	err = db.QueryRow(context.Background(), query, riceID).Scan(&filePath)
+	err = r.db.QueryRow(ctx, query, riceID).Scan(&filePath)
 	return
 }
 
-func UpdateRiceDotfiles(riceID uuid.UUID, filePath string, fileSize int64) (models.RiceDotfiles, error) {
+func (r *RiceDotfilesRepository) UpdateRiceDotfiles(
+	ctx context.Context,
+	riceID uuid.UUID,
+	filePath string,
+	fileSize int64,
+) (models.RiceDotfiles, error) {
 	const query = `
 	UPDATE rice_dotfiles
 	SET file_path = $2, file_size = $3
 	WHERE rice_id = $1
 	RETURNING *
 	`
-
-	return rowToStruct[models.RiceDotfiles](query, riceID, filePath, fileSize)
+	return rowToStruct[models.RiceDotfiles](ctx, r.db, query, riceID, filePath, fileSize)
 }
 
-func UpdateDotfilesType(tx pgx.Tx, riceID uuid.UUID, newType models.DotfilesType, productID *string) (bool, error) {
+func (r *RiceDotfilesRepository) UpdateDotfilesType(
+	ctx context.Context,
+	riceID uuid.UUID,
+	newType models.DotfilesType,
+	productID *string,
+) (bool, error) {
 	const query = `
 	UPDATE rice_dotfiles
 	SET type = $2, product_id = $3
 	WHERE rice_id = $1
 	`
 
-	cmd, err := tx.Exec(context.Background(), query, riceID, newType, productID)
+	cmd, err := r.db.Exec(ctx, query, riceID, newType, productID)
 	return cmd.RowsAffected() > 0, err
 }
 
-func UpdateDotfilesPrice(tx pgx.Tx, riceID uuid.UUID, newPrice float64) (productID *uuid.UUID, err error) {
+func (r *RiceDotfilesRepository) UpdateDotfilesPrice(
+	ctx context.Context,
+	riceID uuid.UUID,
+	newPrice float64,
+) (productID *uuid.UUID, err error) {
 	const query = `
 	UPDATE rice_dotfiles
 	SET price = $2
@@ -82,11 +116,14 @@ func UpdateDotfilesPrice(tx pgx.Tx, riceID uuid.UUID, newPrice float64) (product
 	RETURNING product_id
 	`
 
-	err = tx.QueryRow(context.Background(), query, riceID, newPrice).Scan(&productID)
+	err = r.db.QueryRow(ctx, query, riceID, newPrice).Scan(&productID)
 	return
 }
 
-func IncrementDownloadCount(riceID uuid.UUID) (filePath string, err error) {
+func (r *RiceDotfilesRepository) IncrementDownloadCount(
+	ctx context.Context,
+	riceID uuid.UUID,
+) (filePath string, err error) {
 	const query = `
 	UPDATE rice_dotfiles df
 	SET download_count = download_count + 1
@@ -95,6 +132,6 @@ func IncrementDownloadCount(riceID uuid.UUID) (filePath string, err error) {
 	RETURNING df.file_path
 	`
 
-	err = db.QueryRow(context.Background(), query, riceID).Scan(&filePath)
+	err = r.db.QueryRow(ctx, query, riceID).Scan(&filePath)
 	return
 }

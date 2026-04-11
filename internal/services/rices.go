@@ -17,13 +17,27 @@ import (
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type RiceService struct{}
+type RiceService struct {
+	dbPool   *pgxpool.Pool
+	rices    *repository.RiceRepository
+	dotfiles *repository.RiceDotfilesRepository
+	riceTags *repository.RiceTagRepository
+	comments *repository.CommentRepository
+}
 
-func NewRiceService() *RiceService {
-	return &RiceService{}
+func NewRiceService(
+	dbPool *pgxpool.Pool,
+	rices *repository.RiceRepository,
+	dotfiles *repository.RiceDotfilesRepository,
+	riceTags *repository.RiceTagRepository,
+	comments *repository.CommentRepository,
+) *RiceService {
+	return &RiceService{dbPool, rices, dotfiles, riceTags, comments}
 }
 
 type ListRicesResult struct {
@@ -37,6 +51,7 @@ type ListRicesResult struct {
 // If the dotfiles type is paid, a Polar product is created for the purchase flow.
 // TODO: remove uploaded files if tx failed
 func (s *RiceService) CreateRice(
+	ctx context.Context,
 	userID uuid.UUID,
 	dto models.CreateRiceDTO,
 	screenshots []*multipart.FileHeader,
@@ -79,14 +94,14 @@ func (s *RiceService) CreateRice(
 		return err.(errs.AppError)
 	}
 
-	ctx := context.Background()
-	tx, err := repository.StartTx(ctx)
+	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return errs.InternalError(err)
 	}
 	defer tx.Rollback(ctx)
+	txRices := s.rices.WithTx(tx)
 
-	rice, err := repository.InsertRice(tx, userID, dto.Title, slug.Make(dto.Title), dto.Description, autoAccept)
+	rice, err := txRices.InsertRice(ctx, userID, dto.Title, slug.Make(dto.Title), dto.Description, autoAccept)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
@@ -100,7 +115,7 @@ func (s *RiceService) CreateRice(
 		if err := storage.SaveScreenshotFile(file, filename); err != nil {
 			return errs.InternalError(err)
 		}
-		if err := repository.InsertRiceScreenshotTx(tx, rice.ID, path); err != nil {
+		if err := txRices.InsertRiceScreenshotTx(ctx, rice.ID, path); err != nil {
 			return errs.InternalError(err)
 		}
 	}
@@ -116,15 +131,17 @@ func (s *RiceService) CreateRice(
 		productID = &res.Product.ID
 	}
 
-	if err = repository.InsertRiceDotfiles(
-		tx, rice.ID, dfPath, dotfiles.Size,
+	txDotfles := s.dotfiles.WithTx(tx)
+	if err = txDotfles.InsertRiceDotfiles(
+		ctx, rice.ID, dfPath, dotfiles.Size,
 		dto.DotfilesType, dto.DotfilesPrice, productID,
 	); err != nil {
 		return errs.InternalError(err)
 	}
 
 	if len(tags) > 0 {
-		if err := repository.InsertRiceTagsTx(tx, rice.ID, tags); err != nil {
+		txTags := s.riceTags.WithTx(tx)
+		if err := txTags.InsertRiceTags(ctx, rice.ID, tags); err != nil {
 			return errs.InternalError(err)
 		}
 	}
@@ -139,7 +156,12 @@ func (s *RiceService) CreateRice(
 // ListRices fetches a paginated list of accepted rices for the given sort method.
 // userID is optional and used to populate IsStarred/IsOwned fields per rice.
 // Results are reversed in memory when pag.Reverse is set.
-func (s *RiceService) ListRices(sort models.SortBy, pag repository.Pagination, userID *uuid.UUID) (ListRicesResult, errs.AppError) {
+func (s *RiceService) ListRices(
+	ctx context.Context,
+	sort models.SortBy,
+	pag repository.Pagination,
+	userID *uuid.UUID,
+) (ListRicesResult, errs.AppError) {
 	var res ListRicesResult
 
 	var rices models.PartialRices
@@ -147,13 +169,13 @@ func (s *RiceService) ListRices(sort models.SortBy, pag repository.Pagination, u
 
 	switch sort {
 	case models.Trending:
-		rices, err = repository.FetchTrendingRices(&pag, userID)
+		rices, err = s.rices.FetchTrendingRices(ctx, &pag, userID)
 	case models.Recent:
-		rices, err = repository.FetchRecentRices(&pag, userID)
+		rices, err = s.rices.FetchRecentRices(ctx, &pag, userID)
 	case models.MostDownloads:
-		rices, err = repository.FetchMostDownloadedRices(&pag, userID)
+		rices, err = s.rices.FetchMostDownloadedRices(ctx, &pag, userID)
 	case models.MostStars:
-		rices, err = repository.FetchMostStarredRices(&pag, userID)
+		rices, err = s.rices.FetchMostStarredRices(ctx, &pag, userID)
 	default:
 		return res, errs.InvalidSortBy
 	}
@@ -162,7 +184,7 @@ func (s *RiceService) ListRices(sort models.SortBy, pag repository.Pagination, u
 		return res, errs.InternalError(err)
 	}
 
-	pageCount, err := repository.FetchPageCount()
+	pageCount, err := s.rices.FetchPageCount(ctx)
 	if err != nil {
 		return res, errs.InternalError(err)
 	}
@@ -179,8 +201,8 @@ func (s *RiceService) ListRices(sort models.SortBy, pag repository.Pagination, u
 }
 
 // ListWaitingRices returns all rices pending admin review.
-func (s *RiceService) ListWaitingRices() (models.PartialRices, errs.AppError) {
-	rices, err := repository.FetchWaitingRices()
+func (s *RiceService) ListWaitingRices(ctx context.Context) (models.PartialRices, errs.AppError) {
+	rices, err := s.rices.FetchWaitingRices(ctx)
 	if err != nil {
 		return nil, errs.InternalError(err)
 	}
@@ -188,8 +210,13 @@ func (s *RiceService) ListWaitingRices() (models.PartialRices, errs.AppError) {
 }
 
 // GetRiceByID fetches a rice by ID. Waiting rices are only visible to admins.
-func (s *RiceService) GetRiceByID(userID *uuid.UUID, riceID uuid.UUID, isAdmin bool) (models.RiceWithRelations, errs.AppError) {
-	rice, err := repository.FindRiceByID(userID, riceID)
+func (s *RiceService) GetRiceByID(
+	ctx context.Context,
+	userID *uuid.UUID,
+	riceID uuid.UUID,
+	isAdmin bool,
+) (models.RiceWithRelations, errs.AppError) {
+	rice, err := s.rices.FindRiceByID(ctx, userID, riceID)
 	if err != nil {
 		return rice, errs.FromDBError(err, errs.RiceNotFound)
 	}
@@ -201,8 +228,8 @@ func (s *RiceService) GetRiceByID(userID *uuid.UUID, riceID uuid.UUID, isAdmin b
 }
 
 // ListRiceComments returns all comments for a given rice.
-func (s *RiceService) ListRiceComments(riceID uuid.UUID) ([]models.CommentWithUser, errs.AppError) {
-	comments, err := repository.FetchCommentsByRiceID(riceID)
+func (s *RiceService) ListRiceComments(ctx context.Context, riceID uuid.UUID) ([]models.CommentWithUser, errs.AppError) {
+	comments, err := s.comments.FetchCommentsByRiceID(ctx, riceID)
 	if err != nil {
 		return nil, errs.InternalError(err)
 	}
@@ -211,12 +238,17 @@ func (s *RiceService) ListRiceComments(riceID uuid.UUID) ([]models.CommentWithUs
 
 // UpdateRiceMetadata updates the title and/or description of a rice.
 // Enforces ownership and blacklist checks.
-func (s *RiceService) UpdateRiceMetadata(riceID, userID uuid.UUID, isAdmin bool, dto models.UpdateRiceDTO) errs.AppError {
+func (s *RiceService) UpdateRiceMetadata(
+	ctx context.Context,
+	riceID, userID uuid.UUID,
+	isAdmin bool,
+	dto models.UpdateRiceDTO,
+) errs.AppError {
 	if dto.Title == nil && dto.Description == nil {
 		return errs.NoRiceFieldsToUpdate
 	}
 
-	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
+	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return err
 	}
 
@@ -228,7 +260,7 @@ func (s *RiceService) UpdateRiceMetadata(riceID, userID uuid.UUID, isAdmin bool,
 		return errs.BlacklistedRiceDescription
 	}
 
-	if err := repository.UpdateRice(riceID, dto.Title, dto.Description); err != nil {
+	if err := s.rices.UpdateRice(ctx, riceID, dto.Title, dto.Description); err != nil {
 		return errs.InternalError(err)
 	}
 
@@ -237,8 +269,8 @@ func (s *RiceService) UpdateRiceMetadata(riceID, userID uuid.UUID, isAdmin bool,
 
 // UpdateRiceState updates a rice's state to accepted or rejected (deleted).
 // Returns true if the rice was rejected.
-func (s *RiceService) UpdateRiceState(riceID uuid.UUID, dto models.UpdateRiceStateDTO) (rejected bool, _ errs.AppError) {
-	rice, err := repository.FindRiceByID(nil, riceID)
+func (s *RiceService) UpdateRiceState(ctx context.Context, riceID uuid.UUID, dto models.UpdateRiceStateDTO) (rejected bool, _ errs.AppError) {
+	rice, err := s.rices.FindRiceByID(ctx, nil, riceID)
 	if err != nil {
 		return false, errs.FromDBError(err, errs.RiceNotFound)
 	}
@@ -248,11 +280,11 @@ func (s *RiceService) UpdateRiceState(riceID uuid.UUID, dto models.UpdateRiceSta
 
 	switch dto.NewState {
 	case "accepted":
-		if err := repository.UpdateRiceState(riceID, models.Accepted); err != nil {
+		if err := s.rices.UpdateRiceState(ctx, riceID, models.Accepted); err != nil {
 			return false, errs.InternalError(err)
 		}
 	case "rejected":
-		if _, err := repository.DeleteRice(riceID); err != nil {
+		if _, err := s.rices.DeleteRice(ctx, riceID); err != nil {
 			return false, errs.InternalError(err)
 		}
 		return true, nil
@@ -263,24 +295,29 @@ func (s *RiceService) UpdateRiceState(riceID uuid.UUID, dto models.UpdateRiceSta
 
 // DeleteRice deletes a rice and archives its Polar product if one exists.
 // Enforces ownership check before proceeding.
-func (s *RiceService) DeleteRice(riceID, userID uuid.UUID, isAdmin bool) errs.AppError {
-	if err := canModifyRice(riceID, userID, isAdmin); err != nil {
+func (s *RiceService) DeleteRice(
+	ctx context.Context,
+	riceID, userID uuid.UUID,
+	isAdmin bool,
+) errs.AppError {
+	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return err
 	}
 
-	ctx := context.Background()
-	tx, err := repository.StartTx(ctx)
+	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return errs.InternalError(err)
 	}
 	defer tx.Rollback(ctx)
 
-	productID, err := repository.FindDotfilesProductID(tx, riceID)
+	txDotfiles := s.dotfiles.WithTx(tx)
+	productID, err := txDotfiles.FindDotfilesProductID(ctx, riceID)
 	if err != nil {
 		return errs.InternalError(err)
 	}
 
-	deleted, err := repository.DeleteRiceTx(tx, riceID)
+	txRices := s.rices.WithTx(tx)
+	deleted, err := txRices.DeleteRice(ctx, riceID)
 	if err != nil {
 		return errs.InternalError(err)
 	}
@@ -303,12 +340,17 @@ func (s *RiceService) DeleteRice(riceID, userID uuid.UUID, isAdmin bool) errs.Ap
 
 // canModifyRice checks whether the user is allowed to modify the given rice.
 // Admins bypass ownership checks.
-func canModifyRice(riceID, userID uuid.UUID, isAdmin bool) errs.AppError {
+func canModifyRice(
+	ctx context.Context,
+	rices *repository.RiceRepository,
+	riceID, userID uuid.UUID,
+	isAdmin bool,
+) errs.AppError {
 	if isAdmin {
 		return nil
 	}
 
-	owns, err := repository.UserOwnsRice(riceID, userID)
+	owns, err := rices.UserOwnsRice(ctx, riceID, userID)
 	if err != nil {
 		return errs.InternalError(err)
 	}

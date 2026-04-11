@@ -22,6 +22,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -54,32 +55,51 @@ func run() error {
 	cache.InitCache(config.Config.Database.RedisUrl)
 	defer cache.CloseCache()
 
-	repository.Init(config.Config.Database.DatabaseUrl)
-	defer repository.Close()
+	dbPool := repository.NewPool(config.Config.Database.DatabaseUrl)
+	defer dbPool.Close()
 
 	// TODO: read gRPC url from config file
 	grpc.Scanner.Init("localhost:40400")
 	defer grpc.Scanner.Close() //nolint:errcheck
 
-	go polar.StartSyncThread()
-	go updateLeaderboard()
+	// repositories
+	adminRepo := repository.NewAdminRepository(dbPool)
+	commentRepo := repository.NewCommentRepository(dbPool)
+	linkRepo := repository.NewLinkRepository(dbPool)
+	dotfilesPurchaseRepo := repository.NewDotfilesPurchaseRepository(dbPool)
+	reportRepo := repository.NewReportRepository(dbPool)
+	riceDotfilesRepo := repository.NewRiceDotfilesRepository(dbPool)
+	riceLeaderboardRepo := repository.NewRiceLeaderboardRepository(dbPool)
+	riceTagRepo := repository.NewRiceTagRepository(dbPool)
+	riceRepo := repository.NewRiceRepository(dbPool)
+	tagRepo := repository.NewTagRepository(dbPool)
+	userBanRepo := repository.NewUserBanRepository(dbPool)
+	userSubscriptionRepo := repository.NewUserSubscriptionRepository(dbPool)
+	userRepo := repository.NewUserRepository(dbPool)
+	webhookEventRepo := repository.NewWebhookEventRepository(dbPool)
+	webVarRepo := repository.NewWebVarRepository(dbPool)
+
+	go polar.StartSyncThread(dbPool, riceDotfilesRepo, dotfilesPurchaseRepo, userSubscriptionRepo)
+	go updateLeaderboard(dbPool, riceLeaderboardRepo)
+
+	webhookListerner := polar.NewWebhookListener(webhookEventRepo, userSubscriptionRepo, riceDotfilesRepo, dotfilesPurchaseRepo)
 
 	// services
-	adminService := services.NewAdminService()
-	authService := services.NewAuthService()
-	commentService := services.NewCommentService()
-	leaderboardService := services.NewLeaderboardService()
-	linkService := services.NewLinkService()
-	profileService := services.NewProfileService()
-	reportService := services.NewReportService()
-	riceDotfilesService := services.NewRiceDotfilesService()
-	riceScreenshotService := services.NewRiceScreenshotService()
-	riceStarService := services.NewRiceStarService()
-	riceTagService := services.NewRiceTagService()
-	riceService := services.NewRiceService()
-	tagService := services.NewTagService()
-	userService := services.NewUserService()
-	webVarService := services.NewWebVarService()
+	adminService := services.NewAdminService(adminRepo)
+	authService := services.NewAuthService(userRepo, userBanRepo, userSubscriptionRepo)
+	commentService := services.NewCommentService(commentRepo)
+	leaderboardService := services.NewLeaderboardService(riceLeaderboardRepo)
+	linkService := services.NewLinkService(linkRepo, userSubscriptionRepo)
+	profileService := services.NewProfileService(userRepo, riceRepo)
+	reportService := services.NewReportService(reportRepo)
+	riceDotfilesService := services.NewRiceDotfilesService(riceRepo, riceDotfilesRepo)
+	riceScreenshotService := services.NewRiceScreenshotService(dbPool, riceRepo)
+	riceStarService := services.NewRiceStarService(riceRepo)
+	riceTagService := services.NewRiceTagService(riceRepo, riceTagRepo)
+	riceService := services.NewRiceService(dbPool, riceRepo, riceDotfilesRepo, riceTagRepo, commentRepo)
+	tagService := services.NewTagService(tagRepo)
+	userService := services.NewUserService(userRepo, userBanRepo, riceRepo)
+	webVarService := services.NewWebVarService(webVarRepo)
 
 	// handlers
 	adminHandler := handlers.NewAdminHandler(adminService)
@@ -133,10 +153,12 @@ func run() error {
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "I'm working and responding!"})
 	})
-	r.POST("/webhook", polar.WebhookListener)
+	r.POST("/webhook", webhookListerner.Handler)
+
+	adminMw := security.AdminMiddleware(userRepo, userBanRepo)
 
 	registerAuthRoutes(r, authHandler)
-	registerUserRoutes(r, userHandler)
+	registerUserRoutes(r, userHandler, adminMw)
 	registerRiceRoutes(
 		r,
 		riceHandler,
@@ -144,12 +166,13 @@ func run() error {
 		riceTagHandler,
 		riceScreenshotHandler,
 		riceStarHandler,
+		adminMw,
 	)
-	registerCommentRoutes(r, commentHandler)
-	registerReportRoutes(r, reportHandler)
-	registerTagRoutes(r, tagHandler)
+	registerCommentRoutes(r, commentHandler, adminMw)
+	registerReportRoutes(r, reportHandler, adminMw)
+	registerTagRoutes(r, tagHandler, adminMw)
 	registerProfileRoutes(r, profileHandler)
-	registerAdminRoutes(r, adminHandler)
+	registerAdminRoutes(r, adminHandler, adminMw)
 	registerLinkRoutes(r, linkHandler)
 	registerLeaderboardRoutes(r, leaderboardHandler)
 
@@ -163,43 +186,48 @@ func run() error {
 	return r.Run(fmt.Sprintf(":%v", port))
 }
 
-func updateLeaderboard() {
-	update := func(tx pgx.Tx, period models.LeaderboardPeriod) error {
-		err := repository.UpsertRiceLeaderboard(tx, period)
+func updateLeaderboard(dbPool *pgxpool.Pool, repo *repository.RiceLeaderboardRepository) {
+	update := func(ctx context.Context, r *repository.RiceLeaderboardRepository, period models.LeaderboardPeriod) error {
+		err := r.UpsertRiceLeaderboard(ctx, period)
 		if err != nil {
 			return err
 		}
-		return repository.CleanupRiceLeaderboard(tx, period)
+		return r.CleanupRiceLeaderboard(ctx, period)
 	}
 
-	logger := zap.L()
+	l := zap.L()
 	for {
-		logger.Info("Updating rice leaderboard...")
+		l.Info("Updating rice leaderboard...")
 
-		ctx := context.Background()
-		tx, err := repository.StartTx(ctx)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+
+		tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
 		if err != nil {
-			logger.Error("Failed to start tx", zap.Error(err))
+			l.Error("Failed to start tx", zap.Error(err))
 			goto Skip
 		}
+		{
+			txRepo := repo.WithTx(tx)
 
-		if err := update(tx, models.Week); err != nil {
-			logger.Error("Failed to update weekly leaderboard", zap.Error(err))
-			goto Skip
-		}
+			if err := update(ctx, txRepo, models.Week); err != nil {
+				l.Error("Failed to update weekly leaderboard", zap.Error(err))
+				goto Skip
+			}
 
-		if err := update(tx, models.Month); err != nil {
-			logger.Error("Failed to update monthly leaderboard", zap.Error(err))
-			goto Skip
-		}
+			if err := update(ctx, txRepo, models.Month); err != nil {
+				l.Error("Failed to update monthly leaderboard", zap.Error(err))
+				goto Skip
+			}
 
-		if err := update(tx, models.Year); err != nil {
-			logger.Error("Failed to update yearly leaderboard", zap.Error(err))
-			goto Skip
-		}
+			if err := update(ctx, txRepo, models.Year); err != nil {
+				l.Error("Failed to update yearly leaderboard", zap.Error(err))
+				goto Skip
+			}
 
-		if err := tx.Commit(ctx); err != nil {
-			logger.Error("Failed to commit tx", zap.Error(err))
+			if err := tx.Commit(ctx); err != nil {
+				l.Error("Failed to commit tx", zap.Error(err))
+			}
 		}
 	Skip:
 		time.Sleep(24 * time.Hour)
@@ -248,7 +276,7 @@ func registerAuthRoutes(r *gin.Engine, h *handlers.AuthHandler) {
 	auth.POST("/logout", h.LogOut)
 }
 
-func registerUserRoutes(r *gin.Engine, h *handlers.UserHandler) {
+func registerUserRoutes(r *gin.Engine, h *handlers.UserHandler, adminMw gin.HandlerFunc) {
 	maintenance := security.MaintenanceMiddleware()
 	accountRL := security.PathRateLimitMiddleware(10, 24*time.Hour)
 
@@ -275,7 +303,7 @@ func registerUserRoutes(r *gin.Engine, h *handlers.UserHandler) {
 	auth.DELETE("/:id/avatar", maintenance, accountRL, h.DeleteAvatar)
 
 	// Admin
-	admin := users.Group("", security.AdminMiddleware)
+	admin := users.Group("", adminMw)
 	admin.POST("/:id/ban", h.BanUser)
 	admin.DELETE("/:id/ban", h.UnbanUser)
 }
@@ -287,6 +315,7 @@ func registerRiceRoutes(
 	th *handlers.RiceTagHandler,
 	sch *handlers.RiceScreenshotHandler,
 	sth *handlers.RiceStarHandler,
+	adminMw gin.HandlerFunc,
 ) {
 	maintenance := security.MaintenanceMiddleware()
 	updateRL := security.PathRateLimitMiddleware(10, time.Hour)
@@ -329,42 +358,42 @@ func registerRiceRoutes(
 		sch.CreateScreenshot,
 	)
 	auth.POST("/:id/purchase", maintenance, security.PathRateLimitMiddleware(5, time.Hour), dfh.PurchaseDotfiles)
-	auth.PATCH("/:id/state", maintenance, security.AdminMiddleware, rh.UpdateRiceState)
+	auth.PATCH("/:id/state", maintenance, adminMw, rh.UpdateRiceState)
 	auth.POST("/:id/star", maintenance, sth.CreateRiceStar)
 	auth.DELETE("/:id/star", maintenance, sth.DeleteRiceStar)
 	auth.DELETE("/:id/screenshots/:previewId", maintenance, sch.DeleteScreenshot)
 	auth.DELETE("/:id", maintenance, rh.DeleteRice)
 }
 
-func registerCommentRoutes(r *gin.Engine, h *handlers.CommentHandler) {
+func registerCommentRoutes(r *gin.Engine, h *handlers.CommentHandler, adminMw gin.HandlerFunc) {
 	maintenance := security.MaintenanceMiddleware()
 
 	comments := r.Group("/comments", security.AuthMiddleware)
 
-	comments.GET("", security.AdminMiddleware, h.ListComments)
+	comments.GET("", adminMw, h.ListComments)
 	comments.GET("/:id", security.PathRateLimitMiddleware(10, time.Minute), h.GetCommentByID)
 	comments.POST("", maintenance, security.PathRateLimitMiddleware(10, time.Hour), h.CreateComment)
 	comments.PATCH("/:id", maintenance, security.PathRateLimitMiddleware(10, time.Hour), h.UpdateComment)
 	comments.DELETE("/:id", maintenance, h.DeleteComment)
 }
 
-func registerReportRoutes(r *gin.Engine, h *handlers.ReportHandler) {
+func registerReportRoutes(r *gin.Engine, h *handlers.ReportHandler, adminMw gin.HandlerFunc) {
 	reports := r.Group("/reports", security.AuthMiddleware)
 
 	reports.POST("", security.PathRateLimitMiddleware(10, 24*time.Hour), h.CreateReport)
 
-	admin := reports.Group("", security.AdminMiddleware)
+	admin := reports.Group("", adminMw)
 	admin.GET("", h.ListReports)
 	admin.GET("/:id", h.GetReportByID)
 	admin.POST("/:id/close", h.CloseReport)
 }
 
-func registerTagRoutes(r *gin.Engine, h *handlers.TagHandler) {
+func registerTagRoutes(r *gin.Engine, h *handlers.TagHandler, adminMw gin.HandlerFunc) {
 	tags := r.Group("/tags")
 
 	tags.GET("", h.ListTags)
 
-	admin := tags.Group("", security.AuthMiddleware, security.AdminMiddleware)
+	admin := tags.Group("", security.AuthMiddleware, adminMw)
 	admin.POST("", h.CreateTag)
 	admin.PATCH("/:id", h.UpdateTag)
 	admin.DELETE("/:id", h.DeleteTag)
@@ -376,8 +405,8 @@ func registerProfileRoutes(r *gin.Engine, h *handlers.ProfileHandler) {
 	profiles.GET("/:username", h.GetProfileByUsername)
 }
 
-func registerAdminRoutes(r *gin.Engine, h *handlers.AdminHandler) {
-	admin := r.Group("/admin", security.AuthMiddleware, security.AdminMiddleware)
+func registerAdminRoutes(r *gin.Engine, h *handlers.AdminHandler, adminMw gin.HandlerFunc) {
+	admin := r.Group("/admin", security.AuthMiddleware, adminMw)
 
 	admin.GET("/stats", h.ServiceStatistics)
 }

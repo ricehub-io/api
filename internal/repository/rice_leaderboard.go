@@ -9,7 +9,21 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func UpsertRiceLeaderboard(tx pgx.Tx, period models.LeaderboardPeriod) error {
+type RiceLeaderboardRepository struct {
+	db DBExecutor
+}
+
+func NewRiceLeaderboardRepository(db DBExecutor) *RiceLeaderboardRepository {
+	return &RiceLeaderboardRepository{db}
+}
+func (r *RiceLeaderboardRepository) WithTx(tx pgx.Tx) *RiceLeaderboardRepository {
+	return &RiceLeaderboardRepository{tx}
+}
+
+func (r *RiceLeaderboardRepository) UpsertRiceLeaderboard(
+	ctx context.Context,
+	period models.LeaderboardPeriod,
+) error {
 	const query = `
 	INSERT INTO rice_leaderboard (rice_id, period, score, position, snapshot_at)
 	WITH scores AS (
@@ -45,11 +59,15 @@ func UpsertRiceLeaderboard(tx pgx.Tx, period models.LeaderboardPeriod) error {
 		position = excluded.position,
 		snapshot_at = excluded.snapshot_at
 	`
-	_, err := tx.Exec(context.Background(), query, period, period.Interval())
+	_, err := r.db.Exec(ctx, query, period, period.Interval())
 	return err
 }
 
-func FetchLeaderboard(period models.LeaderboardPeriod, user *uuid.UUID) (models.LeaderboardRices, error) {
+func (r *RiceLeaderboardRepository) FetchLeaderboard(
+	ctx context.Context,
+	period models.LeaderboardPeriod,
+	user *uuid.UUID,
+) (models.LeaderboardRices, error) {
 	isStarred := "false AS is_starred"
 	if user != nil {
 		isStarred = `EXISTS (
@@ -99,16 +117,19 @@ func FetchLeaderboard(period models.LeaderboardPeriod, user *uuid.UUID) (models.
 		args = append(args, user)
 	}
 
-	return rowsToStruct[models.LeaderboardRice](query, args...)
+	return rowsToStruct[models.LeaderboardRice](ctx, r.db, query, args...)
 }
 
-func CleanupRiceLeaderboard(tx pgx.Tx, period models.LeaderboardPeriod) error {
+func (r *RiceLeaderboardRepository) CleanupRiceLeaderboard(
+	ctx context.Context,
+	period models.LeaderboardPeriod,
+) error {
 	const query = `
 	DELETE FROM rice_leaderboard
 	WHERE
 		period = $1 AND
 		(snapshot_at < now() - interval '1 hour' OR position > 20)
 	`
-	_, err := tx.Exec(context.Background(), query, period)
+	_, err := r.db.Exec(ctx, query, period)
 	return err
 }

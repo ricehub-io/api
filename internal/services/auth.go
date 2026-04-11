@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"ricehub/internal/errs"
@@ -14,10 +15,18 @@ import (
 	"github.com/google/uuid"
 )
 
-type AuthService struct{}
+type AuthService struct {
+	users    *repository.UserRepository
+	bans     *repository.UserBanRepository
+	userSubs *repository.UserSubscriptionRepository
+}
 
-func NewAuthService() *AuthService {
-	return &AuthService{}
+func NewAuthService(
+	users *repository.UserRepository,
+	bans *repository.UserBanRepository,
+	userSubs *repository.UserSubscriptionRepository,
+) *AuthService {
+	return &AuthService{users, bans, userSubs}
 }
 
 type LoginResult struct {
@@ -27,7 +36,7 @@ type LoginResult struct {
 
 // Register creates a new user account with a hashed password.
 // Returns an error if the username is blacklisted, already taken, or insert fails.
-func (s *AuthService) Register(dto models.RegisterDTO) errs.AppError {
+func (s *AuthService) Register(ctx context.Context, dto models.RegisterDTO) errs.AppError {
 	if validation.IsUsernameBlacklisted(dto.Username) {
 		return errs.BlacklistedUsername
 	}
@@ -35,7 +44,7 @@ func (s *AuthService) Register(dto models.RegisterDTO) errs.AppError {
 		return errs.BlacklistedDisplayName
 	}
 
-	taken, err := repository.UsernameExists(dto.Username)
+	taken, err := s.users.UsernameExists(ctx, dto.Username)
 	if err != nil {
 		return errs.InternalError(err)
 	}
@@ -48,7 +57,7 @@ func (s *AuthService) Register(dto models.RegisterDTO) errs.AppError {
 		return errs.InternalError(err)
 	}
 
-	err = repository.InsertUser(dto.Username, dto.DisplayName, hashed)
+	err = s.users.InsertUser(ctx, dto.Username, dto.DisplayName, hashed)
 	if err != nil {
 		return errs.InternalError(err)
 	}
@@ -58,10 +67,10 @@ func (s *AuthService) Register(dto models.RegisterDTO) errs.AppError {
 
 // Login validates credentials, checks if user is banned, and issues an access and refresh token pair.
 // Returns InvalidCredentials if username or password is wrong.
-func (s *AuthService) Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
+func (s *AuthService) Login(ctx context.Context, dto models.LoginDTO) (LoginResult, errs.AppError) {
 	var res LoginResult
 
-	user, err := repository.FindUserByUsername(dto.Username)
+	user, err := s.users.FindUserByUsername(ctx, dto.Username)
 	if err != nil {
 		return res, errs.FromDBError(err, errs.InvalidCredentials)
 	}
@@ -74,11 +83,11 @@ func (s *AuthService) Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
 		return res, errs.InvalidCredentials
 	}
 
-	if err := security.VerifyUser(user); err != nil {
+	if err := security.VerifyUser(ctx, s.bans, user); err != nil {
 		return res, err
 	}
 
-	subActive, err := repository.SubscriptionActive(user.ID)
+	subActive, err := s.userSubs.SubscriptionActive(ctx, user.ID)
 	if err != nil {
 		return res, errs.InternalError(err)
 	}
@@ -95,7 +104,7 @@ func (s *AuthService) Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
 	return res, nil
 }
 
-func (s *AuthService) RefreshToken(refreshStr string) (string, errs.AppError) {
+func (s *AuthService) RefreshToken(ctx context.Context, refreshStr string) (string, errs.AppError) {
 	refresh, err := security.DecodeRefreshToken(refreshStr)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
@@ -106,16 +115,16 @@ func (s *AuthService) RefreshToken(refreshStr string) (string, errs.AppError) {
 	}
 	userID, _ := uuid.Parse(refresh.Subject)
 
-	user, err := repository.FindUserByID(userID)
+	user, err := s.users.FindUserByID(ctx, userID)
 	if err != nil {
 		return "", errs.InvalidRefreshToken
 	}
 
-	if err := security.VerifyUser(user); err != nil {
+	if err := security.VerifyUser(ctx, s.bans, user); err != nil {
 		return "", err
 	}
 
-	subActive, err := repository.SubscriptionActive(user.ID)
+	subActive, err := s.userSubs.SubscriptionActive(ctx, user.ID)
 	if err != nil {
 		return "", errs.InternalError(err)
 	}

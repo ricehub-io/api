@@ -9,7 +9,19 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func InsertUserSubscription(
+type UserSubscriptionRepository struct {
+	db DBExecutor
+}
+
+func NewUserSubscriptionRepository(db DBExecutor) *UserSubscriptionRepository {
+	return &UserSubscriptionRepository{db}
+}
+func (r *UserSubscriptionRepository) WithTx(tx pgx.Tx) *UserSubscriptionRepository {
+	return &UserSubscriptionRepository{tx}
+}
+
+func (r *UserSubscriptionRepository) InsertUserSubscription(
+	ctx context.Context,
 	userID uuid.UUID,
 	currentPeriodEnd time.Time,
 ) (models.UserSubscription, error) {
@@ -20,11 +32,11 @@ func InsertUserSubscription(
 		SET current_period_end = excluded.current_period_end
 	RETURNING *
 	`
-	return rowToStruct[models.UserSubscription](query, userID, currentPeriodEnd)
+	return rowToStruct[models.UserSubscription](ctx, r.db, query, userID, currentPeriodEnd)
 }
 
-func InsertUserSubscriptionTx(
-	tx pgx.Tx,
+func (r *UserSubscriptionRepository) InsertUserSubscriptionTx(
+	ctx context.Context,
 	userID uuid.UUID,
 	currentPeriodEnd time.Time,
 ) error {
@@ -34,11 +46,14 @@ func InsertUserSubscriptionTx(
 	ON CONFLICT (user_id) DO UPDATE
 		SET current_period_end = excluded.current_period_end, status = excluded.status
 	`
-	_, err := tx.Exec(context.Background(), query, userID, currentPeriodEnd)
+	_, err := r.db.Exec(ctx, query, userID, currentPeriodEnd)
 	return err
 }
 
-func SubscriptionActive(userID uuid.UUID) (active bool, err error) {
+func (r *UserSubscriptionRepository) SubscriptionActive(
+	ctx context.Context,
+	userID uuid.UUID,
+) (active bool, err error) {
 	const query = `
 	SELECT EXISTS (
 		SELECT 1
@@ -49,18 +64,21 @@ func SubscriptionActive(userID uuid.UUID) (active bool, err error) {
 			(status = 'canceled' AND current_period_end > now())
 	)
 	`
-	err = db.QueryRow(context.Background(), query, userID).Scan(&active)
+	err = r.db.QueryRow(ctx, query, userID).Scan(&active)
 	return
 }
 
 // CancelUserSubscriptionsExcept cancels all user subscriptions except for
 // rows with user_id contained inside given userIDs.
-func CancelUserSubscriptionsExcept(tx pgx.Tx, userIDs []uuid.UUID) (int64, error) {
+func (r *UserSubscriptionRepository) CancelUserSubscriptionsExcept(
+	ctx context.Context,
+	userIDs []uuid.UUID,
+) (int64, error) {
 	const query = `
 	UPDATE user_subscriptions
 	SET status = 'canceled'
 	WHERE user_id <> ALL($1)
 	`
-	cmd, err := tx.Exec(context.Background(), query, userIDs)
+	cmd, err := r.db.Exec(ctx, query, userIDs)
 	return cmd.RowsAffected(), err
 }

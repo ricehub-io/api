@@ -1,8 +1,19 @@
 package repository
 
-import "ricehub/internal/models"
+import (
+	"context"
+	"ricehub/internal/models"
+)
 
-func FindWebsiteVariable(key string) (models.WebsiteVariable, error) {
+type WebVarRepository struct {
+	db DBExecutor
+}
+
+func NewWebVarRepository(db DBExecutor) *WebVarRepository {
+	return &WebVarRepository{db}
+}
+
+func (r *WebVarRepository) FindWebsiteVariable(ctx context.Context, key string) (models.WebsiteVariable, error) {
 	const query = "SELECT * FROM website_variables WHERE key = $1"
-	return rowToStruct[models.WebsiteVariable](query, key)
+	return rowToStruct[models.WebsiteVariable](ctx, r.db, query, key)
 }

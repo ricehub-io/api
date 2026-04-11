@@ -7,18 +7,30 @@ import (
 	"github.com/google/uuid"
 )
 
-func InsertReport(reporterID uuid.UUID, reason string, riceID *string, commentID *string) (id uuid.UUID, err error) {
+type ReportRepository struct {
+	db DBExecutor
+}
+
+func NewReportRepository(db DBExecutor) *ReportRepository {
+	return &ReportRepository{db}
+}
+
+func (r *ReportRepository) InsertReport(
+	ctx context.Context,
+	reporterID uuid.UUID,
+	reason string,
+	riceID, commentID *string,
+) (id uuid.UUID, err error) {
 	const query = `
 	INSERT INTO reports (reporter_id, reason, rice_id, comment_id)
 	VALUES ($1, $2, $3, $4)
 	RETURNING id
 	`
-
-	err = db.QueryRow(context.Background(), query, reporterID, reason, riceID, commentID).Scan(&id)
+	err = r.db.QueryRow(ctx, query, reporterID, reason, riceID, commentID).Scan(&id)
 	return
 }
 
-func FetchReports() ([]models.ReportWithUser, error) {
+func (r *ReportRepository) FetchReports(ctx context.Context) ([]models.ReportWithUser, error) {
 	const query = `
 	SELECT r.*, u.display_name, u.username
 	FROM reports r
@@ -26,10 +38,10 @@ func FetchReports() ([]models.ReportWithUser, error) {
 	ORDER BY r.created_at DESC
 	`
 
-	return rowsToStruct[models.ReportWithUser](query)
+	return rowsToStruct[models.ReportWithUser](ctx, r.db, query)
 }
 
-func FindReportByID(reportID string) (models.ReportWithUser, error) {
+func (r *ReportRepository) FindReportByID(ctx context.Context, reportID uuid.UUID) (models.ReportWithUser, error) {
 	const query = `
 	SELECT r.*, u.display_name, u.username
 	FROM reports r
@@ -37,11 +49,11 @@ func FindReportByID(reportID string) (models.ReportWithUser, error) {
 	WHERE r.id = $1
 	`
 
-	return rowToStruct[models.ReportWithUser](query, reportID)
+	return rowToStruct[models.ReportWithUser](ctx, r.db, query, reportID)
 }
 
-func CloseReport(reportID string, newState bool) (bool, error) {
+func (r *ReportRepository) CloseReport(ctx context.Context, reportID uuid.UUID, newState bool) (bool, error) {
 	const query = "UPDATE reports SET is_closed = $1 WHERE id = $2"
-	cmd, err := db.Exec(context.Background(), query, newState, reportID)
+	cmd, err := r.db.Exec(ctx, query, newState, reportID)
 	return cmd.RowsAffected() == 1, err
 }
