@@ -1,6 +1,7 @@
 package security
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"ricehub/internal/errs"
@@ -12,12 +13,16 @@ import (
 )
 
 // VerifyUser checks if user is banned.
-func VerifyUser(user models.User) errs.AppError {
+func VerifyUser(
+	ctx context.Context,
+	repo *repository.UserBanRepository,
+	user models.User,
+) errs.AppError {
 	if !user.IsBanned {
 		return nil
 	}
 
-	ban, err := repository.FindUserBan(user.ID)
+	ban, err := repo.FindUserBan(ctx, user.ID)
 	if err != nil {
 		return errs.InternalError(err)
 	}
@@ -38,15 +43,19 @@ func VerifyUser(user models.User) errs.AppError {
 }
 
 // VerifyUserID checks if the user exists and is not banned. Given user ID must be a valid UUID.
-//
 // Returns parsed user ID.
-func VerifyUserID(strUserID string) (uuid.UUID, errs.AppError) {
+func VerifyUserID(
+	ctx context.Context,
+	userRepo *repository.UserRepository,
+	banRepo *repository.UserBanRepository,
+	strUserID string,
+) (uuid.UUID, errs.AppError) {
 	userID, _ := uuid.Parse(strUserID)
 
-	user, err := repository.FindUserByID(userID)
+	user, err := userRepo.FindUserByID(ctx, userID)
 	if err != nil {
 		return userID, errs.FromDBError(err, errs.UserNotFound)
 	}
 
-	return userID, VerifyUser(user)
+	return userID, VerifyUser(ctx, banRepo, user)
 }

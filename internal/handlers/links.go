@@ -7,10 +7,19 @@ import (
 	"ricehub/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
-func GetLinkByName(c *gin.Context) {
-	link, err := services.GetLinkByName(c.Param("name"))
+type LinkHandler struct {
+	svc *services.LinkService
+}
+
+func NewLinkHandler(svc *services.LinkService) *LinkHandler {
+	return &LinkHandler{svc}
+}
+
+func (h *LinkHandler) GetLinkByName(c *gin.Context) {
+	link, err := h.svc.GetLinkByName(c.Request.Context(), c.Param("name"))
 	if err != nil {
 		c.Error(err)
 		return
@@ -19,15 +28,11 @@ func GetLinkByName(c *gin.Context) {
 	c.JSON(http.StatusOK, link.ToDTO())
 }
 
-func GetSubscriptionLink(c *gin.Context) {
+func (h *LinkHandler) GetSubscriptionLink(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
-	checkoutURL, err := services.GetSubscriptionLink(userID, config.Config.Polar.SubscriptionProductID)
+	checkoutURL, err := h.svc.GetSubscriptionLink(c.Request.Context(), userID, config.Config.Polar.SubscriptionProductID)
 	if err != nil {
 		c.Error(err)
 		return

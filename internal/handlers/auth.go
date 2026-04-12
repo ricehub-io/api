@@ -13,14 +13,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Register(c *gin.Context) {
+type AuthHandler struct {
+	svc *services.AuthService
+}
+
+func NewAuthHandler(svc *services.AuthService) *AuthHandler {
+	return &AuthHandler{svc}
+}
+
+func (h *AuthHandler) Register(c *gin.Context) {
 	var body models.RegisterDTO
 	if err := validation.ValidateJSON(c, &body); err != nil {
 		c.Error(err)
 		return
 	}
 
-	if err := services.Register(body); err != nil {
+	if err := h.svc.Register(c.Request.Context(), body); err != nil {
 		c.Error(err)
 		return
 	}
@@ -28,27 +36,27 @@ func Register(c *gin.Context) {
 	c.Status(http.StatusCreated)
 }
 
-func Login(c *gin.Context) {
+func (h *AuthHandler) Login(c *gin.Context) {
 	var body models.LoginDTO
 	if err := validation.ValidateJSON(c, &body); err != nil {
 		c.Error(err)
 		return
 	}
 
-	res, err := services.Login(body)
+	res, err := h.svc.Login(c.Request.Context(), body)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	setRefreshCookie(c, res.RefreshToken)
+	h.setRefreshCookie(c, res.RefreshToken)
 	c.JSON(http.StatusOK, gin.H{
 		"accessToken": res.AccessToken,
 		"user":        res.User.ToDTO(),
 	})
 }
 
-func RefreshToken(c *gin.Context) {
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	refreshStr, err := c.Cookie("refresh_token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
@@ -63,7 +71,7 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	access, err := services.RefreshToken(refreshStr)
+	access, err := h.svc.RefreshToken(c.Request.Context(), refreshStr)
 	if err != nil {
 		c.Error(err)
 		return
@@ -72,17 +80,17 @@ func RefreshToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"accessToken": access})
 }
 
-func LogOut(c *gin.Context) {
-	clearRefreshCookie(c)
+func (h *AuthHandler) LogOut(c *gin.Context) {
+	h.clearRefreshCookie(c)
 }
 
 // setRefreshCookie writes refresh token to secure and http-only cookie header.
-func setRefreshCookie(c *gin.Context, token string) {
+func (h *AuthHandler) setRefreshCookie(c *gin.Context, token string) {
 	maxAge := int(math.Round(config.Config.JWT.AccessExpiration.Seconds()))
 	c.SetCookie("refresh_token", token, maxAge, "/", config.Config.Server.CookiesDomain, true, true)
 }
 
 // clearRefreshCookie writes empty refresh token that's expired into response headers.
-func clearRefreshCookie(c *gin.Context) {
+func (h *AuthHandler) clearRefreshCookie(c *gin.Context) {
 	c.SetCookie("refresh_token", "", -1, "/", config.Config.Server.CookiesDomain, true, true)
 }

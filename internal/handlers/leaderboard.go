@@ -9,8 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetWeeklyLeaderboard(c *gin.Context) {
-	rices, err := fetchLeaderboard(c, models.Week)
+type LeaderboardHandler struct {
+	svc *services.LeaderboardService
+}
+
+func NewLeaderboardHandler(svc *services.LeaderboardService) *LeaderboardHandler {
+	return &LeaderboardHandler{svc}
+}
+
+func (h *LeaderboardHandler) GetWeeklyLeaderboard(c *gin.Context) {
+	rices, err := h.fetchLeaderboard(c, models.Week)
 	if err != nil {
 		c.Error(err)
 		return
@@ -19,8 +27,8 @@ func GetWeeklyLeaderboard(c *gin.Context) {
 	c.JSON(http.StatusOK, rices)
 }
 
-func GetMonthlyLeaderboard(c *gin.Context) {
-	rices, err := fetchLeaderboard(c, models.Month)
+func (h *LeaderboardHandler) GetMonthlyLeaderboard(c *gin.Context) {
+	rices, err := h.fetchLeaderboard(c, models.Month)
 	if err != nil {
 		c.Error(err)
 		return
@@ -29,8 +37,8 @@ func GetMonthlyLeaderboard(c *gin.Context) {
 	c.JSON(http.StatusOK, rices)
 }
 
-func GetYearlyLeaderboard(c *gin.Context) {
-	rices, err := fetchLeaderboard(c, models.Year)
+func (h *LeaderboardHandler) GetYearlyLeaderboard(c *gin.Context) {
+	rices, err := h.fetchLeaderboard(c, models.Year)
 	if err != nil {
 		c.Error(err)
 		return
@@ -39,8 +47,8 @@ func GetYearlyLeaderboard(c *gin.Context) {
 	c.JSON(http.StatusOK, rices)
 }
 
-func fetchLeaderboard(c *gin.Context, period models.LeaderboardPeriod) ([]models.LeaderboardRiceDTO, errs.AppError) {
-	lead, err := services.FetchLeaderboard(period, GetUserIDFromRequest(c))
+func (h *LeaderboardHandler) fetchLeaderboard(c *gin.Context, period models.LeaderboardPeriod) ([]models.LeaderboardRiceDTO, errs.AppError) {
+	lead, err := h.svc.FetchLeaderboard(c.Request.Context(), period, GetUserIDFromRequest(c))
 	if err != nil {
 		return nil, err
 	}

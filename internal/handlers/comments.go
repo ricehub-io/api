@@ -12,17 +12,21 @@ import (
 	"github.com/google/uuid"
 )
 
+type CommentHandler struct {
+	svc *services.CommentService
+}
+
+func NewCommentHandler(svc *services.CommentService) *CommentHandler {
+	return &CommentHandler{svc}
+}
+
 type commentsPath struct {
 	CommentID string `uri:"id" binding:"required,uuid"`
 }
 
-func CreateComment(c *gin.Context) {
+func (h *CommentHandler) CreateComment(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var body models.CreateCommentDTO
 	if err := validation.ValidateJSON(c, &body); err != nil {
@@ -30,7 +34,7 @@ func CreateComment(c *gin.Context) {
 		return
 	}
 
-	comment, err := services.CreateComment(userID, body)
+	comment, err := h.svc.CreateComment(c.Request.Context(), userID, body)
 	if err != nil {
 		c.Error(err)
 		return
@@ -39,7 +43,7 @@ func CreateComment(c *gin.Context) {
 	c.JSON(http.StatusCreated, comment.ToDTO())
 }
 
-func ListComments(c *gin.Context) {
+func (h *CommentHandler) ListComments(c *gin.Context) {
 	var query struct {
 		Limit int `form:"limit,default=20" binding:"gt=0"`
 	}
@@ -48,7 +52,7 @@ func ListComments(c *gin.Context) {
 		return
 	}
 
-	comments, err := services.ListComments(query.Limit)
+	comments, err := h.svc.ListComments(c.Request.Context(), query.Limit)
 	if err != nil {
 		c.Error(err)
 		return
@@ -57,7 +61,7 @@ func ListComments(c *gin.Context) {
 	c.JSON(http.StatusOK, models.CommentsWithUserToDTO(comments))
 }
 
-func GetCommentByID(c *gin.Context) {
+func (h *CommentHandler) GetCommentByID(c *gin.Context) {
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidCommentID)
@@ -65,7 +69,7 @@ func GetCommentByID(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	comment, err := services.GetCommentByID(commentID)
+	comment, err := h.svc.GetCommentByID(c.Request.Context(), commentID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -74,13 +78,9 @@ func GetCommentByID(c *gin.Context) {
 	c.JSON(http.StatusOK, comment.ToDTO())
 }
 
-func UpdateComment(c *gin.Context) {
+func (h *CommentHandler) UpdateComment(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -95,7 +95,7 @@ func UpdateComment(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	comment, err := services.UpdateComment(token.IsAdmin, userID, commentID, body.Content)
+	comment, err := h.svc.UpdateComment(c.Request.Context(), token.IsAdmin, userID, commentID, body.Content)
 	if err != nil {
 		c.Error(err)
 		return
@@ -104,13 +104,9 @@ func UpdateComment(c *gin.Context) {
 	c.JSON(http.StatusOK, comment.ToDTO())
 }
 
-func DeleteComment(c *gin.Context) {
+func (h *CommentHandler) DeleteComment(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -119,7 +115,7 @@ func DeleteComment(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	if err := services.DeleteComment(token.IsAdmin, userID, commentID); err != nil {
+	if err := h.svc.DeleteComment(c.Request.Context(), token.IsAdmin, userID, commentID); err != nil {
 		c.Error(err)
 		return
 	}

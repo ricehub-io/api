@@ -12,7 +12,15 @@ import (
 	"github.com/google/uuid"
 )
 
-func PurchaseDotfiles(c *gin.Context) {
+type RiceDotfilesHandler struct {
+	svc *services.RiceDotfilesService
+}
+
+func NewRiceDotfilesHandler(svc *services.RiceDotfilesService) *RiceDotfilesHandler {
+	return &RiceDotfilesHandler{svc}
+}
+
+func (h *RiceDotfilesHandler) PurchaseDotfiles(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidRiceID)
@@ -23,7 +31,7 @@ func PurchaseDotfiles(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, _ := uuid.Parse(token.Subject)
 
-	checkoutURL, err := services.PurchaseDotfiles(userID, riceID)
+	checkoutURL, err := h.svc.PurchaseDotfiles(c.Request.Context(), userID, riceID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -32,7 +40,7 @@ func PurchaseDotfiles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"checkoutUrl": checkoutURL})
 }
 
-func DownloadDotfiles(c *gin.Context) {
+func (h *RiceDotfilesHandler) DownloadDotfiles(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidRiceID)
@@ -41,7 +49,7 @@ func DownloadDotfiles(c *gin.Context) {
 	riceID, _ := uuid.Parse(path.RiceID)
 	userID := GetUserIDFromRequest(c)
 
-	res, err := services.DownloadDotfiles(riceID, userID)
+	res, err := h.svc.DownloadDotfiles(c.Request.Context(), riceID, userID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -50,13 +58,9 @@ func DownloadDotfiles(c *gin.Context) {
 	c.FileAttachment(res.FilePath, res.FileName)
 }
 
-func UpdateDotfiles(c *gin.Context) {
+func (h *RiceDotfilesHandler) UpdateDotfiles(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -71,7 +75,7 @@ func UpdateDotfiles(c *gin.Context) {
 		return
 	}
 
-	df, err := services.UpdateDotfiles(riceID, userID, token.IsAdmin, file)
+	df, err := h.svc.UpdateDotfiles(c.Request.Context(), riceID, userID, token.IsAdmin, file)
 	if err != nil {
 		c.Error(err)
 		return
@@ -80,13 +84,9 @@ func UpdateDotfiles(c *gin.Context) {
 	c.JSON(http.StatusOK, df.ToDTO())
 }
 
-func UpdateDotfilesType(c *gin.Context) {
+func (h *RiceDotfilesHandler) UpdateDotfilesType(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -101,7 +101,7 @@ func UpdateDotfilesType(c *gin.Context) {
 		return
 	}
 
-	if err := services.UpdateDotfilesType(riceID, userID, token.IsAdmin, body); err != nil {
+	if err := h.svc.UpdateDotfilesType(c.Request.Context(), riceID, userID, token.IsAdmin, body); err != nil {
 		c.Error(err)
 		return
 	}
@@ -109,13 +109,9 @@ func UpdateDotfilesType(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func UpdateDotfilesPrice(c *gin.Context) {
+func (h *RiceDotfilesHandler) UpdateDotfilesPrice(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -130,7 +126,7 @@ func UpdateDotfilesPrice(c *gin.Context) {
 		return
 	}
 
-	if err := services.UpdateDotfilesPrice(riceID, userID, token.IsAdmin, body); err != nil {
+	if err := h.svc.UpdateDotfilesPrice(c.Request.Context(), riceID, userID, token.IsAdmin, body); err != nil {
 		c.Error(err)
 		return
 	}

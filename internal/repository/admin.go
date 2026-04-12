@@ -1,8 +1,19 @@
 package repository
 
-import "ricehub/internal/models"
+import (
+	"context"
+	"ricehub/internal/models"
+)
 
-func FetchServiceStatistics() (models.ServiceStatistics, error) {
+type AdminRepository struct {
+	db DBExecutor
+}
+
+func NewAdminRepository(db DBExecutor) *AdminRepository {
+	return &AdminRepository{db}
+}
+
+func (r *AdminRepository) FetchServiceStatistics(ctx context.Context) (models.ServiceStatistics, error) {
 	const query = `
 	WITH user_stats AS (
 	    SELECT
@@ -40,5 +51,5 @@ func FetchServiceStatistics() (models.ServiceStatistics, error) {
 	FROM user_stats, rice_stats, comment_stats, report_stats
 	`
 
-	return rowToStruct[models.ServiceStatistics](query)
+	return rowToStruct[models.ServiceStatistics](ctx, r.db, query)
 }

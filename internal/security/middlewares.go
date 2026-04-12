@@ -7,6 +7,7 @@ import (
 	"ricehub/internal/cache"
 	"ricehub/internal/config"
 	"ricehub/internal/errs"
+	"ricehub/internal/repository"
 	"strings"
 	"time"
 
@@ -56,24 +57,29 @@ func AuthMiddleware(c *gin.Context) {
 	c.Next()
 }
 
-func AdminMiddleware(c *gin.Context) {
-	token := c.MustGet("token").(*AccessToken)
+func AdminMiddleware(
+	userRepo *repository.UserRepository,
+	banRepo *repository.UserBanRepository,
+) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.MustGet("token").(*AccessToken)
 
-	// make sure the user is an admin
-	if !token.IsAdmin {
-		c.Error(errs.NoAccess)
-		c.Abort()
-		return
+		// make sure the user is an admin
+		if !token.IsAdmin {
+			c.Error(errs.NoAccess)
+			c.Abort()
+			return
+		}
+
+		// check if admin is banned
+		if _, err := VerifyUserID(c.Request.Context(), userRepo, banRepo, token.Subject); err != nil {
+			c.Error(err)
+			c.Abort()
+			return
+		}
+
+		c.Next()
 	}
-
-	// check if admin is banned
-	if _, err := VerifyUserID(token.Subject); err != nil {
-		c.Error(err)
-		c.Abort()
-		return
-	}
-
-	c.Next()
 }
 
 func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {

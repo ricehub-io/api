@@ -8,7 +8,18 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func _insertRiceTags(exec DBExecutor, riceID uuid.UUID, tagIDs []int) error {
+type RiceTagRepository struct {
+	db DBExecutor
+}
+
+func NewRiceTagRepository(db DBExecutor) *RiceTagRepository {
+	return &RiceTagRepository{db}
+}
+func (r *RiceTagRepository) WithTx(tx pgx.Tx) *RiceTagRepository {
+	return &RiceTagRepository{tx}
+}
+
+func (r *RiceTagRepository) InsertRiceTags(ctx context.Context, riceID uuid.UUID, tagIDs []int) error {
 	args := make([]any, 0, len(tagIDs)+1)
 	args = append(args, riceID)
 
@@ -23,20 +34,12 @@ func _insertRiceTags(exec DBExecutor, riceID uuid.UUID, tagIDs []int) error {
 		args = append(args, tagID)
 	}
 
-	_, err := exec.Exec(context.Background(), query, args...)
+	_, err := r.db.Exec(ctx, query, args...)
 	return err
 }
 
-func InsertRiceTags(riceID uuid.UUID, tagIDs []int) error {
-	return _insertRiceTags(db, riceID, tagIDs)
-}
-
-func InsertRiceTagsTx(tx pgx.Tx, riceID uuid.UUID, tagIDs []int) error {
-	return _insertRiceTags(tx, riceID, tagIDs)
-}
-
-func DeleteRiceTags(riceID uuid.UUID, tagIDs []int) error {
+func (r *RiceTagRepository) DeleteRiceTags(ctx context.Context, riceID uuid.UUID, tagIDs []int) error {
 	const query = "DELETE FROM rice_tag WHERE rice_id = $1 AND tag_id = ANY($2)"
-	_, err := db.Exec(context.Background(), query, riceID, tagIDs)
+	_, err := r.db.Exec(ctx, query, riceID, tagIDs)
 	return err
 }

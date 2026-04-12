@@ -12,13 +12,17 @@ import (
 	"github.com/google/uuid"
 )
 
-func AddRiceTags(c *gin.Context) {
+type RiceTagHandler struct {
+	svc *services.RiceTagService
+}
+
+func NewRiceTagHandler(svc *services.RiceTagService) *RiceTagHandler {
+	return &RiceTagHandler{svc}
+}
+
+func (h *RiceTagHandler) AddRiceTags(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -33,7 +37,7 @@ func AddRiceTags(c *gin.Context) {
 		return
 	}
 
-	if err := services.AddRiceTags(riceID, userID, token.IsAdmin, body.Tags); err != nil {
+	if err := h.svc.AddRiceTags(c.Request.Context(), riceID, userID, token.IsAdmin, body.Tags); err != nil {
 		c.Error(err)
 		return
 	}
@@ -41,13 +45,9 @@ func AddRiceTags(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func RemoveRiceTags(c *gin.Context) {
+func (h *RiceTagHandler) RemoveRiceTags(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -62,7 +62,7 @@ func RemoveRiceTags(c *gin.Context) {
 		return
 	}
 
-	if err := services.RemoveRiceTags(riceID, userID, token.IsAdmin, body.Tags); err != nil {
+	if err := h.svc.RemoveRiceTags(c.Request.Context(), riceID, userID, token.IsAdmin, body.Tags); err != nil {
 		c.Error(err)
 		return
 	}

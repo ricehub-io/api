@@ -10,25 +10,50 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/polarsource/polar-go/models/components"
 	"go.uber.org/zap"
 )
 
-func StartSyncThread() {
-	logger := zap.L()
+func StartSyncThread(
+	dbPool *pgxpool.Pool,
+	rdfRepo *repository.RiceDotfilesRepository,
+	dfpRepo *repository.DotfilesPurchaseRepository,
+	subRepo *repository.UserSubscriptionRepository,
+) {
+	l := zap.L()
 	for {
-		logger.Info("Syncing internal state with Polar...")
-		if err := syncDotfilesPurchases(); err != nil {
-			logger.Error("Failed to sync dotfiles purchases", zap.Error(err))
-		}
-		if err := syncSubscriptions(); err != nil {
-			logger.Error("Failed to sync subscriptions", zap.Error(err))
-		}
+		l.Info("Syncing internal state with Polar...")
+		sync(dbPool, rdfRepo, dfpRepo, subRepo)
 		time.Sleep(24 * time.Hour)
 	}
 }
 
-func syncDotfilesPurchases() error {
+func sync(
+	dbPool *pgxpool.Pool,
+	rdfRepo *repository.RiceDotfilesRepository,
+	dfpRepo *repository.DotfilesPurchaseRepository,
+	subRepo *repository.UserSubscriptionRepository,
+) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	l := zap.L()
+	if err := syncDotfilesPurchases(ctx, dbPool, rdfRepo, dfpRepo); err != nil {
+		l.Error("Failed to sync dotfiles purchases", zap.Error(err))
+	}
+
+	if err := syncSubscriptions(ctx, dbPool, subRepo); err != nil {
+		l.Error("Failed to sync subscriptions", zap.Error(err))
+	}
+}
+
+func syncDotfilesPurchases(
+	ctx context.Context,
+	dbPool *pgxpool.Pool,
+	rdfRepo *repository.RiceDotfilesRepository,
+	dfpRepo *repository.DotfilesPurchaseRepository,
+) error {
 	after := time.Now().Add(-24 * time.Hour)
 
 	events, err := EventList(components.SystemEventTypeOrderPaid, &after)
@@ -36,15 +61,12 @@ func syncDotfilesPurchases() error {
 		return err
 	}
 
-	stored, err := repository.DotfilesPurchases(after)
+	stored, err := dfpRepo.DotfilesPurchases(ctx, after)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	tx, err := repository.StartTx(ctx)
+	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -66,7 +88,7 @@ func syncDotfilesPurchases() error {
 		if !slices.ContainsFunc(stored, func(s models.DotfilesPurchase) bool {
 			return s.ProductID == productID && s.UserID == customerID
 		}) {
-			df, err := repository.FindDotfilesByProductID(productID)
+			df, err := rdfRepo.FindDotfilesByProductID(ctx, productID)
 			if err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
 					continue
@@ -75,7 +97,7 @@ func syncDotfilesPurchases() error {
 			}
 
 			paidAmount := centsToPrice(meta.Amount)
-			err = repository.InsertDotfilesPurchaseTx(tx, customerID, df.RiceID, paidAmount, order.Timestamp)
+			err = dfpRepo.InsertDotfilesPurchaseTx(ctx, customerID, df.RiceID, paidAmount, order.Timestamp)
 			if err != nil {
 				return err
 			}
@@ -92,16 +114,17 @@ func syncDotfilesPurchases() error {
 	return nil
 }
 
-func syncSubscriptions() error {
+func syncSubscriptions(
+	ctx context.Context,
+	dbPool *pgxpool.Pool,
+	repo *repository.UserSubscriptionRepository,
+) error {
 	subs, err := SubscriptionList()
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	tx, err := repository.StartTx(ctx)
+	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -117,14 +140,14 @@ func syncSubscriptions() error {
 		customerID, _ := uuid.Parse(*strCustomerID)
 		seen = append(seen, customerID)
 
-		err := repository.InsertUserSubscriptionTx(tx, customerID, sub.CurrentPeriodEnd)
+		err := repo.InsertUserSubscriptionTx(ctx, customerID, sub.CurrentPeriodEnd)
 		if err != nil {
 			return err
 		}
 	}
 
 	// delete unseen
-	cancelled, err := repository.CancelUserSubscriptionsExcept(tx, seen)
+	cancelled, err := repo.CancelUserSubscriptionsExcept(ctx, seen)
 	if err != nil {
 		return err
 	}

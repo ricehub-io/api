@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mime/multipart"
@@ -9,6 +10,7 @@ import (
 	"ricehub/internal/errs"
 	"ricehub/internal/models"
 	"ricehub/internal/repository"
+	"ricehub/internal/security"
 	"ricehub/internal/storage"
 	"ricehub/internal/validation"
 	"time"
@@ -20,9 +22,23 @@ import (
 	"go.uber.org/zap"
 )
 
+type UserService struct {
+	users *repository.UserRepository
+	bans  *repository.UserBanRepository
+	rices *repository.RiceRepository
+}
+
+func NewUserService(
+	users *repository.UserRepository,
+	bans *repository.UserBanRepository,
+	rices *repository.RiceRepository,
+) *UserService {
+	return &UserService{users, bans, rices}
+}
+
 // GetUserByUsername returns a user by their username.
-func GetUserByUsername(username string) (models.User, errs.AppError) {
-	user, err := repository.FindUserByUsername(username)
+func (s *UserService) GetUserByUsername(ctx context.Context, username string) (models.User, errs.AppError) {
+	user, err := s.users.FindUserByUsername(ctx, username)
 	if err != nil {
 		return user, errs.FromDBError(err, errs.UserNotFound)
 	}
@@ -30,8 +46,8 @@ func GetUserByUsername(username string) (models.User, errs.AppError) {
 }
 
 // ListBannedUsers returns all currently banned users with their ban info.
-func ListBannedUsers() ([]models.UserWithBan, errs.AppError) {
-	users, err := repository.FetchBannedUsers()
+func (s *UserService) ListBannedUsers(ctx context.Context) ([]models.UserWithBan, errs.AppError) {
+	users, err := s.users.FetchBannedUsers(ctx)
 	if err != nil {
 		return nil, errs.InternalError(err)
 	}
@@ -39,8 +55,8 @@ func ListBannedUsers() ([]models.UserWithBan, errs.AppError) {
 }
 
 // ListRecentUsers returns the most recently registered users up to the given limit.
-func ListRecentUsers(limit int) ([]models.User, errs.AppError) {
-	users, err := repository.FetchRecentUsers(limit)
+func (s *UserService) ListRecentUsers(ctx context.Context, limit int) ([]models.User, errs.AppError) {
+	users, err := s.users.FetchRecentUsers(ctx, limit)
 	if err != nil {
 		return nil, errs.InternalError(err)
 	}
@@ -48,13 +64,17 @@ func ListRecentUsers(limit int) ([]models.User, errs.AppError) {
 }
 
 // GetUserByID fetches a user by ID, enforcing that only the owner or an admin can access it.
-func GetUserByID(targetID, callerID uuid.UUID, isAdmin bool) (models.User, errs.AppError) {
+func (s *UserService) GetUserByID(
+	ctx context.Context,
+	targetID, callerID uuid.UUID,
+	isAdmin bool,
+) (models.User, errs.AppError) {
 	var zero models.User
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return zero, err
 	}
 
-	user, err := repository.FindUserByID(targetID)
+	user, err := s.users.FindUserByID(ctx, targetID)
 	if err != nil {
 		return zero, errs.FromDBError(err, errs.UserNotFound)
 	}
@@ -64,10 +84,15 @@ func GetUserByID(targetID, callerID uuid.UUID, isAdmin bool) (models.User, errs.
 
 // GetUserRiceBySlug fetches a rice by the author's username and rice slug.
 // Waiting rices are only visible to admins.
-func GetUserRiceBySlug(callerID *uuid.UUID, slug, username string, isAdmin bool) (models.RiceWithRelations, errs.AppError) {
+func (s *UserService) GetUserRiceBySlug(
+	ctx context.Context,
+	callerID *uuid.UUID,
+	slug, username string,
+	isAdmin bool,
+) (models.RiceWithRelations, errs.AppError) {
 	var zero models.RiceWithRelations
 
-	taken, err := repository.UsernameExists(username)
+	taken, err := s.users.UsernameExists(ctx, username)
 	if err != nil {
 		return zero, errs.InternalError(err)
 	}
@@ -75,7 +100,7 @@ func GetUserRiceBySlug(callerID *uuid.UUID, slug, username string, isAdmin bool)
 		return zero, errs.UserNotFound
 	}
 
-	rice, err := repository.FindRiceBySlug(callerID, slug, username)
+	rice, err := s.rices.FindRiceBySlug(ctx, callerID, slug, username)
 	if err != nil {
 		return zero, errs.FromDBError(err, errs.RiceNotFound)
 	}
@@ -87,8 +112,12 @@ func GetUserRiceBySlug(callerID *uuid.UUID, slug, username string, isAdmin bool)
 }
 
 // ListUserRices returns all accepted rices for the given user.
-func ListUserRices(userID uuid.UUID, callerID *uuid.UUID) (models.PartialRices, errs.AppError) {
-	rices, err := repository.FetchUserRices(userID, callerID)
+func (s *UserService) ListUserRices(
+	ctx context.Context,
+	userID uuid.UUID,
+	callerID *uuid.UUID,
+) (models.PartialRices, errs.AppError) {
+	rices, err := s.rices.FetchUserRices(ctx, userID, callerID)
 	if err != nil {
 		return nil, errs.InternalError(err)
 	}
@@ -97,12 +126,20 @@ func ListUserRices(userID uuid.UUID, callerID *uuid.UUID) (models.PartialRices, 
 
 // ListPurchasedRices returns all rices the target user has purchased.
 // Enforces that only the owner or an admin can fetch purchases.
-func ListPurchasedRices(targetID, callerID uuid.UUID, isAdmin bool) (models.PartialRices, errs.AppError) {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) ListPurchasedRices(
+	ctx context.Context,
+	targetID, callerID uuid.UUID,
+	isAdmin bool,
+) (models.PartialRices, errs.AppError) {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
 		return nil, err
 	}
 
-	rices, err := repository.FetchUserPurchasedRices(targetID)
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
+		return nil, err
+	}
+
+	rices, err := s.rices.FetchUserPurchasedRices(ctx, targetID)
 	if err != nil {
 		return nil, errs.InternalError(err)
 	}
@@ -112,8 +149,17 @@ func ListPurchasedRices(targetID, callerID uuid.UUID, isAdmin bool) (models.Part
 
 // UpdateDisplayName changes a user's display name after blacklist validation.
 // Enforces that only the owner or an admin can update.
-func UpdateDisplayName(targetID, callerID uuid.UUID, isAdmin bool, dto models.UpdateDisplayNameDTO) errs.AppError {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) UpdateDisplayName(
+	ctx context.Context,
+	targetID, callerID uuid.UUID,
+	isAdmin bool,
+	dto models.UpdateDisplayNameDTO,
+) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
+		return err
+	}
+
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}
 
@@ -121,7 +167,7 @@ func UpdateDisplayName(targetID, callerID uuid.UUID, isAdmin bool, dto models.Up
 		return errs.BlacklistedDisplayName
 	}
 
-	if err := repository.UpdateUserDisplayName(targetID, dto.DisplayName); err != nil {
+	if err := s.users.UpdateUserDisplayName(ctx, targetID, dto.DisplayName); err != nil {
 		return errs.InternalError(err)
 	}
 
@@ -131,13 +177,22 @@ func UpdateDisplayName(targetID, callerID uuid.UUID, isAdmin bool, dto models.Up
 // UpdatePassword changes a user's password after verifying the current one.
 // Admins bypass the current password check.
 // Enforces that only the owner or an admin can update.
-func UpdatePassword(targetID, callerID uuid.UUID, isAdmin bool, dto models.UpdatePasswordDTO) errs.AppError {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) UpdatePassword(
+	ctx context.Context,
+	targetID, callerID uuid.UUID,
+	isAdmin bool,
+	dto models.UpdatePasswordDTO,
+) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
+		return err
+	}
+
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}
 
 	if !isAdmin {
-		user, err := repository.FindUserByID(targetID)
+		user, err := s.users.FindUserByID(ctx, targetID)
 		if err != nil {
 			return errs.FromDBError(err, errs.UserNotFound)
 		}
@@ -156,7 +211,7 @@ func UpdatePassword(targetID, callerID uuid.UUID, isAdmin bool, dto models.Updat
 		return errs.InternalError(err)
 	}
 
-	if err := repository.UpdateUserPassword(targetID, hash); err != nil {
+	if err := s.users.UpdateUserPassword(ctx, targetID, hash); err != nil {
 		return errs.InternalError(err)
 	}
 
@@ -166,10 +221,19 @@ func UpdatePassword(targetID, callerID uuid.UUID, isAdmin bool, dto models.Updat
 // UpdateAvatar saves a new avatar, removes the old one from disk, and updates the DB.
 // Returns the CDN URL of the uploaded avatar.
 // Enforces that only the owner or an admin can upload.
-func UpdateAvatar(targetID, callerID uuid.UUID, isAdmin bool, file *multipart.FileHeader) (string, errs.AppError) {
+func (s *UserService) UpdateAvatar(
+	ctx context.Context,
+	targetID, callerID uuid.UUID,
+	isAdmin bool,
+	file *multipart.FileHeader,
+) (string, errs.AppError) {
 	var err error
 
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
+		return "", err
+	}
+
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return "", err
 	}
 
@@ -178,7 +242,7 @@ func UpdateAvatar(targetID, callerID uuid.UUID, isAdmin bool, file *multipart.Fi
 		return "", err.(errs.AppError)
 	}
 
-	oldAvatar, err := repository.FetchUserAvatarPath(targetID)
+	oldAvatar, err := s.users.FetchUserAvatarPath(ctx, targetID)
 	if err != nil {
 		return "", errs.InternalError(err)
 	}
@@ -198,7 +262,7 @@ func UpdateAvatar(targetID, callerID uuid.UUID, isAdmin bool, file *multipart.Fi
 		return "", errs.InternalError(err)
 	}
 
-	if err := repository.UpdateUserAvatarPath(targetID, &avatarPath); err != nil {
+	if err := s.users.UpdateUserAvatarPath(ctx, targetID, &avatarPath); err != nil {
 		return "", errs.InternalError(err)
 	}
 
@@ -207,12 +271,20 @@ func UpdateAvatar(targetID, callerID uuid.UUID, isAdmin bool, file *multipart.Fi
 
 // DeleteAvatar removes the user's custom avatar from the DB.
 // Enforces that only the owner or an admin can delete.
-func DeleteAvatar(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) DeleteAvatar(
+	ctx context.Context,
+	targetID, callerID uuid.UUID,
+	isAdmin bool,
+) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
 		return err
 	}
 
-	if err := repository.UpdateUserAvatarPath(targetID, nil); err != nil {
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
+		return err
+	}
+
+	if err := s.users.UpdateUserAvatarPath(ctx, targetID, nil); err != nil {
 		return errs.InternalError(err)
 	}
 
@@ -221,12 +293,21 @@ func DeleteAvatar(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
 
 // DeleteUser deletes an account after verifying the user's password.
 // Enforces that only the owner or an admin can delete.
-func DeleteUser(targetID, callerID uuid.UUID, isAdmin bool, dto models.DeleteUserDTO) errs.AppError {
-	if err := canAccessUser(targetID, callerID, isAdmin); err != nil {
+func (s *UserService) DeleteUser(
+	ctx context.Context,
+	targetID, callerID uuid.UUID,
+	isAdmin bool,
+	dto models.DeleteUserDTO,
+) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
 		return err
 	}
 
-	user, err := repository.FindUserByID(targetID)
+	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
+		return err
+	}
+
+	user, err := s.users.FindUserByID(ctx, targetID)
 	if err != nil {
 		return errs.FromDBError(err, errs.UserNotFound)
 	}
@@ -239,7 +320,7 @@ func DeleteUser(targetID, callerID uuid.UUID, isAdmin bool, dto models.DeleteUse
 		return errs.InvalidCurrentPassword
 	}
 
-	if err := repository.DeleteUser(targetID); err != nil {
+	if err := s.users.DeleteUser(ctx, targetID); err != nil {
 		return errs.InternalError(err)
 	}
 
@@ -247,16 +328,20 @@ func DeleteUser(targetID, callerID uuid.UUID, isAdmin bool, dto models.DeleteUse
 }
 
 // BanUser creates a ban record for a user and revokes their admin role if applicable.
-func BanUser(targetID, adminID uuid.UUID, dto models.BanUserDTO) (models.UserBan, errs.AppError) {
+func (s *UserService) BanUser(
+	ctx context.Context,
+	targetID, adminID uuid.UUID,
+	dto models.BanUserDTO,
+) (models.UserBan, errs.AppError) {
 	var zero models.UserBan
 	var err error
 
-	expiresAt, err := computeExpiration(dto.Duration)
+	expiresAt, err := s.computeExpiration(dto.Duration)
 	if err != nil {
 		return zero, err.(errs.AppError)
 	}
 
-	state, err := repository.IsUserBanned(targetID)
+	state, err := s.bans.IsUserBanned(ctx, targetID)
 	if err != nil {
 		return zero, errs.InternalError(err)
 	}
@@ -267,7 +352,7 @@ func BanUser(targetID, adminID uuid.UUID, dto models.BanUserDTO) (models.UserBan
 		return zero, errs.UserAlreadyBanned
 	}
 
-	ban, err := repository.InsertBan(targetID, adminID, dto.Reason, expiresAt)
+	ban, err := s.bans.InsertBan(ctx, targetID, adminID, dto.Reason, expiresAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.CheckViolation {
@@ -276,7 +361,7 @@ func BanUser(targetID, adminID uuid.UUID, dto models.BanUserDTO) (models.UserBan
 		return zero, errs.InternalError(err)
 	}
 
-	if err := repository.RevokeAdmin(targetID); err != nil {
+	if err := s.users.RevokeAdmin(ctx, targetID); err != nil {
 		zap.L().Error(
 			"Failed to remove admin role after user ban",
 			zap.String("user_id", targetID.String()),
@@ -289,8 +374,8 @@ func BanUser(targetID, adminID uuid.UUID, dto models.BanUserDTO) (models.UserBan
 }
 
 // UnbanUser revokes an active ban from a user.
-func UnbanUser(targetID uuid.UUID) errs.AppError {
-	state, err := repository.IsUserBanned(targetID)
+func (s *UserService) UnbanUser(ctx context.Context, targetID uuid.UUID) errs.AppError {
+	state, err := s.bans.IsUserBanned(ctx, targetID)
 	if err != nil {
 		return errs.InternalError(err)
 	}
@@ -302,7 +387,7 @@ func UnbanUser(targetID uuid.UUID) errs.AppError {
 	}
 
 	// TODO: log who revoked the ban
-	if err := repository.RevokeBan(targetID); err != nil {
+	if err := s.bans.RevokeBan(ctx, targetID); err != nil {
 		return errs.InternalError(err)
 	}
 
@@ -311,7 +396,7 @@ func UnbanUser(targetID uuid.UUID) errs.AppError {
 
 // canAccessUser checks whether the caller is allowed to access the target user's data.
 // Admins bypass the ownership check.
-func canAccessUser(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
+func (s *UserService) canAccessUser(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
 	if !isAdmin && callerID != targetID {
 		return errs.NoAccess
 	}
@@ -319,7 +404,7 @@ func canAccessUser(targetID, callerID uuid.UUID, isAdmin bool) errs.AppError {
 }
 
 // computeExpiration parses an optional duration string into an absolute expiry time.
-func computeExpiration(duration *string) (*time.Time, errs.AppError) {
+func (s *UserService) computeExpiration(duration *string) (*time.Time, errs.AppError) {
 	if duration == nil {
 		return nil, nil
 	}

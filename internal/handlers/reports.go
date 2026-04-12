@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"ricehub/internal/errs"
 	"ricehub/internal/models"
-	"ricehub/internal/repository"
 	"ricehub/internal/security"
 	"ricehub/internal/services"
 	"ricehub/internal/validation"
@@ -13,11 +12,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type ReportHandler struct {
+	svc *services.ReportService
+}
+
+func NewReportHandler(svc *services.ReportService) *ReportHandler {
+	return &ReportHandler{svc}
+}
+
 type reportsPath struct {
 	ReportID string `uri:"id" binding:"required,uuid"`
 }
 
-func CreateReport(c *gin.Context) {
+func (h *ReportHandler) CreateReport(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, _ := uuid.Parse(token.Subject)
 
@@ -27,7 +34,7 @@ func CreateReport(c *gin.Context) {
 		return
 	}
 
-	reportID, err := services.CreateReport(userID, body.RiceID, body.CommentID, body.Reason)
+	reportID, err := h.svc.CreateReport(c.Request.Context(), userID, body.RiceID, body.CommentID, body.Reason)
 	if err != nil {
 		c.Error(err)
 		return
@@ -36,46 +43,42 @@ func CreateReport(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"reportId": reportID})
 }
 
-func ListReports(c *gin.Context) {
-	reports, err := repository.FetchReports()
+func (h *ReportHandler) ListReports(c *gin.Context) {
+	reports, err := h.svc.ListReports(c.Request.Context())
 	if err != nil {
-		c.Error(errs.InternalError(err))
+		c.Error(err)
 		return
 	}
-
 	c.JSON(http.StatusOK, models.ReportsToDTO(reports))
 }
 
-func GetReportByID(c *gin.Context) {
+func (h *ReportHandler) GetReportByID(c *gin.Context) {
 	var path reportsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidReportID)
 		return
 	}
+	reportID, _ := uuid.Parse(path.ReportID)
 
-	report, err := repository.FindReportByID(path.ReportID)
+	report, err := h.svc.GetReportByID(c.Request.Context(), reportID)
 	if err != nil {
-		c.Error(errs.FromDBError(err, errs.ReportNotFound))
+		c.Error(err)
 		return
 	}
 
 	c.JSON(http.StatusOK, report.ToDTO())
 }
 
-func CloseReport(c *gin.Context) {
+func (h *ReportHandler) CloseReport(c *gin.Context) {
 	var path reportsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidReportID)
 		return
 	}
+	reportID, _ := uuid.Parse(path.ReportID)
 
-	updated, err := repository.CloseReport(path.ReportID, true)
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-	if !updated {
-		c.Error(errs.ReportNotFound)
+	if err := h.svc.CloseReport(c.Request.Context(), reportID); err != nil {
+		c.Error(err)
 		return
 	}
 

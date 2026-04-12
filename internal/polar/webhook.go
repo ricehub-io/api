@@ -1,6 +1,7 @@
 package polar
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -20,8 +21,23 @@ type webhookEvent struct {
 	Data json.RawMessage             `json:"data"`
 }
 
-// polar webhook endpoint
-func WebhookListener(c *gin.Context) {
+type WebhookListener struct {
+	eventRepo      *repository.WebhookEventRepository
+	userSubRepo    *repository.UserSubscriptionRepository
+	riceDfRepo     *repository.RiceDotfilesRepository
+	dfPurchaseRepo *repository.DotfilesPurchaseRepository
+}
+
+func NewWebhookListener(
+	eventRepo *repository.WebhookEventRepository,
+	userSubRepo *repository.UserSubscriptionRepository,
+	riceDfRepo *repository.RiceDotfilesRepository,
+	dfPurchaseRepo *repository.DotfilesPurchaseRepository,
+) *WebhookListener {
+	return &WebhookListener{eventRepo, userSubRepo, riceDfRepo, dfPurchaseRepo}
+}
+
+func (l *WebhookListener) Handler(c *gin.Context) {
 	logger := zap.L()
 
 	bytes, err := c.GetRawData()
@@ -77,7 +93,7 @@ func WebhookListener(c *gin.Context) {
 		return
 	}
 
-	if ok := processEvent(webhookID, event.Type, event.Data); !ok {
+	if ok := l.processEvent(c.Request.Context(), webhookID, event.Type, event.Data); !ok {
 		c.Status(http.StatusBadRequest)
 		return
 	}
@@ -85,11 +101,16 @@ func WebhookListener(c *gin.Context) {
 	c.JSON(http.StatusOK, bytes)
 }
 
-func processEvent(webhookID string, eventType components.WebhookEventType, rawData json.RawMessage) bool {
+func (l *WebhookListener) processEvent(
+	ctx context.Context,
+	webhookID string,
+	eventType components.WebhookEventType,
+	rawData json.RawMessage,
+) bool {
 	logger := zap.L()
 
 	insertEvent := func() {
-		err := repository.InsertEvent(webhookID, string(eventType), rawData)
+		err := l.eventRepo.InsertEvent(ctx, webhookID, string(eventType), rawData)
 		if err != nil {
 			logger.Error(
 				"Failed to insert new webhook event into database",
@@ -100,7 +121,7 @@ func processEvent(webhookID string, eventType components.WebhookEventType, rawDa
 	}
 
 	eventProcessed := func() {
-		err := repository.EventProcessed(webhookID)
+		err := l.eventRepo.EventProcessed(ctx, webhookID)
 		if err != nil {
 			logger.Error(
 				"Failed to update webhook event's processed_at timestamp in database",
@@ -111,7 +132,7 @@ func processEvent(webhookID string, eventType components.WebhookEventType, rawDa
 	}
 
 	setEventError := func(eventErr error) {
-		err := repository.SetEventError(webhookID, eventErr.Error())
+		err := l.eventRepo.SetEventError(ctx, webhookID, eventErr.Error())
 		if err != nil {
 			logger.Error(
 				"Failed to set webhook event's error in database",
@@ -124,14 +145,14 @@ func processEvent(webhookID string, eventType components.WebhookEventType, rawDa
 	switch eventType {
 	case components.WebhookEventTypeOrderPaid:
 		insertEvent()
-		if err := handleOrderPaid(rawData); err != nil {
+		if err := l.handleOrderPaid(ctx, rawData); err != nil {
 			setEventError(err)
 			return false
 		}
 		eventProcessed()
 	case components.WebhookEventTypeSubscriptionActive:
 		insertEvent()
-		if err := handleSubscriptionActive(rawData); err != nil {
+		if err := l.handleSubscriptionActive(ctx, rawData); err != nil {
 			setEventError(err)
 			return false
 		}
@@ -146,7 +167,7 @@ func processEvent(webhookID string, eventType components.WebhookEventType, rawDa
 	return true
 }
 
-func handleSubscriptionActive(rawData json.RawMessage) error {
+func (l *WebhookListener) handleSubscriptionActive(ctx context.Context, rawData json.RawMessage) error {
 	logger := zap.L()
 
 	var data components.Subscription
@@ -176,7 +197,7 @@ func handleSubscriptionActive(rawData json.RawMessage) error {
 	}
 	customerID, _ := uuid.Parse(*strCustomerID)
 
-	sub, err := repository.InsertUserSubscription(customerID, data.CurrentPeriodEnd)
+	sub, err := l.userSubRepo.InsertUserSubscription(ctx, customerID, data.CurrentPeriodEnd)
 	if err != nil {
 		logger.Error(
 			"Failed to insert user subscription",
@@ -195,7 +216,7 @@ func handleSubscriptionActive(rawData json.RawMessage) error {
 	return nil
 }
 
-func handleOrderPaid(rawData json.RawMessage) error {
+func (l *WebhookListener) handleOrderPaid(ctx context.Context, rawData json.RawMessage) error {
 	logger := zap.L()
 
 	var data components.Order
@@ -224,7 +245,7 @@ func handleOrderPaid(rawData json.RawMessage) error {
 	}
 	userID, _ := uuid.Parse(*strUserID)
 
-	df, err := repository.FindDotfilesByProductID(productID)
+	df, err := l.riceDfRepo.FindDotfilesByProductID(ctx, productID)
 	if err != nil {
 		logger.Error(
 			"Unexpected database error occurred when trying to find dotfiles by product ID",
@@ -242,7 +263,7 @@ func handleOrderPaid(rawData json.RawMessage) error {
 		zap.Float32("paid_amount", paid_amount),
 	)
 
-	err = repository.InsertDotfilesPurchase(userID, df.RiceID, paid_amount)
+	err = l.dfPurchaseRepo.InsertDotfilesPurchase(ctx, userID, df.RiceID, paid_amount)
 	if err != nil {
 		logger.Error(
 			"Unexpected error received from database when inserting dotfiles purchase",

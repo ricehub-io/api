@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"ricehub/internal/errs"
@@ -14,6 +15,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type AuthService struct {
+	users    *repository.UserRepository
+	bans     *repository.UserBanRepository
+	userSubs *repository.UserSubscriptionRepository
+}
+
+func NewAuthService(
+	users *repository.UserRepository,
+	bans *repository.UserBanRepository,
+	userSubs *repository.UserSubscriptionRepository,
+) *AuthService {
+	return &AuthService{users, bans, userSubs}
+}
+
 type LoginResult struct {
 	User                      models.User
 	AccessToken, RefreshToken string
@@ -21,7 +36,7 @@ type LoginResult struct {
 
 // Register creates a new user account with a hashed password.
 // Returns an error if the username is blacklisted, already taken, or insert fails.
-func Register(dto models.RegisterDTO) errs.AppError {
+func (s *AuthService) Register(ctx context.Context, dto models.RegisterDTO) errs.AppError {
 	if validation.IsUsernameBlacklisted(dto.Username) {
 		return errs.BlacklistedUsername
 	}
@@ -29,7 +44,7 @@ func Register(dto models.RegisterDTO) errs.AppError {
 		return errs.BlacklistedDisplayName
 	}
 
-	taken, err := repository.UsernameExists(dto.Username)
+	taken, err := s.users.UsernameExists(ctx, dto.Username)
 	if err != nil {
 		return errs.InternalError(err)
 	}
@@ -42,7 +57,7 @@ func Register(dto models.RegisterDTO) errs.AppError {
 		return errs.InternalError(err)
 	}
 
-	err = repository.InsertUser(dto.Username, dto.DisplayName, hashed)
+	err = s.users.InsertUser(ctx, dto.Username, dto.DisplayName, hashed)
 	if err != nil {
 		return errs.InternalError(err)
 	}
@@ -52,10 +67,10 @@ func Register(dto models.RegisterDTO) errs.AppError {
 
 // Login validates credentials, checks if user is banned, and issues an access and refresh token pair.
 // Returns InvalidCredentials if username or password is wrong.
-func Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
+func (s *AuthService) Login(ctx context.Context, dto models.LoginDTO) (LoginResult, errs.AppError) {
 	var res LoginResult
 
-	user, err := repository.FindUserByUsername(dto.Username)
+	user, err := s.users.FindUserByUsername(ctx, dto.Username)
 	if err != nil {
 		return res, errs.FromDBError(err, errs.InvalidCredentials)
 	}
@@ -68,16 +83,16 @@ func Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
 		return res, errs.InvalidCredentials
 	}
 
-	if err := security.VerifyUser(user); err != nil {
+	if err := security.VerifyUser(ctx, s.bans, user); err != nil {
 		return res, err
 	}
 
-	subActive, err := repository.SubscriptionActive(user.ID)
+	subActive, err := s.userSubs.SubscriptionActive(ctx, user.ID)
 	if err != nil {
 		return res, errs.InternalError(err)
 	}
 
-	access, refresh, err := issueTokenPair(user.ID, user.IsAdmin, subActive)
+	access, refresh, err := s.issueTokenPair(user.ID, user.IsAdmin, subActive)
 	if err != nil {
 		return res, errs.InternalError(err)
 	}
@@ -89,7 +104,7 @@ func Login(dto models.LoginDTO) (LoginResult, errs.AppError) {
 	return res, nil
 }
 
-func RefreshToken(refreshStr string) (string, errs.AppError) {
+func (s *AuthService) RefreshToken(ctx context.Context, refreshStr string) (string, errs.AppError) {
 	refresh, err := security.DecodeRefreshToken(refreshStr)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
@@ -100,16 +115,16 @@ func RefreshToken(refreshStr string) (string, errs.AppError) {
 	}
 	userID, _ := uuid.Parse(refresh.Subject)
 
-	user, err := repository.FindUserByID(userID)
+	user, err := s.users.FindUserByID(ctx, userID)
 	if err != nil {
 		return "", errs.InvalidRefreshToken
 	}
 
-	if err := security.VerifyUser(user); err != nil {
+	if err := security.VerifyUser(ctx, s.bans, user); err != nil {
 		return "", err
 	}
 
-	subActive, err := repository.SubscriptionActive(user.ID)
+	subActive, err := s.userSubs.SubscriptionActive(ctx, user.ID)
 	if err != nil {
 		return "", errs.InternalError(err)
 	}
@@ -123,7 +138,7 @@ func RefreshToken(refreshStr string) (string, errs.AppError) {
 }
 
 // issueTokenPair generates access and refresh token for given parameters.
-func issueTokenPair(userID uuid.UUID, isAdmin, hasSubscription bool) (access, refresh string, err error) {
+func (s *AuthService) issueTokenPair(userID uuid.UUID, isAdmin, hasSubscription bool) (access, refresh string, err error) {
 	refresh, err = security.NewRefreshToken(userID)
 	if err != nil {
 		return

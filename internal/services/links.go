@@ -1,18 +1,36 @@
 package services
 
 import (
+	"context"
 	"ricehub/internal/errs"
 	"ricehub/internal/models"
 	"ricehub/internal/polar"
 	"ricehub/internal/repository"
+	"ricehub/internal/security"
 
 	"github.com/google/uuid"
 )
 
+type LinkService struct {
+	links    *repository.LinkRepository
+	users    *repository.UserRepository
+	userSubs *repository.UserSubscriptionRepository
+	bans     *repository.UserBanRepository
+}
+
+func NewLinkService(
+	links *repository.LinkRepository,
+	users *repository.UserRepository,
+	userSubs *repository.UserSubscriptionRepository,
+	bans *repository.UserBanRepository,
+) *LinkService {
+	return &LinkService{links, users, userSubs, bans}
+}
+
 // GetLinkByName fetches a link by its name.
 // Returns an error if no link with the given name exists.
-func GetLinkByName(name string) (models.Link, errs.AppError) {
-	link, err := repository.FindLink(name)
+func (s *LinkService) GetLinkByName(ctx context.Context, name string) (models.Link, errs.AppError) {
+	link, err := s.links.FindLink(ctx, name)
 	if err != nil {
 		return link, errs.FromDBError(err, errs.LinkNotFound)
 	}
@@ -21,8 +39,15 @@ func GetLinkByName(name string) (models.Link, errs.AppError) {
 
 // GetSubscriptionLink checks if user has an active subscription and returns a Polar checkout URL.
 // Returns an error if the user already has an active subscription.
-func GetSubscriptionLink(userID, productID uuid.UUID) (string, errs.AppError) {
-	subActive, err := repository.SubscriptionActive(userID)
+func (s *LinkService) GetSubscriptionLink(
+	ctx context.Context,
+	userID, productID uuid.UUID,
+) (string, errs.AppError) {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return "", err
+	}
+
+	subActive, err := s.userSubs.SubscriptionActive(ctx, userID)
 	if err != nil {
 		return "", errs.InternalError(err)
 	}

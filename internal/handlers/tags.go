@@ -10,18 +10,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type TagHandler struct {
+	svc *services.TagService
+}
+
+func NewTagHandler(svc *services.TagService) *TagHandler {
+	return &TagHandler{svc}
+}
+
 type tagsPath struct {
 	TagID int `uri:"id" binding:"required,gt=0"`
 }
 
-func CreateTag(c *gin.Context) {
+func (h *TagHandler) CreateTag(c *gin.Context) {
 	var body models.TagNameDTO
 	if err := validation.ValidateJSON(c, &body); err != nil {
 		c.Error(err)
 		return
 	}
 
-	tag, err := services.CreateTag(body.Name)
+	tag, err := h.svc.CreateTag(c.Request.Context(), body.Name)
 	if err != nil {
 		c.Error(err)
 		return
@@ -30,8 +38,8 @@ func CreateTag(c *gin.Context) {
 	c.JSON(http.StatusCreated, tag.ToDTO())
 }
 
-func ListTags(c *gin.Context) {
-	tags, err := services.ListTags()
+func (h *TagHandler) ListTags(c *gin.Context) {
+	tags, err := h.svc.ListTags(c.Request.Context())
 	if err != nil {
 		c.Error(err)
 		return
@@ -40,7 +48,7 @@ func ListTags(c *gin.Context) {
 	c.JSON(http.StatusOK, tags.ToDTO())
 }
 
-func UpdateTag(c *gin.Context) {
+func (h *TagHandler) UpdateTag(c *gin.Context) {
 	var path tagsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidTagID)
@@ -53,7 +61,7 @@ func UpdateTag(c *gin.Context) {
 		return
 	}
 
-	tag, err := services.UpdateTag(path.TagID, body.Name)
+	tag, err := h.svc.UpdateTag(c.Request.Context(), path.TagID, body.Name)
 	if err != nil {
 		c.Error(err)
 		return
@@ -62,14 +70,14 @@ func UpdateTag(c *gin.Context) {
 	c.JSON(http.StatusOK, tag.ToDTO())
 }
 
-func DeleteTag(c *gin.Context) {
+func (h *TagHandler) DeleteTag(c *gin.Context) {
 	var path tagsPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidTagID)
 		return
 	}
 
-	if err := services.DeleteTag(path.TagID); err != nil {
+	if err := h.svc.DeleteTag(c.Request.Context(), path.TagID); err != nil {
 		c.Error(err)
 		return
 	}
