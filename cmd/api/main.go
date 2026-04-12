@@ -80,7 +80,7 @@ func run() error {
 	webVarRepo := repository.NewWebVarRepository(dbPool)
 
 	go polar.StartSyncThread(dbPool, riceDotfilesRepo, dotfilesPurchaseRepo, userSubscriptionRepo)
-	go updateLeaderboard(dbPool, riceLeaderboardRepo)
+	go startLeaderboardSync(dbPool, riceLeaderboardRepo)
 
 	webhookListerner := polar.NewWebhookListener(webhookEventRepo, userSubscriptionRepo, riceDotfilesRepo, dotfilesPurchaseRepo)
 
@@ -186,51 +186,52 @@ func run() error {
 	return r.Run(fmt.Sprintf(":%v", port))
 }
 
-func updateLeaderboard(dbPool *pgxpool.Pool, repo *repository.RiceLeaderboardRepository) {
-	update := func(ctx context.Context, r *repository.RiceLeaderboardRepository, period models.LeaderboardPeriod) error {
-		err := r.UpsertRiceLeaderboard(ctx, period)
+func startLeaderboardSync(dbPool *pgxpool.Pool, leaderboard *repository.RiceLeaderboardRepository) {
+	for {
+		zap.L().Info("Updating rice leaderboard...")
+		updateLeaderboard(dbPool, leaderboard)
+		time.Sleep(24 * time.Hour)
+	}
+}
+
+func updateLeaderboard(dbPool *pgxpool.Pool, leaderboard *repository.RiceLeaderboardRepository) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	l := zap.L()
+
+	update := func(tx *repository.RiceLeaderboardRepository, period models.LeaderboardPeriod) error {
+		err := tx.UpsertRiceLeaderboard(ctx, period)
 		if err != nil {
 			return err
 		}
-		return r.CleanupRiceLeaderboard(ctx, period)
+		return tx.CleanupRiceLeaderboard(ctx, period)
 	}
 
-	l := zap.L()
-	for {
-		l.Info("Updating rice leaderboard...")
+	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		l.Error("Failed to start tx", zap.Error(err))
+		return
+	}
+	txRepo := leaderboard.WithTx(tx)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
+	if err := update(txRepo, models.Week); err != nil {
+		l.Error("Failed to update weekly leaderboard", zap.Error(err))
+		return
+	}
 
-		tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
-		if err != nil {
-			l.Error("Failed to start tx", zap.Error(err))
-			goto Skip
-		}
-		{
-			txRepo := repo.WithTx(tx)
+	if err := update(txRepo, models.Month); err != nil {
+		l.Error("Failed to update monthly leaderboard", zap.Error(err))
+		return
+	}
 
-			if err := update(ctx, txRepo, models.Week); err != nil {
-				l.Error("Failed to update weekly leaderboard", zap.Error(err))
-				goto Skip
-			}
+	if err := update(txRepo, models.Year); err != nil {
+		l.Error("Failed to update yearly leaderboard", zap.Error(err))
+		return
+	}
 
-			if err := update(ctx, txRepo, models.Month); err != nil {
-				l.Error("Failed to update monthly leaderboard", zap.Error(err))
-				goto Skip
-			}
-
-			if err := update(ctx, txRepo, models.Year); err != nil {
-				l.Error("Failed to update yearly leaderboard", zap.Error(err))
-				goto Skip
-			}
-
-			if err := tx.Commit(ctx); err != nil {
-				l.Error("Failed to commit tx", zap.Error(err))
-			}
-		}
-	Skip:
-		time.Sleep(24 * time.Hour)
+	if err := tx.Commit(ctx); err != nil {
+		l.Error("Failed to commit tx", zap.Error(err))
 	}
 }
 
