@@ -23,17 +23,28 @@ func StartSyncThread(
 ) {
 	l := zap.L()
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-
 		l.Info("Syncing internal state with Polar...")
-		if err := syncDotfilesPurchases(ctx, dbPool, rdfRepo, dfpRepo); err != nil {
-			l.Error("Failed to sync dotfiles purchases", zap.Error(err))
-		}
-		if err := syncSubscriptions(ctx, dbPool, subRepo); err != nil {
-			l.Error("Failed to sync subscriptions", zap.Error(err))
-		}
+		sync(dbPool, rdfRepo, dfpRepo, subRepo)
 		time.Sleep(24 * time.Hour)
+	}
+}
+
+func sync(
+	dbPool *pgxpool.Pool,
+	rdfRepo *repository.RiceDotfilesRepository,
+	dfpRepo *repository.DotfilesPurchaseRepository,
+	subRepo *repository.UserSubscriptionRepository,
+) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	l := zap.L()
+	if err := syncDotfilesPurchases(ctx, dbPool, rdfRepo, dfpRepo); err != nil {
+		l.Error("Failed to sync dotfiles purchases", zap.Error(err))
+	}
+
+	if err := syncSubscriptions(ctx, dbPool, subRepo); err != nil {
+		l.Error("Failed to sync subscriptions", zap.Error(err))
 	}
 }
 
@@ -112,9 +123,6 @@ func syncSubscriptions(
 	if err != nil {
 		return err
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 
 	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
