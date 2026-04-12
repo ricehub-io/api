@@ -8,6 +8,7 @@ import (
 	"ricehub/internal/config"
 	"ricehub/internal/errs"
 	"ricehub/internal/repository"
+	"ricehub/internal/security"
 	"ricehub/internal/storage"
 	"ricehub/internal/validation"
 
@@ -19,13 +20,17 @@ import (
 type RiceScreenshotService struct {
 	dbPool *pgxpool.Pool
 	rices  *repository.RiceRepository
+	users  *repository.UserRepository
+	bans   *repository.UserBanRepository
 }
 
 func NewRiceScreenshotService(
 	dbPool *pgxpool.Pool,
 	rices *repository.RiceRepository,
+	users *repository.UserRepository,
+	bans *repository.UserBanRepository,
 ) *RiceScreenshotService {
-	return &RiceScreenshotService{dbPool, rices}
+	return &RiceScreenshotService{dbPool, rices, users, bans}
 }
 
 // CreateScreenshot validates and saves new screenshot files for a rice, then
@@ -37,6 +42,10 @@ func (s *RiceScreenshotService) CreateScreenshot(
 	files []*multipart.FileHeader,
 	isAdmin bool,
 ) ([]string, errs.AppError) {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return nil, err
+	}
+
 	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return nil, err
 	}
@@ -102,6 +111,10 @@ func (s *RiceScreenshotService) DeleteScreenshot(
 	riceID, screenshotID, userID uuid.UUID,
 	isAdmin bool,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return err
+	}
+
 	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return err
 	}

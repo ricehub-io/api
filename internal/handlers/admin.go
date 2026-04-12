@@ -16,7 +16,7 @@ func NewAdminHandler(svc *services.AdminService) *AdminHandler {
 }
 
 func (h *AdminHandler) ServiceStatistics(c *gin.Context) {
-	stats, err := h.svc.ServiceStatistics()
+	stats, err := h.svc.ServiceStatistics(c.Request.Context())
 	if err != nil {
 		c.Error(err)
 		return

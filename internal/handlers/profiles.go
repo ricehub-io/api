@@ -31,7 +31,7 @@ func (h *ProfileHandler) GetProfileByUsername(c *gin.Context) {
 	}
 
 	callerID := GetUserIDFromRequest(c)
-	res, err := h.svc.GetProfileByUsername(path.Username, callerID)
+	res, err := h.svc.GetProfileByUsername(c.Request.Context(), path.Username, callerID)
 	if err != nil {
 		c.Error(err)
 		return

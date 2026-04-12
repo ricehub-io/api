@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"ricehub/internal/errs"
 	"ricehub/internal/models"
-	"ricehub/internal/repository"
 	"ricehub/internal/security"
 	"ricehub/internal/services"
 	"ricehub/internal/validation"
@@ -35,7 +34,7 @@ func (h *ReportHandler) CreateReport(c *gin.Context) {
 		return
 	}
 
-	reportID, err := h.svc.CreateReport(userID, body.RiceID, body.CommentID, body.Reason)
+	reportID, err := h.svc.CreateReport(c.Request.Context(), userID, body.RiceID, body.CommentID, body.Reason)
 	if err != nil {
 		c.Error(err)
 		return
@@ -45,12 +44,11 @@ func (h *ReportHandler) CreateReport(c *gin.Context) {
 }
 
 func (h *ReportHandler) ListReports(c *gin.Context) {
-	reports, err := repository.FetchReports()
+	reports, err := h.svc.ListReports(c.Request.Context())
 	if err != nil {
-		c.Error(errs.InternalError(err))
+		c.Error(err)
 		return
 	}
-
 	c.JSON(http.StatusOK, models.ReportsToDTO(reports))
 }
 
@@ -60,10 +58,11 @@ func (h *ReportHandler) GetReportByID(c *gin.Context) {
 		c.Error(errs.InvalidReportID)
 		return
 	}
+	reportID, _ := uuid.Parse(path.ReportID)
 
-	report, err := repository.FindReportByID(path.ReportID)
+	report, err := h.svc.GetReportByID(c.Request.Context(), reportID)
 	if err != nil {
-		c.Error(errs.FromDBError(err, errs.ReportNotFound))
+		c.Error(err)
 		return
 	}
 
@@ -76,14 +75,10 @@ func (h *ReportHandler) CloseReport(c *gin.Context) {
 		c.Error(errs.InvalidReportID)
 		return
 	}
+	reportID, _ := uuid.Parse(path.ReportID)
 
-	updated, err := repository.CloseReport(path.ReportID, true)
-	if err != nil {
-		c.Error(errs.InternalError(err))
-		return
-	}
-	if !updated {
-		c.Error(errs.ReportNotFound)
+	if err := h.svc.CloseReport(c.Request.Context(), reportID); err != nil {
+		c.Error(err)
 		return
 	}
 

@@ -28,7 +28,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.Register(body); err != nil {
+	if err := h.svc.Register(c.Request.Context(), body); err != nil {
 		c.Error(err)
 		return
 	}
@@ -43,7 +43,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	res, err := h.svc.Login(body)
+	res, err := h.svc.Login(c.Request.Context(), body)
 	if err != nil {
 		c.Error(err)
 		return
@@ -71,7 +71,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	access, err := h.svc.RefreshToken(refreshStr)
+	access, err := h.svc.RefreshToken(c.Request.Context(), refreshStr)
 	if err != nil {
 		c.Error(err)
 		return

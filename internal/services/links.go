@@ -6,20 +6,25 @@ import (
 	"ricehub/internal/models"
 	"ricehub/internal/polar"
 	"ricehub/internal/repository"
+	"ricehub/internal/security"
 
 	"github.com/google/uuid"
 )
 
 type LinkService struct {
 	links    *repository.LinkRepository
+	users    *repository.UserRepository
 	userSubs *repository.UserSubscriptionRepository
+	bans     *repository.UserBanRepository
 }
 
 func NewLinkService(
 	links *repository.LinkRepository,
+	users *repository.UserRepository,
 	userSubs *repository.UserSubscriptionRepository,
+	bans *repository.UserBanRepository,
 ) *LinkService {
-	return &LinkService{links, userSubs}
+	return &LinkService{links, users, userSubs, bans}
 }
 
 // GetLinkByName fetches a link by its name.
@@ -38,6 +43,10 @@ func (s *LinkService) GetSubscriptionLink(
 	ctx context.Context,
 	userID, productID uuid.UUID,
 ) (string, errs.AppError) {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return "", err
+	}
+
 	subActive, err := s.userSubs.SubscriptionActive(ctx, userID)
 	if err != nil {
 		return "", errs.InternalError(err)

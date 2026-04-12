@@ -33,11 +33,7 @@ func (h *RiceHandler) CreateRice(c *gin.Context) {
 	var err error
 
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -70,7 +66,10 @@ func (h *RiceHandler) CreateRice(c *gin.Context) {
 		}
 	}
 
-	if err := h.svc.CreateRice(userID, metadata, screenshots, formDotfiles[0], token.IsAdmin, tags); err != nil {
+	if err := h.svc.CreateRice(
+		c.Request.Context(), userID, metadata, screenshots,
+		formDotfiles[0], token.IsAdmin, tags,
+	); err != nil {
 		c.Error(err)
 		return
 	}
@@ -100,9 +99,10 @@ func (h *RiceHandler) ListRices(c *gin.Context) {
 		return
 	}
 
+	ctx := c.Request.Context()
 	if query.State == "waiting" {
 		if isAdmin {
-			rices, err := h.svc.ListWaitingRices()
+			rices, err := h.svc.ListWaitingRices(ctx)
 			if err != nil {
 				c.Error(err)
 				return
@@ -154,7 +154,7 @@ func (h *RiceHandler) ListRices(c *gin.Context) {
 		userID = &tmp
 	}
 
-	res, err := h.svc.ListRices(query.Sort, pag, userID)
+	res, err := h.svc.ListRices(ctx, query.Sort, pag, userID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -178,7 +178,7 @@ func (h *RiceHandler) GetRiceByID(c *gin.Context) {
 	isAdmin := token != nil && token.IsAdmin
 	userID := GetUserIDFromRequest(c)
 
-	rice, err := h.svc.GetRiceByID(userID, riceID, isAdmin)
+	rice, err := h.svc.GetRiceByID(c.Request.Context(), userID, riceID, isAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -195,7 +195,7 @@ func (h *RiceHandler) ListRiceComments(c *gin.Context) {
 	}
 	riceID, _ := uuid.Parse(path.RiceID)
 
-	comments, err := h.svc.ListRiceComments(riceID)
+	comments, err := h.svc.ListRiceComments(c.Request.Context(), riceID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -206,11 +206,7 @@ func (h *RiceHandler) ListRiceComments(c *gin.Context) {
 
 func (h *RiceHandler) UpdateRiceMetadata(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -225,7 +221,7 @@ func (h *RiceHandler) UpdateRiceMetadata(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.UpdateRiceMetadata(riceID, userID, token.IsAdmin, body); err != nil {
+	if err := h.svc.UpdateRiceMetadata(c.Request.Context(), riceID, userID, token.IsAdmin, body); err != nil {
 		c.Error(err)
 		return
 	}
@@ -247,7 +243,7 @@ func (h *RiceHandler) UpdateRiceState(c *gin.Context) {
 		return
 	}
 
-	rejected, err := h.svc.UpdateRiceState(riceID, body)
+	rejected, err := h.svc.UpdateRiceState(c.Request.Context(), riceID, body)
 	if err != nil {
 		c.Error(err)
 		return
@@ -262,11 +258,7 @@ func (h *RiceHandler) UpdateRiceState(c *gin.Context) {
 
 func (h *RiceHandler) DeleteRice(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -275,7 +267,7 @@ func (h *RiceHandler) DeleteRice(c *gin.Context) {
 	}
 	riceID, _ := uuid.Parse(path.RiceID)
 
-	if err := h.svc.DeleteRice(riceID, userID, token.IsAdmin); err != nil {
+	if err := h.svc.DeleteRice(c.Request.Context(), riceID, userID, token.IsAdmin); err != nil {
 		c.Error(err)
 		return
 	}

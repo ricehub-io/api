@@ -10,6 +10,7 @@ import (
 	"ricehub/internal/errs"
 	"ricehub/internal/models"
 	"ricehub/internal/repository"
+	"ricehub/internal/security"
 	"ricehub/internal/storage"
 	"ricehub/internal/validation"
 	"time"
@@ -130,6 +131,10 @@ func (s *UserService) ListPurchasedRices(
 	targetID, callerID uuid.UUID,
 	isAdmin bool,
 ) (models.PartialRices, errs.AppError) {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
+		return nil, err
+	}
+
 	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return nil, err
 	}
@@ -150,6 +155,10 @@ func (s *UserService) UpdateDisplayName(
 	isAdmin bool,
 	dto models.UpdateDisplayNameDTO,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
+		return err
+	}
+
 	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}
@@ -174,6 +183,10 @@ func (s *UserService) UpdatePassword(
 	isAdmin bool,
 	dto models.UpdatePasswordDTO,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
+		return err
+	}
+
 	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}
@@ -215,6 +228,10 @@ func (s *UserService) UpdateAvatar(
 	file *multipart.FileHeader,
 ) (string, errs.AppError) {
 	var err error
+
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
+		return "", err
+	}
 
 	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return "", err
@@ -259,6 +276,10 @@ func (s *UserService) DeleteAvatar(
 	targetID, callerID uuid.UUID,
 	isAdmin bool,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
+		return err
+	}
+
 	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}
@@ -278,6 +299,10 @@ func (s *UserService) DeleteUser(
 	isAdmin bool,
 	dto models.DeleteUserDTO,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, callerID.String()); err != nil {
+		return err
+	}
+
 	if err := s.canAccessUser(targetID, callerID, isAdmin); err != nil {
 		return err
 	}

@@ -26,11 +26,7 @@ type commentsPath struct {
 
 func (h *CommentHandler) CreateComment(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var body models.CreateCommentDTO
 	if err := validation.ValidateJSON(c, &body); err != nil {
@@ -38,7 +34,7 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	comment, err := h.svc.CreateComment(userID, body)
+	comment, err := h.svc.CreateComment(c.Request.Context(), userID, body)
 	if err != nil {
 		c.Error(err)
 		return
@@ -56,7 +52,7 @@ func (h *CommentHandler) ListComments(c *gin.Context) {
 		return
 	}
 
-	comments, err := h.svc.ListComments(query.Limit)
+	comments, err := h.svc.ListComments(c.Request.Context(), query.Limit)
 	if err != nil {
 		c.Error(err)
 		return
@@ -73,7 +69,7 @@ func (h *CommentHandler) GetCommentByID(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	comment, err := h.svc.GetCommentByID(commentID)
+	comment, err := h.svc.GetCommentByID(c.Request.Context(), commentID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -84,11 +80,7 @@ func (h *CommentHandler) GetCommentByID(c *gin.Context) {
 
 func (h *CommentHandler) UpdateComment(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -103,7 +95,7 @@ func (h *CommentHandler) UpdateComment(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	comment, err := h.svc.UpdateComment(token.IsAdmin, userID, commentID, body.Content)
+	comment, err := h.svc.UpdateComment(c.Request.Context(), token.IsAdmin, userID, commentID, body.Content)
 	if err != nil {
 		c.Error(err)
 		return
@@ -114,11 +106,7 @@ func (h *CommentHandler) UpdateComment(c *gin.Context) {
 
 func (h *CommentHandler) DeleteComment(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path commentsPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -127,7 +115,7 @@ func (h *CommentHandler) DeleteComment(c *gin.Context) {
 	}
 	commentID, _ := uuid.Parse(path.CommentID)
 
-	if err := h.svc.DeleteComment(token.IsAdmin, userID, commentID); err != nil {
+	if err := h.svc.DeleteComment(c.Request.Context(), token.IsAdmin, userID, commentID); err != nil {
 		c.Error(err)
 		return
 	}

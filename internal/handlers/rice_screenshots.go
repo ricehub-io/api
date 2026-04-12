@@ -21,11 +21,7 @@ func NewRiceScreenshotHandler(svc *services.RiceScreenshotService) *RiceScreensh
 
 func (h *RiceScreenshotHandler) CreateScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -46,7 +42,7 @@ func (h *RiceScreenshotHandler) CreateScreenshot(c *gin.Context) {
 		return
 	}
 
-	scrs, err := h.svc.CreateScreenshot(userID, riceID, files, token.IsAdmin)
+	scrs, err := h.svc.CreateScreenshot(c.Request.Context(), userID, riceID, files, token.IsAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -57,11 +53,7 @@ func (h *RiceScreenshotHandler) CreateScreenshot(c *gin.Context) {
 
 func (h *RiceScreenshotHandler) DeleteScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path struct {
 		RiceID       string `uri:"id" binding:"required,uuid"`
@@ -81,7 +73,7 @@ func (h *RiceScreenshotHandler) DeleteScreenshot(c *gin.Context) {
 	riceID, _ := uuid.Parse(path.RiceID)
 	screenshotID, _ := uuid.Parse(path.ScreenshotID)
 
-	if err := h.svc.DeleteScreenshot(riceID, screenshotID, userID, token.IsAdmin); err != nil {
+	if err := h.svc.DeleteScreenshot(c.Request.Context(), riceID, screenshotID, userID, token.IsAdmin); err != nil {
 		c.Error(err)
 		return
 	}

@@ -18,7 +18,7 @@ func NewWebVarHandler(svc *services.WebVarService) *WebVarHandler {
 func (h *WebVarHandler) GetWebVarByKey(c *gin.Context) {
 	key := c.Param("key")
 
-	v, err := h.svc.GetWebVarByKey(key)
+	v, err := h.svc.GetWebVarByKey(c.Request.Context(), key)
 	if err != nil {
 		c.Error(err)
 		return

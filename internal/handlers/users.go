@@ -41,9 +41,10 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
+	ctx := c.Request.Context()
 	// public
 	if query.Username != "" {
-		user, err := h.svc.GetUserByUsername(query.Username)
+		user, err := h.svc.GetUserByUsername(ctx, query.Username)
 		if err != nil {
 			c.Error(err)
 			return
@@ -68,7 +69,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 			return
 		}
 
-		users, err := h.svc.ListBannedUsers()
+		users, err := h.svc.ListBannedUsers(ctx)
 		if err != nil {
 			c.Error(err)
 			return
@@ -82,7 +83,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 	if limit <= 0 {
 		limit = 20
 	}
-	users, err := h.svc.ListRecentUsers(limit)
+	users, err := h.svc.ListRecentUsers(ctx, limit)
 	if err != nil {
 		c.Error(err)
 		return
@@ -102,7 +103,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	callerID, _ := uuid.Parse(token.Subject)
 
-	user, err := h.svc.GetUserByID(targetID, callerID, token.IsAdmin)
+	user, err := h.svc.GetUserByID(c.Request.Context(), targetID, callerID, token.IsAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -120,7 +121,7 @@ func (h *UserHandler) GetUserRiceBySlug(c *gin.Context) {
 	isAdmin := token != nil && token.IsAdmin
 	callerID := GetUserIDFromRequest(c)
 
-	rice, err := h.svc.GetUserRiceBySlug(callerID, slug, username, isAdmin)
+	rice, err := h.svc.GetUserRiceBySlug(c.Request.Context(), callerID, slug, username, isAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -138,7 +139,7 @@ func (h *UserHandler) ListUserRices(c *gin.Context) {
 	userID, _ := uuid.Parse(path.UserID)
 	callerID := GetUserIDFromRequest(c)
 
-	rices, err := h.svc.ListUserRices(userID, callerID)
+	rices, err := h.svc.ListUserRices(c.Request.Context(), userID, callerID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -156,13 +157,9 @@ func (h *UserHandler) ListPurchasedRices(c *gin.Context) {
 	targetID, _ := uuid.Parse(path.UserID)
 
 	token := c.MustGet("token").(*security.AccessToken)
-	callerID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	callerID, _ := uuid.Parse(token.Subject)
 
-	rices, err := h.svc.ListPurchasedRices(targetID, callerID, token.IsAdmin)
+	rices, err := h.svc.ListPurchasedRices(c.Request.Context(), targetID, callerID, token.IsAdmin)
 	if err != nil {
 		c.Error(err)
 		return
@@ -180,11 +177,7 @@ func (h *UserHandler) UpdateDisplayName(c *gin.Context) {
 	targetID, _ := uuid.Parse(path.UserID)
 
 	token := c.MustGet("token").(*security.AccessToken)
-	callerID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	callerID, _ := uuid.Parse(token.Subject)
 
 	var body models.UpdateDisplayNameDTO
 	if err := validation.ValidateJSON(c, &body); err != nil {
@@ -192,7 +185,7 @@ func (h *UserHandler) UpdateDisplayName(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.UpdateDisplayName(targetID, callerID, token.IsAdmin, body); err != nil {
+	if err := h.svc.UpdateDisplayName(c.Request.Context(), targetID, callerID, token.IsAdmin, body); err != nil {
 		c.Error(err)
 		return
 	}
@@ -209,11 +202,7 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 	targetID, _ := uuid.Parse(path.UserID)
 
 	token := c.MustGet("token").(*security.AccessToken)
-	callerID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	callerID, _ := uuid.Parse(token.Subject)
 
 	var body models.UpdatePasswordDTO
 	if err := validation.ValidateJSON(c, &body); err != nil {
@@ -221,7 +210,7 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.UpdatePassword(targetID, callerID, token.IsAdmin, body); err != nil {
+	if err := h.svc.UpdatePassword(c.Request.Context(), targetID, callerID, token.IsAdmin, body); err != nil {
 		c.Error(err)
 		return
 	}
@@ -240,11 +229,7 @@ func (h *UserHandler) UpdateAvatar(c *gin.Context) {
 	targetID, _ := uuid.Parse(path.UserID)
 
 	token := c.MustGet("token").(*security.AccessToken)
-	callerID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	callerID, _ := uuid.Parse(token.Subject)
 
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -252,7 +237,7 @@ func (h *UserHandler) UpdateAvatar(c *gin.Context) {
 		return
 	}
 
-	avatarURL, err := h.svc.UpdateAvatar(targetID, callerID, token.IsAdmin, file)
+	avatarURL, err := h.svc.UpdateAvatar(c.Request.Context(), targetID, callerID, token.IsAdmin, file)
 	if err != nil {
 		c.Error(err)
 		return
@@ -270,13 +255,9 @@ func (h *UserHandler) DeleteAvatar(c *gin.Context) {
 	targetID, _ := uuid.Parse(path.UserID)
 
 	token := c.MustGet("token").(*security.AccessToken)
-	callerID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	callerID, _ := uuid.Parse(token.Subject)
 
-	if err := h.svc.DeleteAvatar(targetID, callerID, token.IsAdmin); err != nil {
+	if err := h.svc.DeleteAvatar(c.Request.Context(), targetID, callerID, token.IsAdmin); err != nil {
 		c.Error(err)
 		return
 	}
@@ -303,7 +284,7 @@ func (h *UserHandler) BanUser(c *gin.Context) {
 		return
 	}
 
-	userBan, err := h.svc.BanUser(targetID, adminID, ban)
+	userBan, err := h.svc.BanUser(c.Request.Context(), targetID, adminID, ban)
 	if err != nil {
 		c.Error(err)
 		return
@@ -320,7 +301,7 @@ func (h *UserHandler) UnbanUser(c *gin.Context) {
 	}
 	targetID, _ := uuid.Parse(path.UserID)
 
-	if err := h.svc.UnbanUser(targetID); err != nil {
+	if err := h.svc.UnbanUser(c.Request.Context(), targetID); err != nil {
 		c.Error(err)
 		return
 	}
@@ -337,11 +318,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	targetID, _ := uuid.Parse(path.UserID)
 
 	token := c.MustGet("token").(*security.AccessToken)
-	callerID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	callerID, _ := uuid.Parse(token.Subject)
 
 	var body models.DeleteUserDTO
 	if err := validation.ValidateJSON(c, &body); err != nil {
@@ -349,7 +326,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.DeleteUser(targetID, callerID, token.IsAdmin, body); err != nil {
+	if err := h.svc.DeleteUser(c.Request.Context(), targetID, callerID, token.IsAdmin, body); err != nil {
 		c.Error(err)
 		return
 	}

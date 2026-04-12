@@ -29,7 +29,7 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 		return
 	}
 
-	tag, err := h.svc.CreateTag(body.Name)
+	tag, err := h.svc.CreateTag(c.Request.Context(), body.Name)
 	if err != nil {
 		c.Error(err)
 		return
@@ -39,7 +39,7 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 }
 
 func (h *TagHandler) ListTags(c *gin.Context) {
-	tags, err := h.svc.ListTags()
+	tags, err := h.svc.ListTags(c.Request.Context())
 	if err != nil {
 		c.Error(err)
 		return
@@ -61,7 +61,7 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 		return
 	}
 
-	tag, err := h.svc.UpdateTag(path.TagID, body.Name)
+	tag, err := h.svc.UpdateTag(c.Request.Context(), path.TagID, body.Name)
 	if err != nil {
 		c.Error(err)
 		return
@@ -77,7 +77,7 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.DeleteTag(path.TagID); err != nil {
+	if err := h.svc.DeleteTag(c.Request.Context(), path.TagID); err != nil {
 		c.Error(err)
 		return
 	}

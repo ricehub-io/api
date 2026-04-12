@@ -6,6 +6,7 @@ import (
 	"ricehub/internal/errs"
 	"ricehub/internal/models"
 	"ricehub/internal/repository"
+	"ricehub/internal/security"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
@@ -14,10 +15,16 @@ import (
 
 type CommentService struct {
 	comments *repository.CommentRepository
+	users    *repository.UserRepository
+	bans     *repository.UserBanRepository
 }
 
-func NewCommentService(comments *repository.CommentRepository) *CommentService {
-	return &CommentService{comments}
+func NewCommentService(
+	comments *repository.CommentRepository,
+	users *repository.UserRepository,
+	bans *repository.UserBanRepository,
+) *CommentService {
+	return &CommentService{comments, users, bans}
 }
 
 // CreateComment inserts a new comment under the given rice post.
@@ -27,6 +34,10 @@ func (s *CommentService) CreateComment(
 	userID uuid.UUID,
 	dto models.CreateCommentDTO,
 ) (models.RiceComment, errs.AppError) {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return models.RiceComment{}, err
+	}
+
 	riceID, _ := uuid.Parse(dto.RiceID)
 
 	comment, err := s.comments.InsertComment(ctx, riceID, userID, dto.Content)
@@ -67,6 +78,10 @@ func (s *CommentService) UpdateComment(
 	userID, commentID uuid.UUID,
 	content string,
 ) (models.RiceComment, errs.AppError) {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return models.RiceComment{}, err
+	}
+
 	if err := s.canModifyComment(ctx, isAdmin, userID, commentID); err != nil {
 		return models.RiceComment{}, err
 	}
@@ -85,6 +100,10 @@ func (s *CommentService) DeleteComment(
 	isAdmin bool,
 	userID, commentID uuid.UUID,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return err
+	}
+
 	if err := s.canModifyComment(ctx, isAdmin, userID, commentID); err != nil {
 		return err
 	}

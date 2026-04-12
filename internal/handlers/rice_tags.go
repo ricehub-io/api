@@ -22,11 +22,7 @@ func NewRiceTagHandler(svc *services.RiceTagService) *RiceTagHandler {
 
 func (h *RiceTagHandler) AddRiceTags(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -41,7 +37,7 @@ func (h *RiceTagHandler) AddRiceTags(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.AddRiceTags(riceID, userID, token.IsAdmin, body.Tags); err != nil {
+	if err := h.svc.AddRiceTags(c.Request.Context(), riceID, userID, token.IsAdmin, body.Tags); err != nil {
 		c.Error(err)
 		return
 	}
@@ -51,11 +47,7 @@ func (h *RiceTagHandler) AddRiceTags(c *gin.Context) {
 
 func (h *RiceTagHandler) RemoveRiceTags(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
-	userID, err := security.VerifyUserID(token.Subject)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -70,7 +62,7 @@ func (h *RiceTagHandler) RemoveRiceTags(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.RemoveRiceTags(riceID, userID, token.IsAdmin, body.Tags); err != nil {
+	if err := h.svc.RemoveRiceTags(c.Request.Context(), riceID, userID, token.IsAdmin, body.Tags); err != nil {
 		c.Error(err)
 		return
 	}

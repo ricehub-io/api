@@ -48,7 +48,7 @@ func (h *LeaderboardHandler) GetYearlyLeaderboard(c *gin.Context) {
 }
 
 func (h *LeaderboardHandler) fetchLeaderboard(c *gin.Context, period models.LeaderboardPeriod) ([]models.LeaderboardRiceDTO, errs.AppError) {
-	lead, err := h.svc.FetchLeaderboard(period, GetUserIDFromRequest(c))
+	lead, err := h.svc.FetchLeaderboard(c.Request.Context(), period, GetUserIDFromRequest(c))
 	if err != nil {
 		return nil, err
 	}

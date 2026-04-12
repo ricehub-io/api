@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"ricehub/internal/errs"
+	"ricehub/internal/models"
 	"ricehub/internal/repository"
 
 	"github.com/google/uuid"
@@ -42,4 +43,38 @@ func (s *ReportService) CreateReport(
 	}
 
 	return repID, nil
+}
+
+// ListReports returns all reports ordered by creation date.
+func (s *ReportService) ListReports(ctx context.Context) ([]models.ReportWithUser, errs.AppError) {
+	reports, err := s.reports.FetchReports(ctx)
+	if err != nil {
+		return reports, errs.InternalError(err)
+	}
+	return reports, nil
+}
+
+// GetReportByID fetches a report by ID. Returns an error if not found.
+func (s *ReportService) GetReportByID(
+	ctx context.Context,
+	reportID uuid.UUID,
+) (models.ReportWithUser, errs.AppError) {
+	report, err := s.reports.FindReportByID(ctx, reportID)
+	if err != nil {
+		return report, errs.FromDBError(err, errs.ReportNotFound)
+	}
+	return report, nil
+}
+
+// CloseReport updates given report's status to closed.
+// Returns error if report doesn't exist.
+func (s *ReportService) CloseReport(ctx context.Context, reportID uuid.UUID) errs.AppError {
+	updated, err := s.reports.CloseReport(ctx, reportID, true)
+	if err != nil {
+		return errs.InternalError(err)
+	}
+	if !updated {
+		return errs.ReportNotFound
+	}
+	return nil
 }

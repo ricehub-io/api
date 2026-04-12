@@ -10,6 +10,7 @@ import (
 	"ricehub/internal/models"
 	"ricehub/internal/polar"
 	"ricehub/internal/repository"
+	"ricehub/internal/security"
 	"ricehub/internal/storage"
 	"time"
 
@@ -21,13 +22,17 @@ import (
 type RiceDotfilesService struct {
 	rices    *repository.RiceRepository
 	dotfiles *repository.RiceDotfilesRepository
+	users    *repository.UserRepository
+	bans     *repository.UserBanRepository
 }
 
 func NewRiceDotfilesService(
 	rices *repository.RiceRepository,
 	dotfiles *repository.RiceDotfilesRepository,
+	users *repository.UserRepository,
+	bans *repository.UserBanRepository,
 ) *RiceDotfilesService {
-	return &RiceDotfilesService{rices, dotfiles}
+	return &RiceDotfilesService{rices, dotfiles, users, bans}
 }
 
 type DownloadDotfilesResult struct {
@@ -107,6 +112,11 @@ func (s *RiceDotfilesService) UpdateDotfiles(
 	file *multipart.FileHeader,
 ) (models.RiceDotfiles, errs.AppError) {
 	var zero models.RiceDotfiles
+
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return zero, err
+	}
+
 	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return zero, err
 	}
@@ -143,6 +153,10 @@ func (s *RiceDotfilesService) UpdateDotfilesType(
 	isAdmin bool,
 	dto models.UpdateDotfilesTypeDTO,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return err
+	}
+
 	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return err
 	}
@@ -200,6 +214,10 @@ func (s *RiceDotfilesService) UpdateDotfilesPrice(
 	isAdmin bool,
 	dto models.UpdateDotfilesPriceDTO,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return err
+	}
+
 	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return err
 	}

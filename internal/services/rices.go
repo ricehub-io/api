@@ -11,6 +11,7 @@ import (
 	"ricehub/internal/models"
 	"ricehub/internal/polar"
 	"ricehub/internal/repository"
+	"ricehub/internal/security"
 	"ricehub/internal/storage"
 	"ricehub/internal/validation"
 
@@ -28,6 +29,8 @@ type RiceService struct {
 	dotfiles *repository.RiceDotfilesRepository
 	riceTags *repository.RiceTagRepository
 	comments *repository.CommentRepository
+	users    *repository.UserRepository
+	bans     *repository.UserBanRepository
 }
 
 func NewRiceService(
@@ -36,8 +39,10 @@ func NewRiceService(
 	dotfiles *repository.RiceDotfilesRepository,
 	riceTags *repository.RiceTagRepository,
 	comments *repository.CommentRepository,
+	users *repository.UserRepository,
+	bans *repository.UserBanRepository,
 ) *RiceService {
-	return &RiceService{dbPool, rices, dotfiles, riceTags, comments}
+	return &RiceService{dbPool, rices, dotfiles, riceTags, comments, users, bans}
 }
 
 type ListRicesResult struct {
@@ -60,6 +65,10 @@ func (s *RiceService) CreateRice(
 	tags []int,
 ) errs.AppError {
 	var err error
+
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return err
+	}
 
 	if len(screenshots) <= 0 {
 		return errs.NotEnoughScreenshots
@@ -244,6 +253,10 @@ func (s *RiceService) UpdateRiceMetadata(
 	isAdmin bool,
 	dto models.UpdateRiceDTO,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return err
+	}
+
 	if dto.Title == nil && dto.Description == nil {
 		return errs.NoRiceFieldsToUpdate
 	}
@@ -300,6 +313,10 @@ func (s *RiceService) DeleteRice(
 	riceID, userID uuid.UUID,
 	isAdmin bool,
 ) errs.AppError {
+	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+		return err
+	}
+
 	if err := canModifyRice(ctx, s.rices, riceID, userID, isAdmin); err != nil {
 		return err
 	}

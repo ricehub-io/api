@@ -7,6 +7,7 @@ import (
 	"ricehub/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type RiceStarHandler struct {
@@ -19,14 +20,16 @@ func NewRiceStarHandler(svc *services.RiceStarService) *RiceStarHandler {
 
 func (h *RiceStarHandler) CreateRiceStar(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidRiceID)
 		return
 	}
+	riceID, _ := uuid.Parse(path.RiceID)
 
-	if err := h.svc.CreateRiceStar(path.RiceID, token.Subject); err != nil {
+	if err := h.svc.CreateRiceStar(c.Request.Context(), riceID, userID); err != nil {
 		c.Error(err)
 		return
 	}
@@ -36,14 +39,16 @@ func (h *RiceStarHandler) CreateRiceStar(c *gin.Context) {
 
 func (h *RiceStarHandler) DeleteRiceStar(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
+	userID, _ := uuid.Parse(token.Subject)
 
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
 		c.Error(errs.InvalidRiceID)
 		return
 	}
+	riceID, _ := uuid.Parse(path.RiceID)
 
-	if err := h.svc.DeleteRiceStar(path.RiceID, token.Subject); err != nil {
+	if err := h.svc.DeleteRiceStar(c.Request.Context(), riceID, userID); err != nil {
 		c.Error(err)
 		return
 	}
