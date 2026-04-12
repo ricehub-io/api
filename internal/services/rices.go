@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 )
 
 type RiceService struct {
@@ -321,20 +322,12 @@ func (s *RiceService) DeleteRice(
 		return err
 	}
 
-	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{})
+	productID, err := s.dotfiles.FindDotfilesProductID(ctx, riceID)
 	if err != nil {
-		return errs.InternalError(err)
-	}
-	defer tx.Rollback(ctx)
-
-	txDotfiles := s.dotfiles.WithTx(tx)
-	productID, err := txDotfiles.FindDotfilesProductID(ctx, riceID)
-	if err != nil {
-		return errs.InternalError(err)
+		return errs.FromDBError(err, errs.RiceNotFound)
 	}
 
-	txRices := s.rices.WithTx(tx)
-	deleted, err := txRices.DeleteRice(ctx, riceID)
+	deleted, err := s.rices.DeleteRice(ctx, riceID)
 	if err != nil {
 		return errs.InternalError(err)
 	}
@@ -344,12 +337,12 @@ func (s *RiceService) DeleteRice(
 
 	if productID != nil {
 		if _, err := polar.ArchiveProduct(productID.String()); err != nil {
-			return errs.InternalError(err)
+			zap.L().Error("Could not archive rice dotfiles product in Polar",
+				zap.Error(err),
+				zap.String("product_id", productID.String()),
+				zap.String("rice_id", riceID.String()),
+			)
 		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return errs.InternalError(err)
 	}
 
 	return nil
