@@ -41,39 +41,38 @@ func makeExpiredBearerToken(t *testing.T) string {
 // #################################################
 // ################ ValidateToken ##################
 // #################################################
-func TestValidateToken_EmptyString_ReturnsForbidden(t *testing.T) {
+func TestValidateToken_EmptyString_ReturnsUnauthorized(t *testing.T) {
 	initTestKeys(t)
 
 	_, err := ValidateToken("")
 	if err == nil {
 		t.Fatal("expected error for empty token, got nil")
 	}
-	if err.StatusCode() != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.StatusCode())
+	if err.StatusCode() != http.StatusUnauthorized {
+		t.Errorf("want 401, got %d", err.StatusCode())
 	}
 }
 
-func TestValidateToken_WhitespaceOnly_ReturnsForbidden(t *testing.T) {
+func TestValidateToken_WhitespaceOnly_ReturnsUnauthorized(t *testing.T) {
 	initTestKeys(t)
 
-	// AuthMiddleware trims whitespace before calling ValidateToken
 	_, err := ValidateToken("   ")
 	if err == nil {
 		t.Fatal("expected error for whitespace-only token")
 	}
-	if err.StatusCode() != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.StatusCode())
+	if err.StatusCode() != http.StatusUnauthorized {
+		t.Errorf("want 401, got %d", err.StatusCode())
 	}
 }
 
-func TestValidateToken_NoBearerPrefix_ReturnsForbidden(t *testing.T) {
+func TestValidateToken_NoBearerPrefix_ReturnsUnauthorized(t *testing.T) {
 	initTestKeys(t)
 
 	_, err := ValidateToken("sometoken")
 	if err == nil {
 		t.Fatal("expected error for missing Bearer prefix")
 	}
-	if err.StatusCode() != http.StatusForbidden {
+	if err.StatusCode() != http.StatusUnauthorized {
 		t.Errorf("want 403, got %d", err.StatusCode())
 	}
 	if !strings.Contains(err.Error(), "Bearer") {
@@ -81,7 +80,7 @@ func TestValidateToken_NoBearerPrefix_ReturnsForbidden(t *testing.T) {
 	}
 }
 
-func TestValidateToken_LowercaseBearer_ReturnsForbidden(t *testing.T) {
+func TestValidateToken_LowercaseBearer_ReturnsUnauthorized(t *testing.T) {
 	initTestKeys(t)
 
 	// CutPrefix is case-sensitive thus "bearer " must not be accepted
@@ -89,37 +88,36 @@ func TestValidateToken_LowercaseBearer_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for lowercase 'bearer' prefix")
 	}
-	if err.StatusCode() != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.StatusCode())
+	if err.StatusCode() != http.StatusUnauthorized {
+		t.Errorf("want 401, got %d", err.StatusCode())
 	}
 }
 
-func TestValidateToken_BearerWithNoToken_ReturnsForbidden(t *testing.T) {
+func TestValidateToken_BearerWithNoToken_ReturnsUnauthorized(t *testing.T) {
 	initTestKeys(t)
 
-	// "Bearer " is there but we missing the token bro
 	_, err := ValidateToken("Bearer ")
 	if err == nil {
 		t.Fatal("expected error for 'Bearer ' with no token")
 	}
-	if err.StatusCode() != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.StatusCode())
+	if err.StatusCode() != http.StatusUnauthorized {
+		t.Errorf("want 401, got %d", err.StatusCode())
 	}
 }
 
-func TestValidateToken_GarbageToken_ReturnsForbidden(t *testing.T) {
+func TestValidateToken_GarbageToken_ReturnsUnauthorized(t *testing.T) {
 	initTestKeys(t)
 
 	_, err := ValidateToken("Bearer not.a.real.jwt")
 	if err == nil {
 		t.Fatal("expected error for garbage JWT")
 	}
-	if err.StatusCode() != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.StatusCode())
+	if err.StatusCode() != http.StatusUnauthorized {
+		t.Errorf("want 401, got %d", err.StatusCode())
 	}
 }
 
-func TestValidateToken_TamperedToken_ReturnsForbidden(t *testing.T) {
+func TestValidateToken_TamperedToken_ReturnsUnathorized(t *testing.T) {
 	initTestKeys(t)
 
 	header := makeValidBearerToken(t, false, false)
@@ -127,20 +125,20 @@ func TestValidateToken_TamperedToken_ReturnsForbidden(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for tampered token")
 	}
-	if err.StatusCode() != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.StatusCode())
+	if err.StatusCode() != http.StatusUnauthorized {
+		t.Errorf("want 401, got %d", err.StatusCode())
 	}
 }
 
-func TestValidateToken_ExpiredToken_ReturnsForbidden(t *testing.T) {
+func TestValidateToken_ExpiredToken_ReturnsUnauthorized(t *testing.T) {
 	initTestKeys(t)
 
 	_, err := ValidateToken(makeExpiredBearerToken(t))
 	if err == nil {
 		t.Fatal("expected error for expired token")
 	}
-	if err.StatusCode() != http.StatusForbidden {
-		t.Errorf("want 403, got %d", err.StatusCode())
+	if err.StatusCode() != http.StatusUnauthorized {
+		t.Errorf("want 401, got %d", err.StatusCode())
 	}
 	if !strings.Contains(err.Error(), "expired") {
 		t.Errorf("error message should mention 'expired', got: %s", err.Error())
