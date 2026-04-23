@@ -15,7 +15,7 @@ redis_url = "redis://host:port"
 # ------ APP SETTINGS -------
 [app]
 cdn_url = "http://127.0.0.1:3000/public"
-default_avatar = "/avatars/default.png"
+default_avatar = "/avatars/default.webp"
 pagination_limit = 20
 
 # Disable ALL rate limits - useful for local development and testing only.

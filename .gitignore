@@ -5,7 +5,7 @@ logs/*.json
 build/
 
 public/avatars/*
-!public/avatars/default.png
+!public/avatars/default.webp
 public/screenshots/*
 !public/screenshots/.gitkeep
 public/dotfiles/*.zip
