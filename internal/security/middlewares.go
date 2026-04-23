@@ -18,22 +18,22 @@ import (
 
 func ValidateToken(tokenStr string) (*AccessToken, errs.AppError) {
 	if len(tokenStr) == 0 {
-		return nil, errs.UserError("Authorization header is required", http.StatusForbidden)
+		return nil, errs.MissingAuthToken
 	}
 
 	tokenStr, found := strings.CutPrefix(tokenStr, "Bearer ")
 	if !found {
-		return nil, errs.UserError("Invalid authorization header format. It must begin with 'Bearer'", http.StatusForbidden)
+		return nil, errs.UserError("Invalid authorization header format. It must begin with 'Bearer'", http.StatusUnauthorized)
 	}
 
 	token, err := DecodeAccessToken(tokenStr)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, errs.UserError("Access token is expired! Please refresh it.", http.StatusForbidden)
+			return nil, errs.UserError("Access token is expired! Please refresh it.", http.StatusUnauthorized)
 		} else if errors.Is(err, jwt.ErrTokenSignatureInvalid) {
-			return nil, errs.UserError("Access token has an invalid signature! Please authenticate again.", http.StatusForbidden)
+			return nil, errs.UserError("Access token has an invalid signature! Please authenticate again.", http.StatusUnauthorized)
 		}
-		return nil, errs.UserError(err.Error(), http.StatusForbidden)
+		return nil, errs.UserError(err.Error(), http.StatusUnauthorized)
 	}
 
 	return token, nil
@@ -62,9 +62,14 @@ func AdminMiddleware(
 	banRepo *repository.UserBanRepository,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.MustGet("token").(*AccessToken)
+		rawToken, ok := c.Get("token")
+		if !ok {
+			c.Error(errs.MissingAuthToken)
+			c.Abort()
+			return
+		}
+		token := rawToken.(*AccessToken)
 
-		// make sure the user is an admin
 		if !token.IsAdmin {
 			c.Error(errs.NoAccess)
 			c.Abort()
@@ -127,7 +132,7 @@ func RateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Handle
 	)
 
 	return func(c *gin.Context) {
-		if isAdmin(c) {
+		if config.Config.App.DisableRateLimits || isAdmin(c) {
 			c.Next()
 			return
 		}

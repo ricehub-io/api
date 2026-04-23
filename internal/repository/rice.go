@@ -204,7 +204,7 @@ func (r *RiceRepository) UserOwnsRice(ctx context.Context, riceID, userID uuid.U
 	SELECT EXISTS (
 		SELECT 1
 		FROM rices
-		WHERE id = $1 AND author_id = $2 AND state = 'accepted'
+		WHERE id = $1 AND author_id = $2
 	)
 	`
 	err = r.db.QueryRow(ctx, query, riceID, userID).Scan(&exists)

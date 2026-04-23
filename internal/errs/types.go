@@ -66,6 +66,10 @@ var BlacklistedDisplayName = UserError(
 	"Username contains blacklisted phrases",
 	http.StatusUnprocessableEntity,
 )
+var MissingAuthToken = UserError(
+	"Authorization token missing",
+	http.StatusUnauthorized,
+)
 
 // Auth
 var UsernameTaken = UserError("This username is not available", http.StatusConflict)
