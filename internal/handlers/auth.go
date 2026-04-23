@@ -86,7 +86,7 @@ func (h *AuthHandler) LogOut(c *gin.Context) {
 
 // setRefreshCookie writes refresh token to secure and http-only cookie header.
 func (h *AuthHandler) setRefreshCookie(c *gin.Context, token string) {
-	maxAge := int(math.Round(config.Config.JWT.AccessExpiration.Seconds()))
+	maxAge := int(math.Round(config.Config.JWT.RefreshExpiration.Seconds()))
 	c.SetCookie("refresh_token", token, maxAge, "/", config.Config.Server.CookiesDomain, true, true)
 }
 
