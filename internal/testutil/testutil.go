@@ -2,7 +2,9 @@ package testutil
 
 import (
 	"context"
+	"crypto/rand"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -52,14 +54,13 @@ cv1NRo5tQmhc2uEAbsvKkd4dPJ40U/yBUgeDx+kj9KmwFiYWcb7+LFitLA==
 -----END PUBLIC KEY-----
 `
 
-var testKeysDir string
+var randLetters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func init() {
 	dir, err := os.MkdirTemp("", "ricehub-test-keys-*")
 	if err != nil {
 		panic("testutil: create temp dir for JWT keys: " + err.Error())
 	}
-	testKeysDir = dir
 
 	writePEM := func(name, content string) {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0600); err != nil {
@@ -231,4 +232,19 @@ func DoRawRequest(
 // AuthHeader returns a header map with the Authorization key set.
 func AuthHeader(token string) map[string]string {
 	return map[string]string{"Authorization": token}
+}
+
+// TODO: use it in all integration tests for username and other stuff
+// RandString generates a random alphabetic string of fixed length.
+func RandString(l int64) string {
+	if l <= 0 {
+		panic("random string length must be greater than zero!")
+	}
+
+	b := make([]rune, l)
+	for i := range b {
+		idx, _ := rand.Int(rand.Reader, big.NewInt(l))
+		b[i] = randLetters[idx.Uint64()]
+	}
+	return string(b)
 }

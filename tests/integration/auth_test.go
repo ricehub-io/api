@@ -75,8 +75,8 @@ func TestLogin_UnknownUser(t *testing.T) {
 	body := `{"username":"nobody","password":"Password123!"}`
 	w := testutil.DoRequest(testApp, http.MethodPost, "/auth/login", body, nil)
 
-	if w.Code == http.StatusOK {
-		t.Fatal("expected non-200 for unknown user login")
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for unknown user, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
@@ -102,7 +102,7 @@ func TestRefresh_ValidToken(t *testing.T) {
 		}
 	}
 	if refreshCookie == nil {
-		t.Skip("no refresh_token cookie in login response")
+		t.Fatal("login response did not set refresh_token cookie")
 	}
 
 	w := testutil.DoRequest(testApp, http.MethodPost, "/auth/refresh", "", map[string]string{
@@ -118,7 +118,7 @@ func TestRefresh_ValidToken(t *testing.T) {
 // ---------------------------------------------------------------------------
 func TestLogout_Success(t *testing.T) {
 	w := testutil.DoRequest(testApp, http.MethodPost, "/auth/logout", "", nil)
-	if w.Code >= 500 {
-		t.Fatalf("expected non-5xx from logout, got %d", w.Code)
+	if w.Code != http.StatusOK && w.Code != http.StatusNoContent {
+		t.Fatalf("expected 200/204 from logout, got %d: %s", w.Code, w.Body.String())
 	}
 }

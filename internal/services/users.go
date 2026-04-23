@@ -83,7 +83,7 @@ func (s *UserService) GetUserByID(
 }
 
 // GetUserRiceBySlug fetches a rice by the author's username and rice slug.
-// Waiting rices are only visible to admins.
+// Waiting rices are only visible to admin and owner.
 func (s *UserService) GetUserRiceBySlug(
 	ctx context.Context,
 	callerID *uuid.UUID,
@@ -104,7 +104,9 @@ func (s *UserService) GetUserRiceBySlug(
 	if err != nil {
 		return zero, errs.FromDBError(err, errs.RiceNotFound)
 	}
-	if rice.Rice.State == models.Waiting && !isAdmin {
+
+	allowWaiting := isAdmin || (callerID != nil && *callerID == rice.Rice.AuthorID)
+	if rice.Rice.State == models.Waiting && !allowWaiting {
 		return zero, errs.RiceNotFound
 	}
 

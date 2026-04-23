@@ -165,7 +165,7 @@ func registerUserRoutes(r *gin.Engine, h *handlers.UserHandler, adminMw gin.Hand
 	)
 	auth.DELETE("/:id/avatar", maintenance, accountRL, h.DeleteAvatar)
 
-	admin := users.Group("", adminMw)
+	admin := auth.Group("", adminMw)
 	admin.POST("/:id/ban", h.BanUser)
 	admin.DELETE("/:id/ban", h.UnbanUser)
 }
@@ -221,7 +221,7 @@ func registerRiceRoutes(
 	auth.PATCH("/:id/state", maintenance, adminMw, rh.UpdateRiceState)
 	auth.POST("/:id/star", maintenance, sth.CreateRiceStar)
 	auth.DELETE("/:id/star", maintenance, sth.DeleteRiceStar)
-	auth.DELETE("/:id/screenshots/:previewId", maintenance, sch.DeleteScreenshot)
+	auth.DELETE("/:id/screenshots/:screenshotId", maintenance, sch.DeleteScreenshot)
 	auth.DELETE("/:id", maintenance, rh.DeleteRice)
 }
 
