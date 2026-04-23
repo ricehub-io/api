@@ -37,6 +37,7 @@ type (
 		PaginationLimit   uint   `toml:"pagination_limit"`
 		DisableRateLimits bool   `toml:"disable_rate_limits"`
 		Maintenance       bool   `toml:"maintenance"`
+		ImageQuality      uint8  `toml:"image_quality,default=80"`
 	}
 
 	jwtConfig struct {
@@ -85,6 +86,13 @@ func InitConfig(configPath string) {
 
 	if Config.Limits.MaxScreenshotsPerRice <= 0 {
 		log.Fatal("limits.max_screenshots_per_rice must be greater than zero")
+	}
+
+	imgQuality := &Config.App.ImageQuality
+	if *imgQuality < 10 {
+		*imgQuality = 80 // default value
+	} else if *imgQuality > 100 {
+		*imgQuality = 100 // cap
 	}
 
 	log.Info("Config variables successfully loaded")

@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"ricehub/internal/testutil"
+	"strings"
 	"testing"
 )
 
@@ -21,7 +24,7 @@ func createRice(t *testing.T, userID, tok, title string) string {
 	_ = mw.WriteField("description", "integration test rice description")
 
 	fw, _ := mw.CreateFormFile("screenshots[]", "shot.png")
-	_, _ = fw.Write([]byte("fake-png-data"))
+	_, _ = fw.Write(testutil.TinyPNG(t))
 
 	fw, _ = mw.CreateFormFile("dotfiles", "dotfiles.zip")
 	zw := zip.NewWriter(fw)
@@ -296,7 +299,7 @@ func TestAddScreenshot(t *testing.T) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	fw, _ := mw.CreateFormFile("files[]", "extra.png")
-	_, _ = fw.Write([]byte("fake-png-data"))
+	_, _ = fw.Write(testutil.TinyPNG(t))
 	_ = mw.Close()
 
 	w := testutil.DoRawRequest(testApp, http.MethodPost, "/rices/"+riceID+"/screenshots", &buf, mw.FormDataContentType(), testutil.AuthHeader(tok))
@@ -307,8 +310,30 @@ func TestAddScreenshot(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if resp["screenshots"] == nil {
-		t.Fatal("screenshots missing from response")
+	urls, _ := resp["screenshots"].([]any)
+	if len(urls) == 0 {
+		t.Fatal("screenshots missing or empty in response")
+	}
+
+	for _, u := range urls {
+		raw, _ := u.(string)
+		idx := strings.Index(raw, "/screenshots/")
+		if idx < 0 {
+			t.Fatalf("screenshot URL has no /screenshots/ segment: %s", raw)
+		}
+		filename := filepath.Base(raw[idx:])
+		onDisk := filepath.Join(".", "public", "screenshots", filename)
+		t.Cleanup(func() { _ = os.Remove(onDisk) })
+
+		if _, err := os.Stat(onDisk); err != nil {
+			t.Fatalf("expected screenshot on disk at %s, stat failed: %v", onDisk, err)
+		}
+
+		shouldNotExist := filepath.Join("..", "..", "public", "avatars", filename)
+		if _, err := os.Stat(shouldNotExist); err == nil {
+			_ = os.Remove(shouldNotExist)
+			t.Fatalf("screenshot leaked into avatars dir: %s", shouldNotExist)
+		}
 	}
 }
 
@@ -323,7 +348,7 @@ func TestDeleteScreenshot(t *testing.T) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	fw, _ := mw.CreateFormFile("files[]", "extra2.png")
-	_, _ = fw.Write([]byte("fake-png-data"))
+	_, _ = fw.Write(testutil.TinyPNG(t))
 	_ = mw.Close()
 	addW := testutil.DoRawRequest(testApp, http.MethodPost, "/rices/"+riceID+"/screenshots", &buf, mw.FormDataContentType(), testutil.AuthHeader(tok))
 	if addW.Code != http.StatusCreated {

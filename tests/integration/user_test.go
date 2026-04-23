@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"ricehub/internal/testutil"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -251,7 +254,7 @@ func TestUpdateAvatar_Success(t *testing.T) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	fw, _ := mw.CreateFormFile("file", "avatar.png")
-	_, _ = fw.Write([]byte("fake-png-bytes"))
+	_, _ = fw.Write(testutil.TinyPNG(t))
 	_ = mw.Close()
 
 	w := testutil.DoRawRequest(testApp, http.MethodPost, "/users/"+id+"/avatar", &buf, mw.FormDataContentType(), testutil.AuthHeader(tok))
@@ -262,8 +265,29 @@ func TestUpdateAvatar_Success(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if resp["avatarUrl"] == nil {
+	avatarURL, _ := resp["avatarUrl"].(string)
+	if avatarURL == "" {
 		t.Fatal("avatarUrl missing from response")
+	}
+
+	idx := strings.Index(avatarURL, "/avatars/")
+	if idx < 0 {
+		t.Fatalf("avatarUrl has no /avatars/ segment: %s", avatarURL)
+	}
+	relPath := avatarURL[idx:]
+	filename := filepath.Base(relPath)
+
+	onDisk := filepath.Join(".", "public", "avatars", filename)
+	t.Cleanup(func() { _ = os.Remove(onDisk) })
+
+	if _, err := os.Stat(onDisk); err != nil {
+		t.Fatalf("expected avatar on disk at %s, stat failed: %v", onDisk, err)
+	}
+
+	shouldNotExist := filepath.Join("..", "..", "public", "screenshots", filename)
+	if _, err := os.Stat(shouldNotExist); err == nil {
+		_ = os.Remove(shouldNotExist)
+		t.Fatalf("avatar leaked into screenshots dir: %s", shouldNotExist)
 	}
 }
 
