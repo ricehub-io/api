@@ -298,4 +298,4 @@ ALTER TABLE user_subscriptions
 ALTER TABLE rice_previews
     RENAME TO rice_screenshots;
 
-DROP TRIGGER update_rice_previews_updated_at ON rice_screenshots;
+-- DROP TRIGGER update_rice_previews_updated_at ON rice_screenshots;

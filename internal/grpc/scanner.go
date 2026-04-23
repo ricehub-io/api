@@ -11,21 +11,22 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Wrapper over gRPC scanner client
-type FileScanner struct {
+type ScannerClient interface {
+	ScanFile(filePath string) (*pb.ScanResult, error)
+}
+
+var Scanner ScannerClient
+
+type fileScanner struct {
 	conn   *grpc.ClientConn
 	client pb.ScannerClient
 }
 
-var Scanner FileScanner
-
-// Initializes global `scanner` variable and tries to create
-// new gRPC connection with file scanner for given URL.
-func (s *FileScanner) Init(url string) {
+// InitScanner creates a gRPC connection to the file scanner and sets Scanner global variable.
+func InitScanner(url string) {
 	logger := zap.L()
 
-	var err error
-	s.conn, err = grpc.NewClient(
+	conn, err := grpc.NewClient(
 		url,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -36,20 +37,21 @@ func (s *FileScanner) Init(url string) {
 		)
 	}
 
-	s.client = pb.NewScannerClient(s.conn)
+	Scanner = &fileScanner{conn: conn, client: pb.NewScannerClient(conn)}
 	logger.Info("Created gRPC connection with file scanner")
-	// TODO: check if server is available
 }
 
-// Closes internal gRPC connection.
-func (s *FileScanner) Close() error {
-	return s.conn.Close()
+// CloseScanner closes the underlying gRPC connection.
+func CloseScanner() error {
+	if fs, ok := Scanner.(*fileScanner); ok {
+		return fs.conn.Close()
+	}
+	return nil
 }
 
-func (s *FileScanner) ScanFile(filePath string) (res *pb.ScanResult, err error) {
+func (s *fileScanner) ScanFile(filePath string) (*pb.ScanResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	res, err = s.client.ScanFile(ctx, &pb.ScanRequest{FilePath: filePath})
-	return
+	return s.client.ScanFile(ctx, &pb.ScanRequest{FilePath: filePath})
 }

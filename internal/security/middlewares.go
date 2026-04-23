@@ -127,7 +127,7 @@ func RateLimitMiddleware(maxRequests int64, resetAfter time.Duration) gin.Handle
 	)
 
 	return func(c *gin.Context) {
-		if isAdmin(c) {
+		if config.Config.App.DisableRateLimits || isAdmin(c) {
 			c.Next()
 			return
 		}
