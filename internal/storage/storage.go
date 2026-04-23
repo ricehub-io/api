@@ -2,20 +2,29 @@ package storage
 
 import (
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"ricehub/internal/config"
 	"ricehub/internal/errs"
 	"ricehub/internal/grpc"
 	"ricehub/internal/validation"
 
+	"github.com/chai2010/webp"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
-const dotfilesDir = "dotfiles"
+const (
+	dotfilesDir   = "dotfiles"
+	screenshotDir = "./public/screenshots"
+	avatarDir     = "./public/avatars"
+)
 
 type namedCloser interface {
 	io.Closer
@@ -100,30 +109,44 @@ func HandleDotfilesUpload(fileHeader *multipart.FileHeader) (string, errs.AppErr
 }
 
 func SaveScreenshotFile(file *multipart.FileHeader, dst string) error {
-	src, err := file.Open()
+	return saveImageAsWebP(screenshotDir, file, dst)
+}
+
+func SaveAvatarFile(file *multipart.FileHeader, dst string) error {
+	return saveImageAsWebP(avatarDir, file, dst)
+}
+
+func saveImageAsWebP(dir string, file *multipart.FileHeader, dst string) error {
+	srcFile, err := file.Open()
 	if err != nil {
 		return err
 	}
-	defer closeSilent(src)
+	defer closeSilent(srcFile)
 
-	if err := os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return err
 	}
 
-	// TODO: read from config or smth
-	root, err := os.OpenRoot("./public/screenshots")
+	img, _, err := image.Decode(srcFile)
 	if err != nil {
 		return err
 	}
 
-	out, err := root.Create(dst)
+	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return err
 	}
-	defer closeLog(out)
 
-	_, err = io.Copy(out, src)
-	return err
+	outFile, err := root.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer closeLog(outFile)
+
+	return webp.Encode(outFile, img, &webp.Options{
+		Lossless: false,
+		Quality:  float32(config.Config.App.ImageQuality),
+	})
 }
 
 func moveFile(srcRoot, destRoot *os.Root, srcName, destName string) error {

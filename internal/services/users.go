@@ -239,7 +239,7 @@ func (s *UserService) UpdateAvatar(
 		return "", err
 	}
 
-	ext, err := validation.ValidateFileAsImage(file)
+	_, err = validation.ValidateFileAsImage(file)
 	if err != nil {
 		return "", err.(errs.AppError)
 	}
@@ -258,9 +258,9 @@ func (s *UserService) UpdateAvatar(
 		}
 	}
 
-	filename := fmt.Sprintf("%v%v", uuid.New(), ext)
+	filename := fmt.Sprintf("%v.webp", uuid.New())
 	avatarPath := "/avatars/" + filename
-	if err := storage.SaveScreenshotFile(file, filename); err != nil {
+	if err := storage.SaveAvatarFile(file, filename); err != nil {
 		return "", errs.InternalError(err)
 	}
 

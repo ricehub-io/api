@@ -1,8 +1,12 @@
 package testutil
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"math/big"
 	"net/http"
@@ -232,6 +236,18 @@ func DoRawRequest(
 // AuthHeader returns a header map with the Authorization key set.
 func AuthHeader(token string) map[string]string {
 	return map[string]string{"Authorization": token}
+}
+
+// TinyPNG returns the bytes of a minimal 1x1 PNG.
+func TinyPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+	img.Set(0, 0, color.RGBA{A: 255})
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode tiny PNG: %v", err)
+	}
+	return buf.Bytes()
 }
 
 // TODO: use it in all integration tests for username and other stuff

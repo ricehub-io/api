@@ -4,9 +4,8 @@ keys/*.pem
 logs/*.json
 build/
 
-public/avatars/*.png
-public/avatars/*.jpg
+public/avatars/*
 !public/avatars/default.png
-public/screenshots/*.png
-public/screenshots/*.jpg
+public/screenshots/*
+!public/screenshots/.gitkeep
 public/dotfiles/*.zip

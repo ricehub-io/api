@@ -128,7 +128,7 @@ func ValidateFileAsImage(formFile *multipart.FileHeader) (string, errs.AppError)
 	name := strings.ToLower(formFile.Filename)
 	if strings.HasSuffix(name, ".png") {
 		return ".png", nil
-	} else if strings.HasSuffix(name, ".jpg") {
+	} else if strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg") {
 		return ".jpg", nil
 	} else {
 		return "", errs.UserError("Unsupported file type! Only png/jpeg is accepted", http.StatusUnsupportedMediaType)

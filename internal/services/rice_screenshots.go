@@ -67,12 +67,12 @@ func (s *RiceScreenshotService) CreateScreenshot(
 
 	validFiles := make([]validFile, 0, len(files))
 	for _, file := range files {
-		ext, err := validation.ValidateFileAsImage(file)
+		_, err := validation.ValidateFileAsImage(file)
 		if err != nil {
 			return nil, err
 		}
 		validFiles = append(validFiles, validFile{
-			path:   fmt.Sprintf("/screenshots/%v%v", uuid.New(), ext),
+			path:   fmt.Sprintf("/screenshots/%v.webp", uuid.New()),
 			header: file,
 		})
 	}

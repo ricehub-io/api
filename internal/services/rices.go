@@ -90,12 +90,12 @@ func (s *RiceService) CreateRice(
 
 	validScreenshots := make(map[string]*multipart.FileHeader, len(screenshots))
 	for _, scr := range screenshots {
-		ext, err := validation.ValidateFileAsImage(scr)
+		_, err := validation.ValidateFileAsImage(scr)
 		if err != nil {
 			return err
 		}
 
-		scrPath := fmt.Sprintf("/screenshots/%v%v", uuid.New(), ext)
+		scrPath := fmt.Sprintf("/screenshots/%v.webp", uuid.New())
 		validScreenshots[scrPath] = scr
 	}
 

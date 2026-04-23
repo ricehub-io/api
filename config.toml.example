@@ -25,6 +25,10 @@ disable_rate_limits = false
 # modify resources are rejected with a 503 status code.
 maintenance = false
 
+# To what (webp) image quality should all user-uploaded images be converted to.
+# value: 10 - 100
+image_quality = 80
+
 
 # --- JWT AUTHENTICATION ----
 [jwt]
