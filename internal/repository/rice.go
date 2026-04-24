@@ -128,13 +128,18 @@ func buildFindRiceSql(findBy FindRiceBy) string {
 		jsonb_agg(p ORDER BY p.id) AS screenshots,
 		count(DISTINCT s.user_id) AS star_count,
 		coalesce(bool_or(s.user_id = $1), false) AS is_starred,
-		CASE WHEN df.type != 'free' AND u.id != $1
+		CASE WHEN df.type != 'free'
 			THEN (
-				SELECT EXISTS(
-					SELECT 1
-					FROM dotfiles_purchases dp
-					WHERE dp.user_id = $1 AND dp.rice_id = base.id
-				)
+				CASE WHEN $1 IS NOT NULL
+					THEN (
+						SELECT EXISTS(
+							SELECT 1
+							FROM dotfiles_purchases dp
+							WHERE dp.user_id = $1 AND dp.rice_id = base.id
+						)
+					)
+					ELSE false
+				END
 			)
 			ELSE true
     	END AS is_owned,
