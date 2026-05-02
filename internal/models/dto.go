@@ -131,6 +131,10 @@ type CreateReportDTO struct {
 }
 
 // Responses
+type ErrorDTO struct {
+	Errors []string `json:"errors"`
+}
+
 type UserDTO struct {
 	ID          uuid.UUID `json:"id"`
 	Username    string    `json:"username"`

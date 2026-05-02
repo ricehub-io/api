@@ -20,6 +20,17 @@ func NewRiceScreenshotHandler(svc *services.RiceScreenshotService) *RiceScreensh
 	return &RiceScreenshotHandler{svc}
 }
 
+// @Summary Upload one or more screenshots for a rice
+// @Tags rices
+// @Accept mpfd
+// @Produce json
+// @Param id path string true "Rice ID (UUID)"
+// @Param "files[]" formData file true "Screenshot images (multiple allowed)"
+// @Success 201 {object} object "Returns screenshots array"
+// @Failure 400 {object} models.ErrorDTO "Missing files"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Security BearerAuth
+// @Router /rices/{id}/screenshots [post]
 func (h *RiceScreenshotHandler) CreateScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, _ := uuid.Parse(token.Subject)
@@ -52,6 +63,17 @@ func (h *RiceScreenshotHandler) CreateScreenshot(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"screenshots": scrs})
 }
 
+// @Summary Delete a screenshot from a rice
+// @Tags rices
+// @Param id path string true "Rice ID (UUID)"
+// @Param screenshotId path string true "Screenshot ID (UUID)"
+// @Success 204 "Deleted"
+// @Failure 400 {object} models.ErrorDTO "Invalid UUID"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Failure 404 {object} models.ErrorDTO "Screenshot not found"
+// @Failure 422 {object} models.ErrorDTO "At least one screenshot required"
+// @Security BearerAuth
+// @Router /rices/{id}/screenshots/{screenshotId} [delete]
 func (h *RiceScreenshotHandler) DeleteScreenshot(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, _ := uuid.Parse(token.Subject)

@@ -5,7 +5,7 @@ CMD     := .
 GOFLAGS := -trimpath
 LDFLAGS := -ldflags="-s -w"
 
-.PHONY: all build run test security lint fmt vet tidy clean check install-tools
+.PHONY: all build run test lint fmt vet tidy security check clean swagger install-tools
 
 all: check build
 
@@ -44,8 +44,8 @@ security:
 	govulncheck ./...
 	gosec -exclude-generated ./...
 
-## check: run fmt, vet, lint, and security (useful before committing)
-check: fmt vet lint security
+## check: run fmt, vet, lint, security, and test
+check: fmt vet lint security test
 
 ## clean: remove build artifacts
 clean:

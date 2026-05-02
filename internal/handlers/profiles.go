@@ -21,6 +21,14 @@ type profilesPath struct {
 	Username string `uri:"username" binding:"required,alphanum"`
 }
 
+// @Summary Get a user profile with their rices by username
+// @Tags profiles
+// @Produce json
+// @Param username path string true "Username (alphanumeric)"
+// @Success 200 {object} object "Returns user (UserDTO) and rices ([]PartialRiceDTO)"
+// @Failure 400 {object} models.ErrorDTO "Invalid username"
+// @Failure 404 {object} models.ErrorDTO "User not found"
+// @Router /profiles/{username} [get]
 func (h *ProfileHandler) GetProfileByUsername(c *gin.Context) {
 	var path profilesPath
 	if err := c.ShouldBindUri(&path); err != nil {

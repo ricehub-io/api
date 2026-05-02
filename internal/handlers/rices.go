@@ -30,6 +30,21 @@ type ricesPath struct {
 	RiceID string `uri:"id" binding:"required,uuid"`
 }
 
+// @Summary Create a new rice
+// @Tags rices
+// @Accept mpfd
+// @Param title formData string true "Title (4-32 chars)"
+// @Param description formData string true "Description (4-10240 chars)"
+// @Param tags formData string false "JSON array of tag IDs e.g. [1,2]"
+// @Param dotfilesType formData string false "free or one-time"
+// @Param dotfilesPrice formData number false "Price in USD (required when dotfilesType is one-time)"
+// @Param dotfiles formData file true "Dotfiles archive"
+// @Param "screenshots[]" formData file false "Screenshots (multiple allowed)"
+// @Success 201 "Created"
+// @Failure 400 {object} models.ErrorDTO "Validation error"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Security BearerAuth
+// @Router /rices [post]
 func (h *RiceHandler) CreateRice(c *gin.Context) {
 	var err error
 
@@ -78,6 +93,21 @@ func (h *RiceHandler) CreateRice(c *gin.Context) {
 	c.Status(http.StatusCreated)
 }
 
+// @Summary List rices with cursor-based pagination
+// @Description Pass state=waiting (admin only) to list rices pending review
+// @Tags rices
+// @Produce json
+// @Param sort query string false "Sort order: trending, recent, mostDownloads, mostStars (default: trending)"
+// @Param state query string false "Filter by state (admin only: waiting)"
+// @Param lastId query string false "Cursor: UUID of the last seen rice"
+// @Param lastScore query number false "Cursor: score of the last seen rice (required with lastId when sort=trending)"
+// @Param lastCreatedAt query string false "Cursor: ISO timestamp (required with lastId when sort=recent)"
+// @Param lastDownloads query integer false "Cursor: downloads count (required with lastId when sort=mostDownloads)"
+// @Param lastStars query integer false "Cursor: stars count (required with lastId when sort=mostStars)"
+// @Param reverse query boolean false "Reverse pagination direction"
+// @Success 200 {object} object "Returns pageCount (int) and rices ([]PartialRiceDTO)"
+// @Failure 400 {object} models.ErrorDTO "Bad query parameters"
+// @Router /rices [get]
 func (h *RiceHandler) ListRices(c *gin.Context) {
 	token := GetTokenFromRequest(c)
 	isAdmin := token != nil && token.IsAdmin
@@ -167,6 +197,14 @@ func (h *RiceHandler) ListRices(c *gin.Context) {
 	})
 }
 
+// @Summary Get a rice by ID
+// @Tags rices
+// @Produce json
+// @Param id path string true "Rice ID (UUID)"
+// @Success 200 {object} models.RiceWithRelationsDTO
+// @Failure 400 {object} models.ErrorDTO "Invalid UUID"
+// @Failure 404 {object} models.ErrorDTO "Rice not found"
+// @Router /rices/{id} [get]
 func (h *RiceHandler) GetRiceByID(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -188,6 +226,14 @@ func (h *RiceHandler) GetRiceByID(c *gin.Context) {
 	c.JSON(http.StatusOK, rice.ToDTO())
 }
 
+// @Summary List comments for a rice
+// @Tags rices
+// @Produce json
+// @Param id path string true "Rice ID (UUID)"
+// @Success 200 {array} models.CommentWithUserDTO
+// @Failure 400 {object} models.ErrorDTO "Invalid UUID"
+// @Failure 404 {object} models.ErrorDTO "Rice not found"
+// @Router /rices/{id}/comments [get]
 func (h *RiceHandler) ListRiceComments(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -205,6 +251,17 @@ func (h *RiceHandler) ListRiceComments(c *gin.Context) {
 	c.JSON(http.StatusOK, models.CommentsWithUserToDTO(comments))
 }
 
+// @Summary Update rice title and/or description
+// @Tags rices
+// @Accept json
+// @Param id path string true "Rice ID (UUID)"
+// @Param body body models.UpdateRiceDTO true "Fields to update"
+// @Success 200 "Updated"
+// @Failure 400 {object} models.ErrorDTO "Validation error"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Failure 404 {object} models.ErrorDTO "Rice not found"
+// @Security BearerAuth
+// @Router /rices/{id} [patch]
 func (h *RiceHandler) UpdateRiceMetadata(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, _ := uuid.Parse(token.Subject)
@@ -230,6 +287,18 @@ func (h *RiceHandler) UpdateRiceMetadata(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// @Summary Accept or reject a waiting rice (admin only)
+// @Tags rices
+// @Accept json
+// @Param id path string true "Rice ID (UUID)"
+// @Param body body models.UpdateRiceStateDTO true "New state"
+// @Success 200 "Accepted"
+// @Success 204 "Rejected"
+// @Failure 400 {object} models.ErrorDTO "Validation error"
+// @Failure 403 {object} models.ErrorDTO "Admin access required"
+// @Failure 404 {object} models.ErrorDTO "Rice not found"
+// @Security BearerAuth
+// @Router /rices/{id}/state [patch]
 func (h *RiceHandler) UpdateRiceState(c *gin.Context) {
 	var path ricesPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -257,6 +326,14 @@ func (h *RiceHandler) UpdateRiceState(c *gin.Context) {
 	}
 }
 
+// @Summary Delete a rice
+// @Tags rices
+// @Param id path string true "Rice ID (UUID)"
+// @Success 204 "Deleted"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Failure 404 {object} models.ErrorDTO "Rice not found"
+// @Security BearerAuth
+// @Router /rices/{id} [delete]
 func (h *RiceHandler) DeleteRice(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	userID, _ := uuid.Parse(token.Subject)

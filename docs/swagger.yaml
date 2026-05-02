@@ -1,11 +1,2021 @@
 basePath: /
+definitions:
+  models.AttachTagsDTO:
+    properties:
+      tags:
+        items:
+          type: integer
+        type: array
+    required:
+    - tags
+    type: object
+  models.BanUserDTO:
+    properties:
+      duration:
+        type: string
+      reason:
+        maxLength: 1024
+        minLength: 6
+        type: string
+    required:
+    - reason
+    type: object
+  models.CommentWithUserDTO:
+    properties:
+      avatar:
+        type: string
+      commentId:
+        type: string
+      content:
+        type: string
+      createdAt:
+        type: string
+      displayName:
+        type: string
+      isBanned:
+        type: boolean
+      updatedAt:
+        type: string
+      username:
+        type: string
+    type: object
+  models.CreateCommentDTO:
+    properties:
+      content:
+        maxLength: 128
+        minLength: 8
+        type: string
+      riceId:
+        type: string
+    required:
+    - content
+    - riceId
+    type: object
+  models.CreateReportDTO:
+    properties:
+      commentId:
+        type: string
+      reason:
+        maxLength: 1024
+        minLength: 8
+        type: string
+      riceId:
+        type: string
+    required:
+    - reason
+    type: object
+  models.DeleteUserDTO:
+    properties:
+      password:
+        type: string
+    required:
+    - password
+    type: object
+  models.DotfilesType:
+    enum:
+    - free
+    - one-time
+    type: string
+    x-enum-varnames:
+    - Free
+    - OneTime
+  models.ErrorDTO:
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+    type: object
+  models.LeaderboardRiceDTO:
+    properties:
+      comments:
+        type: integer
+      createdAt:
+        type: string
+      displayName:
+        type: string
+      downloads:
+        type: integer
+      id:
+        type: string
+      isFree:
+        type: boolean
+      isStarred:
+        type: boolean
+      position:
+        type: integer
+      score:
+        type: number
+      slug:
+        type: string
+      stars:
+        type: integer
+      state:
+        $ref: '#/definitions/models.RiceState'
+      tags:
+        items:
+          type: string
+        type: array
+      thumbnail:
+        type: string
+      title:
+        type: string
+      username:
+        type: string
+    type: object
+  models.LinkDTO:
+    properties:
+      url:
+        type: string
+    type: object
+  models.LoginDTO:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  models.PartialRiceDTO:
+    properties:
+      comments:
+        type: integer
+      createdAt:
+        type: string
+      displayName:
+        type: string
+      downloads:
+        type: integer
+      id:
+        type: string
+      isFree:
+        type: boolean
+      isStarred:
+        type: boolean
+      score:
+        type: number
+      slug:
+        type: string
+      stars:
+        type: integer
+      state:
+        $ref: '#/definitions/models.RiceState'
+      tags:
+        items:
+          type: string
+        type: array
+      thumbnail:
+        type: string
+      title:
+        type: string
+      username:
+        type: string
+    type: object
+  models.RegisterDTO:
+    properties:
+      displayName:
+        maxLength: 20
+        minLength: 3
+        type: string
+      password:
+        maxLength: 128
+        minLength: 6
+        type: string
+      username:
+        maxLength: 14
+        minLength: 4
+        type: string
+    required:
+    - displayName
+    - password
+    - username
+    type: object
+  models.ReportWithUserDTO:
+    properties:
+      commentId:
+        type: string
+      createdAt:
+        type: string
+      displayName:
+        type: string
+      id:
+        type: string
+      isClosed:
+        type: boolean
+      reason:
+        type: string
+      reporterId:
+        type: string
+      riceId:
+        type: string
+      username:
+        type: string
+    type: object
+  models.RiceCommentDTO:
+    properties:
+      content:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      riceId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.RiceCommentWithSlugDTO:
+    properties:
+      authorId:
+        type: string
+      content:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      riceAuthorUsername:
+        type: string
+      riceId:
+        type: string
+      riceSlug:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.RiceDotfilesDTO:
+    properties:
+      createdAt:
+        type: string
+      filePath:
+        type: string
+      fileSize:
+        type: integer
+      price:
+        type: number
+      type:
+        $ref: '#/definitions/models.DotfilesType'
+      updatedAt:
+        type: string
+    type: object
+  models.RiceScreenshotDTO:
+    properties:
+      id:
+        type: string
+      url:
+        type: string
+    type: object
+  models.RiceState:
+    enum:
+    - waiting
+    - accepted
+    type: string
+    x-enum-varnames:
+    - Waiting
+    - Accepted
+  models.RiceWithRelationsDTO:
+    properties:
+      author:
+        $ref: '#/definitions/models.UserDTO'
+      createdAt:
+        type: string
+      description:
+        type: string
+      dotfiles:
+        $ref: '#/definitions/models.RiceDotfilesDTO'
+      downloads:
+        type: integer
+      id:
+        type: string
+      isOwned:
+        type: boolean
+      isStarred:
+        type: boolean
+      screenshots:
+        items:
+          $ref: '#/definitions/models.RiceScreenshotDTO'
+        type: array
+      slug:
+        type: string
+      stars:
+        type: integer
+      tags:
+        items:
+          $ref: '#/definitions/models.TagDTO'
+        type: array
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.ServiceStatisticsDTO:
+    properties:
+      comment24hCount:
+        type: integer
+      commentCount:
+        type: integer
+      openReportCount:
+        type: integer
+      reportCount:
+        type: integer
+      rice24hCount:
+        type: integer
+      riceCount:
+        type: integer
+      user24hCount:
+        type: integer
+      userCount:
+        type: integer
+    type: object
+  models.TagDTO:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.TagNameDTO:
+    properties:
+      name:
+        maxLength: 16
+        minLength: 2
+        type: string
+    required:
+    - name
+    type: object
+  models.UnattachTagsDTO:
+    properties:
+      tags:
+        items:
+          type: integer
+        type: array
+    required:
+    - tags
+    type: object
+  models.UpdateCommentDTO:
+    properties:
+      content:
+        maxLength: 128
+        minLength: 8
+        type: string
+    required:
+    - content
+    type: object
+  models.UpdateDisplayNameDTO:
+    properties:
+      displayName:
+        maxLength: 20
+        minLength: 3
+        type: string
+    required:
+    - displayName
+    type: object
+  models.UpdateDotfilesPriceDTO:
+    properties:
+      newPrice:
+        type: number
+    required:
+    - newPrice
+    type: object
+  models.UpdateDotfilesTypeDTO:
+    properties:
+      newType:
+        allOf:
+        - $ref: '#/definitions/models.DotfilesType'
+        enum:
+        - free
+        - one-time
+    required:
+    - newType
+    type: object
+  models.UpdatePasswordDTO:
+    properties:
+      newPassword:
+        maxLength: 256
+        minLength: 6
+        type: string
+      oldPassword:
+        type: string
+    required:
+    - newPassword
+    - oldPassword
+    type: object
+  models.UpdateRiceDTO:
+    properties:
+      description:
+        maxLength: 10240
+        minLength: 4
+        type: string
+      title:
+        maxLength: 32
+        minLength: 4
+        type: string
+    type: object
+  models.UpdateRiceStateDTO:
+    properties:
+      newState:
+        enum:
+        - accepted
+        - rejected
+        type: string
+    required:
+    - newState
+    type: object
+  models.UserBanDTO:
+    properties:
+      adminId:
+        type: string
+      bannedAt:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      isRevoked:
+        type: boolean
+      reason:
+        type: string
+      revokedAt:
+        type: string
+      userId:
+        type: string
+    type: object
+  models.UserDTO:
+    properties:
+      avatarUrl:
+        type: string
+      createdAt:
+        type: string
+      displayName:
+        type: string
+      id:
+        type: string
+      isAdmin:
+        type: boolean
+      isBanned:
+        type: boolean
+      updatedAt:
+        type: string
+      username:
+        type: string
+    type: object
+  models.WebsiteVariableDTO:
+    properties:
+      updatedAt:
+        type: string
+      value:
+        type: string
+    type: object
 host: 127.0.0.1:3000
 info:
   contact: {}
   description: API for RiceHub website.
   title: RiceHub API
   version: 1.0.0
-paths: {}
+paths:
+  /admin/stats:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ServiceStatisticsDTO'
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Get service-wide statistics (admin only)
+      tags:
+      - admin
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns accessToken (string) and user (UserDTO)
+          schema:
+            type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: Authenticate with username and password
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      responses:
+        "200":
+          description: Logged out
+      summary: Logout and clear the refresh token cookie
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      description: Reads the refresh_token HttpOnly cookie and issues a new access
+        token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns accessToken (string)
+          schema:
+            type: object
+        "400":
+          description: Refresh token missing
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "401":
+          description: Invalid or expired refresh token
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: Refresh the access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Registration data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterDTO'
+      responses:
+        "201":
+          description: User created
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "409":
+          description: Username taken
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: Register a new user account
+      tags:
+      - auth
+  /comments:
+    get:
+      parameters:
+      - description: Max number of comments to return (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CommentWithUserDTO'
+            type: array
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: List recent comments (admin only)
+      tags:
+      - comments
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Comment content and rice ID
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateCommentDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.RiceCommentDTO'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Rice not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Create a comment on a rice
+      tags:
+      - comments
+  /comments/{id}:
+    delete:
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Comment not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Delete a comment
+      tags:
+      - comments
+    get:
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RiceCommentWithSlugDTO'
+        "400":
+          description: Invalid UUID
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Comment not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Get a comment by ID
+      tags:
+      - comments
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New content
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateCommentDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RiceCommentDTO'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Comment not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Update a comment's content
+      tags:
+      - comments
+  /leaderboard/month:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.LeaderboardRiceDTO'
+            type: array
+      summary: Get the monthly leaderboard
+      tags:
+      - leaderboard
+  /leaderboard/week:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.LeaderboardRiceDTO'
+            type: array
+      summary: Get the weekly leaderboard
+      tags:
+      - leaderboard
+  /leaderboard/year:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.LeaderboardRiceDTO'
+            type: array
+      summary: Get the yearly leaderboard
+      tags:
+      - leaderboard
+  /links/{name}:
+    get:
+      parameters:
+      - description: Link name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LinkDTO'
+        "404":
+          description: Link not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: Get a link by name
+      tags:
+      - links
+  /links/subscription:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns checkoutUrl (string)
+          schema:
+            type: object
+        "409":
+          description: Already has active subscription
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Get the checkout URL for a subscription
+      tags:
+      - links
+  /profiles/{username}:
+    get:
+      parameters:
+      - description: Username (alphanumeric)
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns user (UserDTO) and rices ([]PartialRiceDTO)
+          schema:
+            type: object
+        "400":
+          description: Invalid username
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: Get a user profile with their rices by username
+      tags:
+      - profiles
+  /reports:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ReportWithUserDTO'
+            type: array
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: List all reports (admin only)
+      tags:
+      - reports
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Report details (riceId OR commentId)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateReportDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Returns reportId (UUID)
+          schema:
+            type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "409":
+          description: Already reported
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Submit a report for a rice or comment
+      tags:
+      - reports
+  /reports/{id}:
+    get:
+      parameters:
+      - description: Report ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ReportWithUserDTO'
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Report not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Get a report by ID (admin only)
+      tags:
+      - reports
+  /reports/{id}/close:
+    post:
+      parameters:
+      - description: Report ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Closed
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Report not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Close a report (admin only)
+      tags:
+      - reports
+  /rices:
+    get:
+      description: Pass state=waiting (admin only) to list rices pending review
+      parameters:
+      - description: 'Sort order: trending, recent, mostDownloads, mostStars (default:
+          trending)'
+        in: query
+        name: sort
+        type: string
+      - description: 'Filter by state (admin only: waiting)'
+        in: query
+        name: state
+        type: string
+      - description: 'Cursor: UUID of the last seen rice'
+        in: query
+        name: lastId
+        type: string
+      - description: 'Cursor: score of the last seen rice (required with lastId when
+          sort=trending)'
+        in: query
+        name: lastScore
+        type: number
+      - description: 'Cursor: ISO timestamp (required with lastId when sort=recent)'
+        in: query
+        name: lastCreatedAt
+        type: string
+      - description: 'Cursor: downloads count (required with lastId when sort=mostDownloads)'
+        in: query
+        name: lastDownloads
+        type: integer
+      - description: 'Cursor: stars count (required with lastId when sort=mostStars)'
+        in: query
+        name: lastStars
+        type: integer
+      - description: Reverse pagination direction
+        in: query
+        name: reverse
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns pageCount (int) and rices ([]PartialRiceDTO)
+          schema:
+            type: object
+        "400":
+          description: Bad query parameters
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: List rices with cursor-based pagination
+      tags:
+      - rices
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Title (4-32 chars)
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: Description (4-10240 chars)
+        in: formData
+        name: description
+        required: true
+        type: string
+      - description: JSON array of tag IDs e.g. [1,2]
+        in: formData
+        name: tags
+        type: string
+      - description: free or one-time
+        in: formData
+        name: dotfilesType
+        type: string
+      - description: Price in USD (required when dotfilesType is one-time)
+        in: formData
+        name: dotfilesPrice
+        type: number
+      - description: Dotfiles archive
+        in: formData
+        name: dotfiles
+        required: true
+        type: file
+      - description: Screenshots (multiple allowed)
+        in: formData
+        name: '"screenshots[]"'
+        type: file
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Create a new rice
+      tags:
+      - rices
+  /rices/{id}:
+    delete:
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Rice not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Delete a rice
+      tags:
+      - rices
+    get:
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RiceWithRelationsDTO'
+        "400":
+          description: Invalid UUID
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Rice not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: Get a rice by ID
+      tags:
+      - rices
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateRiceDTO'
+      responses:
+        "200":
+          description: Updated
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Rice not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Update rice title and/or description
+      tags:
+      - rices
+  /rices/{id}/comments:
+    get:
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CommentWithUserDTO'
+            type: array
+        "400":
+          description: Invalid UUID
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Rice not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: List comments for a rice
+      tags:
+      - rices
+  /rices/{id}/dotfiles:
+    get:
+      description: Returns the dotfiles archive as a file attachment. Free dotfiles
+        are public; paid dotfiles require ownership
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: File attachment
+        "403":
+          description: Access denied
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Rice not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: Download dotfiles for a rice
+      tags:
+      - rices
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Dotfiles archive
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RiceDotfilesDTO'
+        "400":
+          description: Missing file
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Replace the dotfiles archive for a rice
+      tags:
+      - rices
+  /rices/{id}/dotfiles/price:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New price
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateDotfilesPriceDTO'
+      responses:
+        "200":
+          description: Updated
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Update the dotfiles price
+      tags:
+      - rices
+  /rices/{id}/dotfiles/type:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New type
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateDotfilesTypeDTO'
+      responses:
+        "200":
+          description: Updated
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Update the dotfiles type (free or one-time)
+      tags:
+      - rices
+  /rices/{id}/purchase:
+    post:
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns checkoutUrl (string)
+          schema:
+            type: object
+        "400":
+          description: Free dotfiles cannot be purchased
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "409":
+          description: Already owned
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Purchase dotfiles for a rice
+      tags:
+      - rices
+  /rices/{id}/screenshots:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Screenshot images (multiple allowed)
+        in: formData
+        name: '"files[]"'
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Returns screenshots array
+          schema:
+            type: object
+        "400":
+          description: Missing files
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Upload one or more screenshots for a rice
+      tags:
+      - rices
+  /rices/{id}/screenshots/{screenshotId}:
+    delete:
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Screenshot ID (UUID)
+        in: path
+        name: screenshotId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid UUID
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Screenshot not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "422":
+          description: At least one screenshot required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Delete a screenshot from a rice
+      tags:
+      - rices
+  /rices/{id}/star:
+    delete:
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Unstarred
+        "400":
+          description: Invalid UUID
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Unstar a rice
+      tags:
+      - rices
+    post:
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "201":
+          description: Starred
+        "400":
+          description: Invalid UUID
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Star a rice
+      tags:
+      - rices
+  /rices/{id}/state:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New state
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateRiceStateDTO'
+      responses:
+        "200":
+          description: Accepted
+        "204":
+          description: Rejected
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Rice not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Accept or reject a waiting rice (admin only)
+      tags:
+      - rices
+  /rices/{id}/tags:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tag IDs to remove
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.UnattachTagsDTO'
+      responses:
+        "204":
+          description: Tags removed
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Remove tags from a rice
+      tags:
+      - rices
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Rice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tag IDs to attach
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.AttachTagsDTO'
+      responses:
+        "200":
+          description: Tags attached
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Attach tags to a rice
+      tags:
+      - rices
+  /tags:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TagDTO'
+            type: array
+      summary: List all tags
+      tags:
+      - tags
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tag name
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.TagNameDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.TagDTO'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "409":
+          description: Tag already exists
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Create a new tag (admin only)
+      tags:
+      - tags
+  /tags/{id}:
+    delete:
+      parameters:
+      - description: Tag ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Tag not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Delete a tag (admin only)
+      tags:
+      - tags
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tag ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New tag name
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.TagNameDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TagDTO'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: Tag not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Rename a tag (admin only)
+      tags:
+      - tags
+  /users:
+    get:
+      description: 'Public: use ?username= to find a specific user. Admin-only: ?status=banned
+        to list banned users, or no query for recent users'
+      parameters:
+      - description: Filter by exact username
+        in: query
+        name: username
+        type: string
+      - description: 'Filter by status (admin only, value: banned)'
+        in: query
+        name: status
+        type: string
+      - description: Max results for admin recent-users query (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: UserDTO or array of UserDTO / UserWithBanDTO
+          schema:
+            type: object
+        "400":
+          description: Bad query
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: List users or look up a user by username
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Password confirmation
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeleteUserDTO'
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Delete a user account
+      tags:
+      - users
+    get:
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserDTO'
+        "400":
+          description: Invalid UUID
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Get a user by ID
+      tags:
+      - users
+  /users/{id}/avatar:
+    delete:
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns default avatarUrl (string)
+          schema:
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Delete a user's avatar (resets to default)
+      tags:
+      - users
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Avatar image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Returns avatarUrl (string)
+          schema:
+            type: object
+        "400":
+          description: Missing file
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Upload a new avatar for a user
+      tags:
+      - users
+  /users/{id}/ban:
+    delete:
+      parameters:
+      - description: Target user ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Unbanned
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "409":
+          description: User is not banned
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Unban a user (admin only)
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Target user ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Ban details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.BanUserDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.UserBanDTO'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Admin access required
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "409":
+          description: User already banned
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Ban a user (admin only)
+      tags:
+      - users
+  /users/{id}/displayName:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New display name
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateDisplayNameDTO'
+      responses:
+        "204":
+          description: Updated
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Update a user's display name
+      tags:
+      - users
+  /users/{id}/password:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Old and new passwords
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdatePasswordDTO'
+      responses:
+        "204":
+          description: Updated
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Invalid current password
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: Update a user's password
+      tags:
+      - users
+  /users/{id}/purchased:
+    get:
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.PartialRiceDTO'
+            type: array
+        "400":
+          description: Invalid UUID
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      security:
+      - BearerAuth: []
+      summary: List dotfiles the authenticated user has purchased
+      tags:
+      - users
+  /users/{id}/rices:
+    get:
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.PartialRiceDTO'
+            type: array
+        "400":
+          description: Invalid UUID
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: List all rices belonging to a user
+      tags:
+      - users
+  /users/{id}/rices/{slug}:
+    get:
+      parameters:
+      - description: Username
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rice slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RiceWithRelationsDTO'
+        "404":
+          description: Rice not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: Get a specific rice owned by a user by slug
+      tags:
+      - users
+  /vars/{key}:
+    get:
+      parameters:
+      - description: Variable key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WebsiteVariableDTO'
+        "404":
+          description: Variable not found
+          schema:
+            $ref: '#/definitions/models.ErrorDTO'
+      summary: Get a website variable by key
+      tags:
+      - vars
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and your JWT access token.

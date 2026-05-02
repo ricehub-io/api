@@ -8,7 +8,3137 @@
     },
     "host": "127.0.0.1:3000",
     "basePath": "/",
-    "paths": {},
+    "paths": {
+        "/admin/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get service-wide statistics (admin only)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ServiceStatisticsDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Authenticate with username and password",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.LoginDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns accessToken (string) and user (UserDTO)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout and clear the refresh token cookie",
+                "responses": {
+                    "200": {
+                        "description": "Logged out"
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Reads the refresh_token HttpOnly cookie and issues a new access token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh the access token",
+                "responses": {
+                    "200": {
+                        "description": "Returns accessToken (string)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Refresh token missing",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or expired refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Register a new user account",
+                "parameters": [
+                    {
+                        "description": "Registration data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RegisterDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "User created"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Username taken",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/comments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "List recent comments (admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Max number of comments to return (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CommentWithUserDTO"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "Create a comment on a rice",
+                "parameters": [
+                    {
+                        "description": "Comment content and rice ID",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateCommentDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.RiceCommentDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Rice not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/comments/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "Get a comment by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Comment ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RiceCommentWithSlugDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Comment not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "Delete a comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Comment ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Comment not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "Update a comment's content",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Comment ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New content",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateCommentDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RiceCommentDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Comment not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/leaderboard/month": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "leaderboard"
+                ],
+                "summary": "Get the monthly leaderboard",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.LeaderboardRiceDTO"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/leaderboard/week": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "leaderboard"
+                ],
+                "summary": "Get the weekly leaderboard",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.LeaderboardRiceDTO"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/leaderboard/year": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "leaderboard"
+                ],
+                "summary": "Get the yearly leaderboard",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.LeaderboardRiceDTO"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/links/subscription": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "links"
+                ],
+                "summary": "Get the checkout URL for a subscription",
+                "responses": {
+                    "200": {
+                        "description": "Returns checkoutUrl (string)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "409": {
+                        "description": "Already has active subscription",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/links/{name}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "links"
+                ],
+                "summary": "Get a link by name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Link name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LinkDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Link not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/{username}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profiles"
+                ],
+                "summary": "Get a user profile with their rices by username",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Username (alphanumeric)",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns user (UserDTO) and rices ([]PartialRiceDTO)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid username",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "List all reports (admin only)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ReportWithUserDTO"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Submit a report for a rice or comment",
+                "parameters": [
+                    {
+                        "description": "Report details (riceId OR commentId)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateReportDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Returns reportId (UUID)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Already reported",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get a report by ID (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ReportWithUserDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Report not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/{id}/close": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Close a report (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Closed"
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Report not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices": {
+            "get": {
+                "description": "Pass state=waiting (admin only) to list rices pending review",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "List rices with cursor-based pagination",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sort order: trending, recent, mostDownloads, mostStars (default: trending)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by state (admin only: waiting)",
+                        "name": "state",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cursor: UUID of the last seen rice",
+                        "name": "lastId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Cursor: score of the last seen rice (required with lastId when sort=trending)",
+                        "name": "lastScore",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cursor: ISO timestamp (required with lastId when sort=recent)",
+                        "name": "lastCreatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Cursor: downloads count (required with lastId when sort=mostDownloads)",
+                        "name": "lastDownloads",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Cursor: stars count (required with lastId when sort=mostStars)",
+                        "name": "lastStars",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Reverse pagination direction",
+                        "name": "reverse",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns pageCount (int) and rices ([]PartialRiceDTO)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Create a new rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Title (4-32 chars)",
+                        "name": "title",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Description (4-10240 chars)",
+                        "name": "description",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON array of tag IDs e.g. [1,2]",
+                        "name": "tags",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "free or one-time",
+                        "name": "dotfilesType",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Price in USD (required when dotfilesType is one-time)",
+                        "name": "dotfilesPrice",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Dotfiles archive",
+                        "name": "dotfiles",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Screenshots (multiple allowed)",
+                        "name": "\"screenshots[]\"",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Get a rice by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RiceWithRelationsDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Rice not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Delete a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Rice not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Update rice title and/or description",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateRiceDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Rice not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/comments": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "List comments for a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CommentWithUserDTO"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Rice not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/dotfiles": {
+            "get": {
+                "description": "Returns the dotfiles archive as a file attachment. Free dotfiles are public; paid dotfiles require ownership",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Download dotfiles for a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File attachment"
+                    },
+                    "403": {
+                        "description": "Access denied",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Rice not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Replace the dotfiles archive for a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Dotfiles archive",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RiceDotfilesDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing file",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/dotfiles/price": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Update the dotfiles price",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New price",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateDotfilesPriceDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/dotfiles/type": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Update the dotfiles type (free or one-time)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New type",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateDotfilesTypeDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/purchase": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Purchase dotfiles for a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns checkoutUrl (string)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Free dotfiles cannot be purchased",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Already owned",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/screenshots": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Upload one or more screenshots for a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Screenshot images (multiple allowed)",
+                        "name": "\"files[]\"",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Returns screenshots array",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing files",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/screenshots/{screenshotId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Delete a screenshot from a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Screenshot ID (UUID)",
+                        "name": "screenshotId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "400": {
+                        "description": "Invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Screenshot not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "422": {
+                        "description": "At least one screenshot required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/star": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Star a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Starred"
+                    },
+                    "400": {
+                        "description": "Invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Unstar a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Unstarred"
+                    },
+                    "400": {
+                        "description": "Invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/state": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Accept or reject a waiting rice (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New state",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateRiceStateDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Accepted"
+                    },
+                    "204": {
+                        "description": "Rejected"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Rice not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/rices/{id}/tags": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Attach tags to a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tag IDs to attach",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AttachTagsDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tags attached"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rices"
+                ],
+                "summary": "Remove tags from a rice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rice ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tag IDs to remove",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UnattachTagsDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Tags removed"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/tags": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "List all tags",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TagDTO"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "Create a new tag (admin only)",
+                "parameters": [
+                    {
+                        "description": "Tag name",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.TagNameDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.TagDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Tag already exists",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/tags/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "Delete a tag (admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Tag ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Tag not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "Rename a tag (admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Tag ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New tag name",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.TagNameDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TagDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Tag not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "description": "Public: use ?username= to find a specific user. Admin-only: ?status=banned to list banned users, or no query for recent users",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List users or look up a user by username",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by exact username",
+                        "name": "username",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status (admin only, value: banned)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max results for admin recent-users query (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "UserDTO or array of UserDTO / UserWithBanDTO",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad query",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get a user by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete a user account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Password confirmation",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DeleteUserDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/avatar": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Upload a new avatar for a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Avatar image file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Returns avatarUrl (string)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing file",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete a user's avatar (resets to default)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns default avatarUrl (string)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/ban": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Ban a user (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Target user ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Ban details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.BanUserDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserBanDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "User already banned",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Unban a user (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Target user ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Unbanned"
+                    },
+                    "403": {
+                        "description": "Admin access required",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "User is not banned",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/displayName": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update a user's display name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New display name",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateDisplayNameDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Updated"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/password": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update a user's password",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Old and new passwords",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdatePasswordDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Updated"
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid current password",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/purchased": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List dotfiles the authenticated user has purchased",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.PartialRiceDTO"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/rices": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List all rices belonging to a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.PartialRiceDTO"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/rices/{slug}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get a specific rice owned by a user by slug",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Username",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Rice slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RiceWithRelationsDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Rice not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/vars/{key}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vars"
+                ],
+                "summary": "Get a website variable by key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Variable key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WebsiteVariableDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Variable not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.AttachTagsDTO": {
+            "type": "object",
+            "required": [
+                "tags"
+            ],
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "models.BanUserDTO": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "duration": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 1024,
+                    "minLength": 6
+                }
+            }
+        },
+        "models.CommentWithUserDTO": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "commentId": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "isBanned": {
+                    "type": "boolean"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CreateCommentDTO": {
+            "type": "object",
+            "required": [
+                "content",
+                "riceId"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 8
+                },
+                "riceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CreateReportDTO": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "commentId": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 1024,
+                    "minLength": 8
+                },
+                "riceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DeleteUserDTO": {
+            "type": "object",
+            "required": [
+                "password"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DotfilesType": {
+            "type": "string",
+            "enum": [
+                "free",
+                "one-time"
+            ],
+            "x-enum-varnames": [
+                "Free",
+                "OneTime"
+            ]
+        },
+        "models.ErrorDTO": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.LeaderboardRiceDTO": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "downloads": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isFree": {
+                    "type": "boolean"
+                },
+                "isStarred": {
+                    "type": "boolean"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "stars": {
+                    "type": "integer"
+                },
+                "state": {
+                    "$ref": "#/definitions/models.RiceState"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "thumbnail": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LinkDTO": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LoginDTO": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.PartialRiceDTO": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "downloads": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isFree": {
+                    "type": "boolean"
+                },
+                "isStarred": {
+                    "type": "boolean"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "stars": {
+                    "type": "integer"
+                },
+                "state": {
+                    "$ref": "#/definitions/models.RiceState"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "thumbnail": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RegisterDTO": {
+            "type": "object",
+            "required": [
+                "displayName",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "displayName": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 3
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 6
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 14,
+                    "minLength": 4
+                }
+            }
+        },
+        "models.ReportWithUserDTO": {
+            "type": "object",
+            "properties": {
+                "commentId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isClosed": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "reporterId": {
+                    "type": "string"
+                },
+                "riceId": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RiceCommentDTO": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "riceId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RiceCommentWithSlugDTO": {
+            "type": "object",
+            "properties": {
+                "authorId": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "riceAuthorUsername": {
+                    "type": "string"
+                },
+                "riceId": {
+                    "type": "string"
+                },
+                "riceSlug": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RiceDotfilesDTO": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "filePath": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "type": {
+                    "$ref": "#/definitions/models.DotfilesType"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RiceScreenshotDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RiceState": {
+            "type": "string",
+            "enum": [
+                "waiting",
+                "accepted"
+            ],
+            "x-enum-varnames": [
+                "Waiting",
+                "Accepted"
+            ]
+        },
+        "models.RiceWithRelationsDTO": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/models.UserDTO"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dotfiles": {
+                    "$ref": "#/definitions/models.RiceDotfilesDTO"
+                },
+                "downloads": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isOwned": {
+                    "type": "boolean"
+                },
+                "isStarred": {
+                    "type": "boolean"
+                },
+                "screenshots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RiceScreenshotDTO"
+                    }
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "stars": {
+                    "type": "integer"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TagDTO"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ServiceStatisticsDTO": {
+            "type": "object",
+            "properties": {
+                "comment24hCount": {
+                    "type": "integer"
+                },
+                "commentCount": {
+                    "type": "integer"
+                },
+                "openReportCount": {
+                    "type": "integer"
+                },
+                "reportCount": {
+                    "type": "integer"
+                },
+                "rice24hCount": {
+                    "type": "integer"
+                },
+                "riceCount": {
+                    "type": "integer"
+                },
+                "user24hCount": {
+                    "type": "integer"
+                },
+                "userCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.TagDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TagNameDTO": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 16,
+                    "minLength": 2
+                }
+            }
+        },
+        "models.UnattachTagsDTO": {
+            "type": "object",
+            "required": [
+                "tags"
+            ],
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "models.UpdateCommentDTO": {
+            "type": "object",
+            "required": [
+                "content"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 8
+                }
+            }
+        },
+        "models.UpdateDisplayNameDTO": {
+            "type": "object",
+            "required": [
+                "displayName"
+            ],
+            "properties": {
+                "displayName": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 3
+                }
+            }
+        },
+        "models.UpdateDotfilesPriceDTO": {
+            "type": "object",
+            "required": [
+                "newPrice"
+            ],
+            "properties": {
+                "newPrice": {
+                    "type": "number"
+                }
+            }
+        },
+        "models.UpdateDotfilesTypeDTO": {
+            "type": "object",
+            "required": [
+                "newType"
+            ],
+            "properties": {
+                "newType": {
+                    "enum": [
+                        "free",
+                        "one-time"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.DotfilesType"
+                        }
+                    ]
+                }
+            }
+        },
+        "models.UpdatePasswordDTO": {
+            "type": "object",
+            "required": [
+                "newPassword",
+                "oldPassword"
+            ],
+            "properties": {
+                "newPassword": {
+                    "type": "string",
+                    "maxLength": 256,
+                    "minLength": 6
+                },
+                "oldPassword": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateRiceDTO": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 10240,
+                    "minLength": 4
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "minLength": 4
+                }
+            }
+        },
+        "models.UpdateRiceStateDTO": {
+            "type": "object",
+            "required": [
+                "newState"
+            ],
+            "properties": {
+                "newState": {
+                    "type": "string",
+                    "enum": [
+                        "accepted",
+                        "rejected"
+                    ]
+                }
+            }
+        },
+        "models.UserBanDTO": {
+            "type": "object",
+            "properties": {
+                "adminId": {
+                    "type": "string"
+                },
+                "bannedAt": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isRevoked": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "revokedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UserDTO": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isAdmin": {
+                    "type": "boolean"
+                },
+                "isBanned": {
+                    "type": "boolean"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WebsiteVariableDTO": {
+            "type": "object",
+            "properties": {
+                "updatedAt": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        }
+    },
     "securityDefinitions": {
         "BearerAuth": {
             "description": "Type \"Bearer\" followed by a space and your JWT access token.",

@@ -28,6 +28,17 @@ type usersPath struct {
 	UserID string `uri:"id" binding:"required,uuid"`
 }
 
+// @Summary List users or look up a user by username
+// @Description Public: use ?username= to find a specific user. Admin-only: ?status=banned to list banned users, or no query for recent users
+// @Tags users
+// @Produce json
+// @Param username query string false "Filter by exact username"
+// @Param status query string false "Filter by status (admin only, value: banned)"
+// @Param limit query int false "Max results for admin recent-users query (default 20)"
+// @Success 200 {object} object "UserDTO or array of UserDTO / UserWithBanDTO"
+// @Failure 400 {object} models.ErrorDTO "Bad query"
+// @Failure 403 {object} models.ErrorDTO "Admin access required"
+// @Router /users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	var query struct {
 		Status   string `form:"status"`
@@ -93,6 +104,15 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, models.UsersToDTO(users))
 }
 
+// @Summary Get a user by ID
+// @Tags users
+// @Produce json
+// @Param id path string true "User ID (UUID)"
+// @Success 200 {object} models.UserDTO
+// @Failure 400 {object} models.ErrorDTO "Invalid UUID"
+// @Failure 404 {object} models.ErrorDTO "User not found"
+// @Security BearerAuth
+// @Router /users/{id} [get]
 func (h *UserHandler) GetUserByID(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -113,6 +133,14 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, user.ToDTO())
 }
 
+// @Summary Get a specific rice owned by a user by slug
+// @Tags users
+// @Produce json
+// @Param id path string true "Username"
+// @Param slug path string true "Rice slug"
+// @Success 200 {object} models.RiceWithRelationsDTO
+// @Failure 404 {object} models.ErrorDTO "Rice not found"
+// @Router /users/{id}/rices/{slug} [get]
 func (h *UserHandler) GetUserRiceBySlug(c *gin.Context) {
 	// gin requires the param name to match the route definition, which uses :id here
 	username := c.Param("id")
@@ -131,6 +159,13 @@ func (h *UserHandler) GetUserRiceBySlug(c *gin.Context) {
 	c.JSON(http.StatusOK, rice.ToDTO())
 }
 
+// @Summary List all rices belonging to a user
+// @Tags users
+// @Produce json
+// @Param id path string true "User ID (UUID)"
+// @Success 200 {array} models.PartialRiceDTO
+// @Failure 400 {object} models.ErrorDTO "Invalid UUID"
+// @Router /users/{id}/rices [get]
 func (h *UserHandler) ListUserRices(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -149,6 +184,15 @@ func (h *UserHandler) ListUserRices(c *gin.Context) {
 	c.JSON(http.StatusOK, rices.ToDTO())
 }
 
+// @Summary List dotfiles the authenticated user has purchased
+// @Tags users
+// @Produce json
+// @Param id path string true "User ID (UUID)"
+// @Success 200 {array} models.PartialRiceDTO
+// @Failure 400 {object} models.ErrorDTO "Invalid UUID"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Security BearerAuth
+// @Router /users/{id}/purchased [get]
 func (h *UserHandler) ListPurchasedRices(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -169,6 +213,16 @@ func (h *UserHandler) ListPurchasedRices(c *gin.Context) {
 	c.JSON(http.StatusOK, rices.ToDTO())
 }
 
+// @Summary Update a user's display name
+// @Tags users
+// @Accept json
+// @Param id path string true "User ID (UUID)"
+// @Param body body models.UpdateDisplayNameDTO true "New display name"
+// @Success 204 "Updated"
+// @Failure 400 {object} models.ErrorDTO "Validation error"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Security BearerAuth
+// @Router /users/{id}/displayName [patch]
 func (h *UserHandler) UpdateDisplayName(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -194,6 +248,16 @@ func (h *UserHandler) UpdateDisplayName(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// @Summary Update a user's password
+// @Tags users
+// @Accept json
+// @Param id path string true "User ID (UUID)"
+// @Param body body models.UpdatePasswordDTO true "Old and new passwords"
+// @Success 204 "Updated"
+// @Failure 400 {object} models.ErrorDTO "Validation error"
+// @Failure 403 {object} models.ErrorDTO "Invalid current password"
+// @Security BearerAuth
+// @Router /users/{id}/password [patch]
 func (h *UserHandler) UpdatePassword(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -219,6 +283,17 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// @Summary Upload a new avatar for a user
+// @Tags users
+// @Accept mpfd
+// @Produce json
+// @Param id path string true "User ID (UUID)"
+// @Param file formData file true "Avatar image file"
+// @Success 201 {object} object "Returns avatarUrl (string)"
+// @Failure 400 {object} models.ErrorDTO "Missing file"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Security BearerAuth
+// @Router /users/{id}/avatar [post]
 func (h *UserHandler) UpdateAvatar(c *gin.Context) {
 	var err error
 
@@ -247,6 +322,14 @@ func (h *UserHandler) UpdateAvatar(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"avatarUrl": avatarURL})
 }
 
+// @Summary Delete a user's avatar (resets to default)
+// @Tags users
+// @Produce json
+// @Param id path string true "User ID (UUID)"
+// @Success 200 {object} object "Returns default avatarUrl (string)"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Security BearerAuth
+// @Router /users/{id}/avatar [delete]
 func (h *UserHandler) DeleteAvatar(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -268,6 +351,18 @@ func (h *UserHandler) DeleteAvatar(c *gin.Context) {
 	})
 }
 
+// @Summary Ban a user (admin only)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "Target user ID (UUID)"
+// @Param body body models.BanUserDTO true "Ban details"
+// @Success 201 {object} models.UserBanDTO
+// @Failure 400 {object} models.ErrorDTO "Validation error"
+// @Failure 403 {object} models.ErrorDTO "Admin access required"
+// @Failure 409 {object} models.ErrorDTO "User already banned"
+// @Security BearerAuth
+// @Router /users/{id}/ban [post]
 func (h *UserHandler) BanUser(c *gin.Context) {
 	token := c.MustGet("token").(*security.AccessToken)
 	adminID, _ := uuid.Parse(token.Subject)
@@ -294,6 +389,14 @@ func (h *UserHandler) BanUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, userBan.ToDTO())
 }
 
+// @Summary Unban a user (admin only)
+// @Tags users
+// @Param id path string true "Target user ID (UUID)"
+// @Success 204 "Unbanned"
+// @Failure 403 {object} models.ErrorDTO "Admin access required"
+// @Failure 409 {object} models.ErrorDTO "User is not banned"
+// @Security BearerAuth
+// @Router /users/{id}/ban [delete]
 func (h *UserHandler) UnbanUser(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
@@ -310,6 +413,16 @@ func (h *UserHandler) UnbanUser(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// @Summary Delete a user account
+// @Tags users
+// @Accept json
+// @Param id path string true "User ID (UUID)"
+// @Param body body models.DeleteUserDTO true "Password confirmation"
+// @Success 204 "Deleted"
+// @Failure 400 {object} models.ErrorDTO "Validation error"
+// @Failure 403 {object} models.ErrorDTO "Forbidden"
+// @Security BearerAuth
+// @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	var path usersPath
 	if err := c.ShouldBindUri(&path); err != nil {
