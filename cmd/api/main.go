@@ -19,9 +19,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+const logLevel = zap.InfoLevel
 const configPath = "config.toml"
 
 func main() {
@@ -124,14 +124,6 @@ func updateLeaderboard(dbPool *pgxpool.Pool, leaderboard *repository.RiceLeaderb
 }
 
 func setupLogger() *zap.Logger {
-	fileWriter := zapcore.AddSync(&lumberjack.Logger{
-		Filename:   "./logs/gin.json",
-		MaxSize:    10,
-		MaxBackups: 3,
-		MaxAge:     7,
-	})
-	fileEncoder := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
-
 	encodeCfg := zap.NewDevelopmentEncoderConfig()
 	encodeCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	encodeCfg.EncodeTime = func(t time.Time, pae zapcore.PrimitiveArrayEncoder) {
@@ -139,15 +131,10 @@ func setupLogger() *zap.Logger {
 	}
 
 	consoleEncoder := zapcore.NewConsoleEncoder(encodeCfg)
-	consoleWriter := zapcore.AddSync(os.Stdout)
-
-	level := zap.InfoLevel
-	core := zapcore.NewTee(
-		zapcore.NewCore(consoleEncoder, consoleWriter, level),
-		zapcore.NewCore(fileEncoder, fileWriter, level),
-	)
+	core := zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), logLevel)
 
 	logger := zap.New(core)
 	zap.ReplaceGlobals(logger)
+
 	return logger
 }

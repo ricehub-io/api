@@ -1,7 +1,5 @@
--- required extensions
 CREATE EXTENSION IF NOT EXISTS citext;
 
--- table schemas
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username CITEXT NOT NULL UNIQUE,
@@ -291,11 +289,7 @@ CREATE TYPE subscription_status AS ENUM (
     'canceled'
 );
 
-ALTER TABLE user_subscriptions
-    ADD COLUMN status subscription_status NOT NULL;
+ALTER TABLE user_subscriptions ADD COLUMN status subscription_status NOT NULL;
 
 -- previews => screenshots refactor
-ALTER TABLE rice_previews
-    RENAME TO rice_screenshots;
-
--- DROP TRIGGER update_rice_previews_updated_at ON rice_screenshots;
+ALTER TABLE rice_previews RENAME TO rice_screenshots;

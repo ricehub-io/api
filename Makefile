@@ -26,10 +26,9 @@ test:
 lint:
 	golangci-lint run ./...
 
-## fmt: format code with gofmt and goimports
+## fmt: check if codebase is compliant with goimports' formatting
 fmt:
-	gofmt -w .
-	goimports -w .
+	goimports -l .
 
 ## vet: run go vet
 vet:
@@ -61,4 +60,4 @@ install-tools:
 
 ## help: list available targets
 help:
-	@grep -E '^##' Makefile | sed 's/## //'
+	@grep -E "^##" Makefile | sed "s/## //"

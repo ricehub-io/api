@@ -23,7 +23,6 @@ require (
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
 	go.uber.org/zap v1.27.1
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
