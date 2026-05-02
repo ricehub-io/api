@@ -275,7 +275,6 @@ func TestAddAndRemoveRiceTags(t *testing.T) {
 	userID, tok := registerUser(t, "tagowner", "Password123!")
 	riceID := createRice(t, userID, tok, "Rice For Tags")
 
-	// unaimeds: tags automatically seeded from schema.sql
 	addBody := `{"tags":[1,2]}`
 	addW := testutil.DoRequest(testApp, http.MethodPost, "/rices/"+riceID+"/tags", addBody, testutil.AuthHeader(tok))
 	if addW.Code != http.StatusOK {

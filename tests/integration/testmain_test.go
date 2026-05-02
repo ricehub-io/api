@@ -12,7 +12,7 @@ import (
 var testApp *gin.Engine
 
 func TestMain(m *testing.M) {
-	schemaAbs, err := filepath.Abs("../../schema.sql")
+	migrationDir, err := filepath.Abs("../../migrations")
 	if err != nil {
 		panic(err)
 	}
@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	pool, stopDB := testutil.MustStartPostgres(schemaAbs)
+	pool, stopDB := testutil.MustStartPostgres(migrationDir)
 	stopRedis := testutil.MustStartRedis()
 
 	testApp = testutil.SetupTestApp(pool)
