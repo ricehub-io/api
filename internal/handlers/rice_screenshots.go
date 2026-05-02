@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"net/http"
-	"ricehub/internal/errs"
-	"ricehub/internal/security"
-	"ricehub/internal/services"
 	"strings"
+
+	"github.com/ricehub-io/api/internal/errs"
+	"github.com/ricehub-io/api/internal/security"
+	"github.com/ricehub-io/api/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

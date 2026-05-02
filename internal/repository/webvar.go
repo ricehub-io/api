@@ -2,7 +2,8 @@ package repository
 
 import (
 	"context"
-	"ricehub/internal/models"
+
+	"github.com/ricehub-io/api/internal/models"
 )
 
 type WebVarRepository struct {

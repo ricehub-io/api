@@ -15,18 +15,19 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"ricehub/internal/app"
-	"ricehub/internal/cache"
-	"ricehub/internal/config"
-	"ricehub/internal/grpc"
-	"ricehub/internal/repository"
-	"ricehub/internal/security"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
-	pb "ricehub/proto"
+	"github.com/ricehub-io/api/internal/cache"
+	"github.com/ricehub-io/api/internal/config"
+	"github.com/ricehub-io/api/internal/grpc"
+	"github.com/ricehub-io/api/internal/repository"
+	"github.com/ricehub-io/api/internal/router"
+	"github.com/ricehub-io/api/internal/security"
+
+	pb "github.com/ricehub-io/api/proto"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
@@ -190,7 +191,7 @@ func MustStartRedis() func() {
 }
 
 func SetupTestApp(pool *pgxpool.Pool) *gin.Engine {
-	return app.New(pool, zap.NewNop())
+	return router.New(pool, zap.NewNop())
 }
 
 // MakeAccessToken returns a "Bearer <token>" string signed with the test key.

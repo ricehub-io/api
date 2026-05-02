@@ -3,8 +3,9 @@ package integration
 import (
 	"os"
 	"path/filepath"
-	"ricehub/internal/testutil"
 	"testing"
+
+	"github.com/ricehub-io/api/internal/testutil"
 
 	"github.com/gin-gonic/gin"
 )

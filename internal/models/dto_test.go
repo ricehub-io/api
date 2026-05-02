@@ -1,9 +1,10 @@
 package models
 
 import (
-	"ricehub/internal/config"
 	"testing"
 	"time"
+
+	"github.com/ricehub-io/api/internal/config"
 
 	"github.com/google/uuid"
 )

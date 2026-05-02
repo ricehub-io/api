@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"net/http"
-	"ricehub/internal/errs"
-	"ricehub/internal/models"
-	"ricehub/internal/services"
+
+	"github.com/ricehub-io/api/internal/errs"
+	"github.com/ricehub-io/api/internal/models"
+	"github.com/ricehub-io/api/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

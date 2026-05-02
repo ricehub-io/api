@@ -1,0 +1,15 @@
+basePath: /
+host: 127.0.0.1:3000
+info:
+  contact: {}
+  description: API for RiceHub website.
+  title: RiceHub API
+  version: 1.0.0
+paths: {}
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and your JWT access token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

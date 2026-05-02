@@ -10,10 +10,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"ricehub/internal/config"
-	"ricehub/internal/errs"
-	"ricehub/internal/grpc"
-	"ricehub/internal/validation"
+
+	"github.com/ricehub-io/api/internal/config"
+	"github.com/ricehub-io/api/internal/errs"
+	"github.com/ricehub-io/api/internal/grpc"
+	"github.com/ricehub-io/api/internal/validation"
 
 	"github.com/chai2010/webp"
 	"github.com/google/uuid"

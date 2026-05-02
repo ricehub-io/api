@@ -3,9 +3,10 @@ package repository
 import (
 	"context"
 	"fmt"
-	"ricehub/internal/config"
-	"ricehub/internal/models"
 	"time"
+
+	"github.com/ricehub-io/api/internal/config"
+	"github.com/ricehub-io/api/internal/models"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

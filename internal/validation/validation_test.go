@@ -7,8 +7,9 @@ import (
 	"io"
 	"mime/multipart"
 	"net/textproto"
-	"ricehub/internal/config"
 	"testing"
+
+	"github.com/ricehub-io/api/internal/config"
 )
 
 func init() {

@@ -2,8 +2,9 @@ package integration
 
 import (
 	"net/http"
-	"ricehub/internal/testutil"
 	"testing"
+
+	"github.com/ricehub-io/api/internal/testutil"
 )
 
 // ---------------------------------------------------------------------------

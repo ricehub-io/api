@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"ricehub/internal/errs"
-	"ricehub/internal/models"
-	"ricehub/internal/repository"
-	"ricehub/internal/security"
-	"ricehub/internal/validation"
+
+	"github.com/ricehub-io/api/internal/errs"
+	"github.com/ricehub-io/api/internal/models"
+	"github.com/ricehub-io/api/internal/repository"
+	"github.com/ricehub-io/api/internal/security"
+	"github.com/ricehub-io/api/internal/validation"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/golang-jwt/jwt/v5"

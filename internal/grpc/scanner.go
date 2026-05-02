@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	pb "ricehub/proto"
+	pb "github.com/ricehub-io/api/proto"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"

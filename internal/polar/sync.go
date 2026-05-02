@@ -2,16 +2,13 @@ package polar
 
 import (
 	"context"
-	"errors"
-	"ricehub/internal/models"
-	"ricehub/internal/repository"
-	"slices"
 	"time"
+
+	"github.com/ricehub-io/api/internal/repository"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/polarsource/polar-go/models/components"
 	"go.uber.org/zap"
 )
 
@@ -54,63 +51,63 @@ func syncDotfilesPurchases(
 	rdfRepo *repository.RiceDotfilesRepository,
 	dfpRepo *repository.DotfilesPurchaseRepository,
 ) error {
-	after := time.Now().Add(-24 * time.Hour)
+	// after := time.Now().Add(-24 * time.Hour)
 
-	events, err := EventList(components.SystemEventTypeOrderPaid, &after)
-	if err != nil {
-		return err
-	}
+	// events, err := EventList(components.SystemEventTypeOrderPaid, &after)
+	// if err != nil {
+	// 	return err
+	// }
 
-	stored, err := dfpRepo.DotfilesPurchases(ctx, after)
-	if err != nil {
-		return err
-	}
+	// stored, err := dfpRepo.DotfilesPurchases(ctx, after)
+	// if err != nil {
+	// 	return err
+	// }
 
-	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
+	// tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
+	// if err != nil {
+	// 	return err
+	// }
+	// defer tx.Rollback(ctx)
 
-	new := 0
-	for _, event := range events {
-		order := event.OrderPaidEvent
+	// new := 0
+	// for _, event := range events {
+	// 	order := event.OrderPaidEvent
 
-		meta := order.GetMetadata()
-		strProductID := meta.ProductID
-		strCustomerID := order.GetCustomer().ExternalID
-		if strProductID == nil || strCustomerID == nil {
-			continue
-		}
-		productID, _ := uuid.Parse(*strProductID)
-		customerID, _ := uuid.Parse(*strCustomerID)
+	// 	meta := order.GetMetadata()
+	// 	strProductID := meta.ProductID
+	// 	strCustomerID := order.GetCustomer().ExternalID
+	// 	if strProductID == nil || strCustomerID == nil {
+	// 		continue
+	// 	}
+	// 	productID, _ := uuid.Parse(*strProductID)
+	// 	customerID, _ := uuid.Parse(*strCustomerID)
 
-		if !slices.ContainsFunc(stored, func(s models.DotfilesPurchase) bool {
-			return s.ProductID == productID && s.UserID == customerID
-		}) {
-			df, err := rdfRepo.FindDotfilesByProductID(ctx, productID)
-			if err != nil {
-				if errors.Is(err, pgx.ErrNoRows) {
-					continue
-				}
-				return err
-			}
+	// 	if !slices.ContainsFunc(stored, func(s models.DotfilesPurchase) bool {
+	// 		return s.ProductID == productID && s.UserID == customerID
+	// 	}) {
+	// 		df, err := rdfRepo.FindDotfilesByProductID(ctx, productID)
+	// 		if err != nil {
+	// 			if errors.Is(err, pgx.ErrNoRows) {
+	// 				continue
+	// 			}
+	// 			return err
+	// 		}
 
-			paidAmount := centsToPrice(meta.Amount)
-			err = dfpRepo.InsertDotfilesPurchaseTx(ctx, customerID, df.RiceID, paidAmount, order.Timestamp)
-			if err != nil {
-				return err
-			}
+	// 		paidAmount := centsToPrice(meta.Amount)
+	// 		err = dfpRepo.InsertDotfilesPurchaseTx(ctx, customerID, df.RiceID, paidAmount, order.Timestamp)
+	// 		if err != nil {
+	// 			return err
+	// 		}
 
-			new++
-		}
-	}
+	// 		new++
+	// 	}
+	// }
 
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
+	// if err := tx.Commit(ctx); err != nil {
+	// 	return err
+	// }
 
-	zap.L().Sugar().Infof("Synchronized %d new dotfiles purchases", new)
+	// zap.L().Sugar().Infof("Synchronized %d new dotfiles purchases", new)
 	return nil
 }
 

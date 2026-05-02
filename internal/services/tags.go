@@ -3,9 +3,10 @@ package services
 import (
 	"context"
 	"errors"
-	"ricehub/internal/errs"
-	"ricehub/internal/models"
-	"ricehub/internal/repository"
+
+	"github.com/ricehub-io/api/internal/errs"
+	"github.com/ricehub-io/api/internal/models"
+	"github.com/ricehub-io/api/internal/repository"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"

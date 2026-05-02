@@ -1,6 +1,6 @@
 BINARY  := api
 BUILD   := build
-CMD     := ./cmd/api
+CMD     := .
 
 GOFLAGS := -trimpath
 LDFLAGS := -ldflags="-s -w"
@@ -51,12 +51,17 @@ check: fmt vet lint security
 clean:
 	rm -rf $(BUILD)
 
+## swagger: generate swagger docs
+swagger:
+	swag init
+
 ## install-tools: install required dev tools
 install-tools:
 	go install golang.org/x/tools/cmd/goimports@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	go install github.com/securego/gosec/v2/cmd/gosec@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
 
 ## help: list available targets
 help:

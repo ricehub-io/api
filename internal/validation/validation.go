@@ -7,10 +7,11 @@ import (
 	"mime/multipart"
 	"net/http"
 	"regexp"
-	"ricehub/internal/config"
-	"ricehub/internal/errs"
 	"slices"
 	"strings"
+
+	"github.com/ricehub-io/api/internal/config"
+	"github.com/ricehub-io/api/internal/errs"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gin-gonic/gin"

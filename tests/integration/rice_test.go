@@ -9,9 +9,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"ricehub/internal/testutil"
 	"strings"
 	"testing"
+
+	"github.com/ricehub-io/api/internal/testutil"
 )
 
 func createRice(t *testing.T, userID, tok, title string) string {

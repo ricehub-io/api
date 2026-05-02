@@ -27,7 +27,7 @@ The building steps below assume you are on a Unix-like system with all basic dev
 1. Clone the repository:
 
 ```sh
-git clone https://github.com/ricehub-io/api.git
+git clone https://github.com/ricehub-io/api/internal.git
 cd api
 ```
 

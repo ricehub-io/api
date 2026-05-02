@@ -5,21 +5,33 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"ricehub/internal/app"
-	"ricehub/internal/cache"
-	"ricehub/internal/config"
-	"ricehub/internal/grpc"
-	"ricehub/internal/models"
-	"ricehub/internal/polar"
-	"ricehub/internal/repository"
-	"ricehub/internal/security"
 	"time"
+
+	"github.com/ricehub-io/api/internal/cache"
+	"github.com/ricehub-io/api/internal/config"
+	"github.com/ricehub-io/api/internal/grpc"
+	"github.com/ricehub-io/api/internal/models"
+	"github.com/ricehub-io/api/internal/repository"
+	"github.com/ricehub-io/api/internal/router"
+	"github.com/ricehub-io/api/internal/security"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+// @title RiceHub API
+// @version 1.0.0
+// @description API for RiceHub website.
+
+// @host 127.0.0.1:3000
+// @BasePath /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and your JWT access token.
 
 const logLevel = zap.InfoLevel
 const configPath = "config.toml"
@@ -31,12 +43,11 @@ func main() {
 }
 
 func run() error {
-	logger := setupLogger()
+	logger := initZapLogger()
 	defer logger.Sync() //nolint:errcheck
 
 	config.InitConfig(configPath)
-	// validation.InitValidator()
-	polar.Init(config.Config.Polar.Token, config.Config.Polar.Sandbox)
+	// polar.Init(config.Config.Polar.Token, config.Config.Polar.Sandbox)
 	security.InitJWT(config.Config.Server.KeysDir)
 
 	if config.Config.App.DisableRateLimits {
@@ -52,25 +63,21 @@ func run() error {
 	dbPool := repository.NewPool(config.Config.Database.DatabaseUrl)
 	defer dbPool.Close()
 
-	// TODO: read gRPC url from config file
-	grpc.InitScanner("localhost:40400")
+	grpc.InitScanner(config.Config.Server.ScannerURL)
 	defer grpc.CloseScanner() //nolint:errcheck
 
-	dotfilesPurchaseRepo := repository.NewDotfilesPurchaseRepository(dbPool)
-	riceDotfilesRepo := repository.NewRiceDotfilesRepository(dbPool)
+	// dotfilesPurchaseRepo := repository.NewDotfilesPurchaseRepository(dbPool)
+	// riceDotfilesRepo := repository.NewRiceDotfilesRepository(dbPool)
 	riceLeaderboardRepo := repository.NewRiceLeaderboardRepository(dbPool)
-	userSubscriptionRepo := repository.NewUserSubscriptionRepository(dbPool)
+	// userSubscriptionRepo := repository.NewUserSubscriptionRepository(dbPool)
 
-	go polar.StartSyncThread(dbPool, riceDotfilesRepo, dotfilesPurchaseRepo, userSubscriptionRepo)
+	// go polar.StartSyncThread(dbPool, riceDotfilesRepo, dotfilesPurchaseRepo, userSubscriptionRepo)
 	go startLeaderboardSync(dbPool, riceLeaderboardRepo)
 
-	r := app.New(dbPool, logger)
+	r := router.New(dbPool, logger)
 
 	port := config.Config.Server.Port
-	logger.Info(
-		"API is now available",
-		zap.Uint16("port", port),
-	)
+	logger.Sugar().Infof("API available at http://127.0.0.1:%d", port)
 	return r.Run(fmt.Sprintf(":%v", port))
 }
 
@@ -123,7 +130,7 @@ func updateLeaderboard(dbPool *pgxpool.Pool, leaderboard *repository.RiceLeaderb
 	}
 }
 
-func setupLogger() *zap.Logger {
+func initZapLogger() *zap.Logger {
 	encodeCfg := zap.NewDevelopmentEncoderConfig()
 	encodeCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	encodeCfg.EncodeTime = func(t time.Time, pae zapcore.PrimitiveArrayEncoder) {
