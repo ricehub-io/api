@@ -5,10 +5,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"os"
-	"ricehub/internal/config"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ricehub-io/api/internal/config"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

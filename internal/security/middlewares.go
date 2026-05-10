@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"ricehub/internal/cache"
-	"ricehub/internal/config"
-	"ricehub/internal/errs"
-	"ricehub/internal/repository"
 	"strings"
 	"time"
+
+	"github.com/ricehub-io/api/internal/cache"
+	"github.com/ricehub-io/api/internal/config"
+	"github.com/ricehub-io/api/internal/errs"
+	"github.com/ricehub-io/api/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -84,22 +85,6 @@ func AdminMiddleware(
 		}
 
 		c.Next()
-	}
-}
-
-func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		c.Next()
-		latency := time.Since(start)
-
-		logger.Info("request",
-			zap.String("method", c.Request.Method),
-			zap.String("path", c.Request.URL.Path),
-			zap.Int("status", c.Writer.Status()),
-			zap.Duration("latency", latency),
-			zap.String("client_ip", c.ClientIP()),
-		)
 	}
 }
 

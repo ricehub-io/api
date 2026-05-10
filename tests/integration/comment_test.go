@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"ricehub/internal/testutil"
 	"testing"
+
+	"github.com/ricehub-io/api/internal/testutil"
 )
 
 func createComment(t *testing.T, tok, riceID, content string) string {

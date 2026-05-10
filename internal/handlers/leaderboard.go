@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"net/http"
-	"ricehub/internal/errs"
-	"ricehub/internal/models"
-	"ricehub/internal/services"
+
+	"github.com/ricehub-io/api/internal/errs"
+	"github.com/ricehub-io/api/internal/models"
+	"github.com/ricehub-io/api/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,6 +18,11 @@ func NewLeaderboardHandler(svc *services.LeaderboardService) *LeaderboardHandler
 	return &LeaderboardHandler{svc}
 }
 
+// @Summary Get the weekly leaderboard
+// @Tags leaderboard
+// @Produce json
+// @Success 200 {array} models.LeaderboardRiceDTO
+// @Router /leaderboard/week [get]
 func (h *LeaderboardHandler) GetWeeklyLeaderboard(c *gin.Context) {
 	rices, err := h.fetchLeaderboard(c, models.Week)
 	if err != nil {
@@ -27,6 +33,11 @@ func (h *LeaderboardHandler) GetWeeklyLeaderboard(c *gin.Context) {
 	c.JSON(http.StatusOK, rices)
 }
 
+// @Summary Get the monthly leaderboard
+// @Tags leaderboard
+// @Produce json
+// @Success 200 {array} models.LeaderboardRiceDTO
+// @Router /leaderboard/month [get]
 func (h *LeaderboardHandler) GetMonthlyLeaderboard(c *gin.Context) {
 	rices, err := h.fetchLeaderboard(c, models.Month)
 	if err != nil {
@@ -37,6 +48,11 @@ func (h *LeaderboardHandler) GetMonthlyLeaderboard(c *gin.Context) {
 	c.JSON(http.StatusOK, rices)
 }
 
+// @Summary Get the yearly leaderboard
+// @Tags leaderboard
+// @Produce json
+// @Success 200 {array} models.LeaderboardRiceDTO
+// @Router /leaderboard/year [get]
 func (h *LeaderboardHandler) GetYearlyLeaderboard(c *gin.Context) {
 	rices, err := h.fetchLeaderboard(c, models.Year)
 	if err != nil {

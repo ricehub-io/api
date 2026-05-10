@@ -1,7 +1,6 @@
 config.toml
 .idea/
 keys/*.pem
-logs/*.json
 build/
 
 public/avatars/*

@@ -1,8 +1,9 @@
 package models
 
 import (
-	"ricehub/internal/config"
 	"time"
+
+	"github.com/ricehub-io/api/internal/config"
 
 	"github.com/google/uuid"
 )
@@ -130,6 +131,10 @@ type CreateReportDTO struct {
 }
 
 // Responses
+type ErrorDTO struct {
+	Errors []string `json:"errors"`
+}
+
 type UserDTO struct {
 	ID          uuid.UUID `json:"id"`
 	Username    string    `json:"username"`

@@ -2,7 +2,8 @@ package handlers
 
 import (
 	"net/http"
-	"ricehub/internal/services"
+
+	"github.com/ricehub-io/api/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,6 +16,13 @@ func NewWebVarHandler(svc *services.WebVarService) *WebVarHandler {
 	return &WebVarHandler{svc}
 }
 
+// @Summary Get a website variable by key
+// @Tags vars
+// @Produce json
+// @Param key path string true "Variable key"
+// @Success 200 {object} models.WebsiteVariableDTO
+// @Failure 404 {object} models.ErrorDTO "Variable not found"
+// @Router /vars/{key} [get]
 func (h *WebVarHandler) GetWebVarByKey(c *gin.Context) {
 	key := c.Param("key")
 

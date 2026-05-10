@@ -1,21 +1,27 @@
-package app
+package router
 
 import (
 	"net/http"
-	"ricehub/internal/config"
-	"ricehub/internal/errs"
-	"ricehub/internal/handlers"
-	"ricehub/internal/polar"
-	"ricehub/internal/repository"
-	"ricehub/internal/security"
-	"ricehub/internal/services"
-	"ricehub/internal/validation"
 	"time"
 
+	"github.com/ricehub-io/api/internal/config"
+	"github.com/ricehub-io/api/internal/errs"
+	"github.com/ricehub-io/api/internal/handlers"
+	"github.com/ricehub-io/api/internal/polar"
+	"github.com/ricehub-io/api/internal/repository"
+	"github.com/ricehub-io/api/internal/security"
+	"github.com/ricehub-io/api/internal/services"
+	"github.com/ricehub-io/api/internal/validation"
+
 	"github.com/gin-contrib/cors"
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
+
+	_ "github.com/ricehub-io/api/docs"
 )
 
 func New(pool *pgxpool.Pool, logger *zap.Logger) *gin.Engine {
@@ -92,9 +98,9 @@ func New(pool *pgxpool.Pool, logger *zap.Logger) *gin.Engine {
 	}
 
 	r.Use(
-		gin.Recovery(),
 		cors.New(corsConfig),
-		security.LoggerMiddleware(logger),
+		ginzap.RecoveryWithZap(logger, true),
+		ginzap.Ginzap(logger, time.RFC3339, true),
 		errs.ErrorHandler(logger),
 		security.RateLimitMiddleware(100, time.Minute),
 	)
@@ -106,6 +112,7 @@ func New(pool *pgxpool.Pool, logger *zap.Logger) *gin.Engine {
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "The requested resource could not be found on this server!"})
 	})
+
 	r.Static("/public", "./public")
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"maintenance": config.Config.App.Maintenance})
@@ -129,6 +136,11 @@ func New(pool *pgxpool.Pool, logger *zap.Logger) *gin.Engine {
 	registerLeaderboardRoutes(r, leaderboardHandler)
 
 	r.GET("/vars/:key", security.PathRateLimitMiddleware(5, time.Minute), webVarHandler.GetWebVarByKey)
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(
+		swaggerFiles.Handler,
+		ginSwagger.URL("/swagger/doc.json"),
+	))
 
 	return r
 }

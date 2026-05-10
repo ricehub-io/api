@@ -24,6 +24,7 @@ type (
 		CorsOrigin    string `toml:"cors_origin"`
 		CookiesDomain string `toml:"cookies_domain"`
 		KeysDir       string `toml:"keys_dir"`
+		ScannerURL    string `toml:"scanner_url"`
 	}
 
 	databaseConfig struct {

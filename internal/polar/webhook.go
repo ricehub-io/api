@@ -5,8 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
-	"ricehub/internal/config"
-	"ricehub/internal/repository"
+
+	"github.com/ricehub-io/api/internal/config"
+	"github.com/ricehub-io/api/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -15,7 +16,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// afaik Polar's Go SDK has no generic event payload type
 type webhookEvent struct {
 	Type components.WebhookEventType `json:"type"`
 	Data json.RawMessage             `json:"data"`

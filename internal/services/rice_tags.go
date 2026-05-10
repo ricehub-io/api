@@ -2,9 +2,10 @@ package services
 
 import (
 	"context"
-	"ricehub/internal/errs"
-	"ricehub/internal/repository"
-	"ricehub/internal/security"
+
+	"github.com/ricehub-io/api/internal/errs"
+	"github.com/ricehub-io/api/internal/repository"
+	"github.com/ricehub-io/api/internal/security"
 
 	"github.com/google/uuid"
 )

@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"ricehub/internal/config"
 	"time"
+
+	"github.com/ricehub-io/api/internal/config"
 
 	"github.com/google/uuid"
 	polargo "github.com/polarsource/polar-go"
@@ -142,7 +143,7 @@ func CreateCheckoutSession(userID, productID uuid.UUID) (res *operations.Checkou
 		Products:           []string{strProdID},
 		EmbedOrigin:        &config.Config.Server.CorsOrigin,
 		CustomerBillingAddress: &components.AddressInput{
-			Country: components.CountryAlpha2InputUs,
+			Country: components.AddressInputCountryAlpha2InputUs,
 		},
 	}
 

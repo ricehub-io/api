@@ -5,6 +5,9 @@ cors_origin = "http://127.0.0.1:5173"
 cookies_domain = "127.0.0.1"
 keys_dir = "keys"
 
+# File scanner server's gRPC URL
+scanner_url = "localhost:40400"
+
 
 # ---- DATABASE & CACHE -----
 [database]

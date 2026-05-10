@@ -4,26 +4,30 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
 	"io"
+	"log"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"ricehub/internal/app"
-	"ricehub/internal/cache"
-	"ricehub/internal/config"
-	"ricehub/internal/grpc"
-	"ricehub/internal/repository"
-	"ricehub/internal/security"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
-	pb "ricehub/proto"
+	"github.com/ricehub-io/api/internal/cache"
+	"github.com/ricehub-io/api/internal/config"
+	"github.com/ricehub-io/api/internal/grpc"
+	"github.com/ricehub-io/api/internal/repository"
+	"github.com/ricehub-io/api/internal/router"
+	"github.com/ricehub-io/api/internal/security"
+
+	pb "github.com/ricehub-io/api/proto"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
@@ -93,19 +97,20 @@ func init() {
 	MockCleanScanner()
 }
 
-// SetupTestDB starts a PostgreSQL testcontainer, applies schema.sql, and
-// returns a live pool. Registers t.Cleanup to terminate the container.
 func SetupTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 
-	pool, stop := MustStartPostgres("../../schema.sql")
+	migrationDir, err := filepath.Abs("../../migrations")
+	if err != nil {
+		panic(err)
+	}
+
+	pool, stop := MustStartPostgres(migrationDir)
 	t.Cleanup(func() { _ = stop() })
 	t.Cleanup(pool.Close)
 	return pool
 }
 
-// SetupTestRedis starts a miniredis instance in-process, initializes the
-// cache package, and registers cleanup.
 func SetupTestRedis(t *testing.T) {
 	t.Helper()
 
@@ -113,9 +118,7 @@ func SetupTestRedis(t *testing.T) {
 	t.Cleanup(stop)
 }
 
-// MustStartPostgres starts a Postgres testcontainer and applies the schema at
-// schemaPath.
-func MustStartPostgres(schemaPath string) (*pgxpool.Pool, func() error) {
+func MustStartPostgres(migrationDir string) (*pgxpool.Pool, func() error) {
 	ctx := context.Background()
 
 	pgContainer, err := tcpostgres.Run(
@@ -124,9 +127,9 @@ func MustStartPostgres(schemaPath string) (*pgxpool.Pool, func() error) {
 		tcpostgres.WithDatabase("ricehub_test"),
 		tcpostgres.WithUsername("postgres"),
 		tcpostgres.WithPassword("postgres"),
-		tcpostgres.WithInitScripts(schemaPath),
 		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
+			wait.
+				ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
 				WithStartupTimeout(60*time.Second),
 		),
@@ -145,10 +148,36 @@ func MustStartPostgres(schemaPath string) (*pgxpool.Pool, func() error) {
 		pool.Close()
 		return pgContainer.Terminate(ctx)
 	}
+
+	if err := applyMigrations(pool, migrationDir); err != nil {
+		panic("apply migrations: " + err.Error())
+	}
+
 	return pool, stop
 }
 
-// MustStartRedis starts a miniredis instance and initialises the cache package.
+func applyMigrations(pool *pgxpool.Pool, dir string) error {
+	entries, err := filepath.Glob(filepath.Join(dir, "*.sql"))
+	if err != nil {
+		return err
+	}
+
+	sort.Strings(entries)
+	for _, path := range entries {
+		sql, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		log.Println(string(sql))
+		if _, err := pool.Exec(context.Background(), string(sql)); err != nil {
+			return fmt.Errorf("migration %s: %w", path, err)
+		}
+	}
+
+	return nil
+}
+
 func MustStartRedis() func() {
 	mr, err := miniredis.Run()
 	if err != nil {
@@ -161,10 +190,8 @@ func MustStartRedis() func() {
 	}
 }
 
-// SetupTestApp creates and returns a Gin engine wired with all real handlers
-// against the given DB pool.
 func SetupTestApp(pool *pgxpool.Pool) *gin.Engine {
-	return app.New(pool, zap.NewNop())
+	return router.New(pool, zap.NewNop())
 }
 
 // MakeAccessToken returns a "Bearer <token>" string signed with the test key.

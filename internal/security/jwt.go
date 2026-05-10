@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"ricehub/internal/config"
 	"time"
+
+	"github.com/ricehub-io/api/internal/config"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

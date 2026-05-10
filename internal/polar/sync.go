@@ -1,167 +1,168 @@
 package polar
 
-import (
-	"context"
-	"errors"
-	"ricehub/internal/models"
-	"ricehub/internal/repository"
-	"slices"
-	"time"
+// import (
+// 	"context"
+// 	"errors"
+// 	"slices"
+// 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/polarsource/polar-go/models/components"
-	"go.uber.org/zap"
-)
+// 	"github.com/polarsource/polar-go/models/components"
+// 	"github.com/ricehub-io/api/internal/models"
+// 	"github.com/ricehub-io/api/internal/repository"
 
-func StartSyncThread(
-	dbPool *pgxpool.Pool,
-	rdfRepo *repository.RiceDotfilesRepository,
-	dfpRepo *repository.DotfilesPurchaseRepository,
-	subRepo *repository.UserSubscriptionRepository,
-) {
-	l := zap.L()
-	for {
-		l.Info("Syncing internal state with Polar...")
-		sync(dbPool, rdfRepo, dfpRepo, subRepo)
-		time.Sleep(24 * time.Hour)
-	}
-}
+// 	"github.com/google/uuid"
+// 	"github.com/jackc/pgx/v5"
+// 	"github.com/jackc/pgx/v5/pgxpool"
+// 	"go.uber.org/zap"
+// )
 
-func sync(
-	dbPool *pgxpool.Pool,
-	rdfRepo *repository.RiceDotfilesRepository,
-	dfpRepo *repository.DotfilesPurchaseRepository,
-	subRepo *repository.UserSubscriptionRepository,
-) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+// func StartSyncThread(
+// 	dbPool *pgxpool.Pool,
+// 	rdfRepo *repository.RiceDotfilesRepository,
+// 	dfpRepo *repository.DotfilesPurchaseRepository,
+// 	subRepo *repository.UserSubscriptionRepository,
+// ) {
+// 	l := zap.L()
+// 	for {
+// 		l.Info("Syncing internal state with Polar...")
+// 		sync(dbPool, rdfRepo, dfpRepo, subRepo)
+// 		time.Sleep(24 * time.Hour)
+// 	}
+// }
 
-	l := zap.L()
-	if err := syncDotfilesPurchases(ctx, dbPool, rdfRepo, dfpRepo); err != nil {
-		l.Error("Failed to sync dotfiles purchases", zap.Error(err))
-	}
+// func sync(
+// 	dbPool *pgxpool.Pool,
+// 	rdfRepo *repository.RiceDotfilesRepository,
+// 	dfpRepo *repository.DotfilesPurchaseRepository,
+// 	subRepo *repository.UserSubscriptionRepository,
+// ) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+// 	defer cancel()
 
-	if err := syncSubscriptions(ctx, dbPool, subRepo); err != nil {
-		l.Error("Failed to sync subscriptions", zap.Error(err))
-	}
-}
+// 	l := zap.L()
+// 	if err := syncDotfilesPurchases(ctx, dbPool, rdfRepo, dfpRepo); err != nil {
+// 		l.Error("Failed to sync dotfiles purchases", zap.Error(err))
+// 	}
 
-func syncDotfilesPurchases(
-	ctx context.Context,
-	dbPool *pgxpool.Pool,
-	rdfRepo *repository.RiceDotfilesRepository,
-	dfpRepo *repository.DotfilesPurchaseRepository,
-) error {
-	after := time.Now().Add(-24 * time.Hour)
+// 	if err := syncSubscriptions(ctx, dbPool, subRepo); err != nil {
+// 		l.Error("Failed to sync subscriptions", zap.Error(err))
+// 	}
+// }
 
-	events, err := EventList(components.SystemEventTypeOrderPaid, &after)
-	if err != nil {
-		return err
-	}
+// func syncDotfilesPurchases(
+// 	ctx context.Context,
+// 	dbPool *pgxpool.Pool,
+// 	rdfRepo *repository.RiceDotfilesRepository,
+// 	dfpRepo *repository.DotfilesPurchaseRepository,
+// ) error {
+// 	after := time.Now().Add(-24 * time.Hour)
 
-	stored, err := dfpRepo.DotfilesPurchases(ctx, after)
-	if err != nil {
-		return err
-	}
+// 	events, err := EventList(components.SystemEventTypeOrderPaid, &after)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
+// 	stored, err := dfpRepo.DotfilesPurchases(ctx, after)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	new := 0
-	for _, event := range events {
-		order := event.OrderPaidEvent
+// 	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer tx.Rollback(ctx)
 
-		meta := order.GetMetadata()
-		strProductID := meta.ProductID
-		strCustomerID := order.GetCustomer().ExternalID
-		if strProductID == nil || strCustomerID == nil {
-			continue
-		}
-		productID, _ := uuid.Parse(*strProductID)
-		customerID, _ := uuid.Parse(*strCustomerID)
+// 	new := 0
+// 	for _, event := range events {
+// 		order := event.OrderPaidEvent
 
-		if !slices.ContainsFunc(stored, func(s models.DotfilesPurchase) bool {
-			return s.ProductID == productID && s.UserID == customerID
-		}) {
-			df, err := rdfRepo.FindDotfilesByProductID(ctx, productID)
-			if err != nil {
-				if errors.Is(err, pgx.ErrNoRows) {
-					continue
-				}
-				return err
-			}
+// 		meta := order.GetMetadata()
+// 		strProductID := meta.ProductID
+// 		strCustomerID := order.GetCustomer().ExternalID
+// 		if strProductID == nil || strCustomerID == nil {
+// 			continue
+// 		}
+// 		productID, _ := uuid.Parse(*strProductID)
+// 		customerID, _ := uuid.Parse(*strCustomerID)
 
-			paidAmount := centsToPrice(meta.Amount)
-			err = dfpRepo.InsertDotfilesPurchaseTx(ctx, customerID, df.RiceID, paidAmount, order.Timestamp)
-			if err != nil {
-				return err
-			}
+// 		if !slices.ContainsFunc(stored, func(s models.DotfilesPurchase) bool {
+// 			return s.ProductID == productID && s.UserID == customerID
+// 		}) {
+// 			df, err := rdfRepo.FindDotfilesByProductID(ctx, productID)
+// 			if err != nil {
+// 				if errors.Is(err, pgx.ErrNoRows) {
+// 					continue
+// 				}
+// 				return err
+// 			}
 
-			new++
-		}
-	}
+// 			paidAmount := centsToPrice(meta.Amount)
+// 			err = dfpRepo.InsertDotfilesPurchaseTx(ctx, customerID, df.RiceID, paidAmount, order.Timestamp)
+// 			if err != nil {
+// 				return err
+// 			}
 
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
+// 			new++
+// 		}
+// 	}
 
-	zap.L().Sugar().Infof("Synchronized %d new dotfiles purchases", new)
-	return nil
-}
+// 	if err := tx.Commit(ctx); err != nil {
+// 		return err
+// 	}
 
-func syncSubscriptions(
-	ctx context.Context,
-	dbPool *pgxpool.Pool,
-	repo *repository.UserSubscriptionRepository,
-) error {
-	subs, err := SubscriptionList()
-	if err != nil {
-		return err
-	}
+// 	zap.L().Sugar().Infof("Synchronized %d new dotfiles purchases", new)
+// 	return nil
+// }
 
-	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
+// func syncSubscriptions(
+// 	ctx context.Context,
+// 	dbPool *pgxpool.Pool,
+// 	repo *repository.UserSubscriptionRepository,
+// ) error {
+// 	subs, err := SubscriptionList()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// upsert active subscriptions
-	seen := []uuid.UUID{}
-	for _, sub := range subs {
-		strCustomerID := sub.Customer.ExternalID
-		if strCustomerID == nil {
-			continue
-		}
-		customerID, _ := uuid.Parse(*strCustomerID)
-		seen = append(seen, customerID)
+// 	tx, err := dbPool.BeginTx(ctx, pgx.TxOptions{})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer tx.Rollback(ctx)
 
-		err := repo.InsertUserSubscriptionTx(ctx, customerID, sub.CurrentPeriodEnd)
-		if err != nil {
-			return err
-		}
-	}
+// 	// upsert active subscriptions
+// 	seen := []uuid.UUID{}
+// 	for _, sub := range subs {
+// 		strCustomerID := sub.Customer.ExternalID
+// 		if strCustomerID == nil {
+// 			continue
+// 		}
+// 		customerID, _ := uuid.Parse(*strCustomerID)
+// 		seen = append(seen, customerID)
 
-	// delete unseen
-	cancelled, err := repo.CancelUserSubscriptionsExcept(ctx, seen)
-	if err != nil {
-		return err
-	}
+// 		err := repo.InsertUserSubscriptionTx(ctx, customerID, sub.CurrentPeriodEnd)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return err
-	}
+// 	// delete unseen
+// 	cancelled, err := repo.CancelUserSubscriptionsExcept(ctx, seen)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	l := zap.L().Sugar()
-	l.Infof("Upserted %d subscriptions", len(seen))
-	l.Infof("Canceled %d subscriptions", cancelled)
-	return nil
-}
+// 	if err := tx.Commit(ctx); err != nil {
+// 		return err
+// 	}
 
-func centsToPrice(cents int64) float32 {
-	return float32(cents) / 100.0
-}
+// 	l := zap.L().Sugar()
+// 	l.Infof("Upserted %d subscriptions", len(seen))
+// 	l.Infof("Canceled %d subscriptions", cancelled)
+// 	return nil
+// }
+
+// func centsToPrice(cents int64) float32 {
+// 	return float32(cents) / 100.0
+// }

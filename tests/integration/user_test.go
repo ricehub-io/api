@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"ricehub/internal/testutil"
 	"strings"
 	"testing"
+
+	"github.com/ricehub-io/api/internal/testutil"
 
 	"github.com/google/uuid"
 )

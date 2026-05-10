@@ -1,11 +1,11 @@
 BINARY  := api
 BUILD   := build
-CMD     := ./cmd/api
+CMD     := .
 
 GOFLAGS := -trimpath
 LDFLAGS := -ldflags="-s -w"
 
-.PHONY: all build run test security lint fmt vet tidy clean check install-tools
+.PHONY: all build run test lint fmt vet tidy security check clean swagger install-tools
 
 all: check build
 
@@ -26,10 +26,9 @@ test:
 lint:
 	golangci-lint run ./...
 
-## fmt: format code with gofmt and goimports
+## fmt: check if codebase is compliant with goimports' formatting
 fmt:
-	gofmt -w .
-	goimports -w .
+	goimports -l .
 
 ## vet: run go vet
 vet:
@@ -45,12 +44,16 @@ security:
 	govulncheck ./...
 	gosec -exclude-generated ./...
 
-## check: run fmt, vet, lint, and security (useful before committing)
-check: fmt vet lint security
+## check: run fmt, vet, lint, security, and test
+check: fmt vet lint security test
 
 ## clean: remove build artifacts
 clean:
 	rm -rf $(BUILD)
+
+## swagger: generate swagger docs
+swagger:
+	swag init
 
 ## install-tools: install required dev tools
 install-tools:
@@ -58,7 +61,8 @@ install-tools:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	go install github.com/securego/gosec/v2/cmd/gosec@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
 
 ## help: list available targets
 help:
-	@grep -E '^##' Makefile | sed 's/## //'
+	@grep -E "^##" Makefile | sed "s/## //"
