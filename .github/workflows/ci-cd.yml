@@ -34,13 +34,7 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Check formatting
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.11.4
-          args: fmt --diff
-
-      - name: Run linters
+      - name: Run linters and check formatting
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.11.4
