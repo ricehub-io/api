@@ -9,10 +9,10 @@ import (
 
 	"github.com/ricehub-io/api/internal/cache"
 	"github.com/ricehub-io/api/internal/config"
-	"github.com/ricehub-io/api/internal/grpc"
 	"github.com/ricehub-io/api/internal/models"
 	"github.com/ricehub-io/api/internal/repository"
 	"github.com/ricehub-io/api/internal/router"
+	"github.com/ricehub-io/api/internal/scanner"
 	"github.com/ricehub-io/api/internal/security"
 
 	"github.com/jackc/pgx/v5"
@@ -22,7 +22,7 @@ import (
 )
 
 // @title RiceHub API
-// @version 1.0.0
+// @version 0.5.0
 // @description API for RiceHub website.
 
 // @host 127.0.0.1:3000
@@ -63,8 +63,10 @@ func run() error {
 	dbPool := repository.NewPool(config.Config.Database.DatabaseUrl)
 	defer dbPool.Close()
 
-	grpc.InitScanner(config.Config.Server.ScannerURL)
-	defer grpc.CloseScanner() //nolint:errcheck
+	if err := scanner.InitScanner(config.Config.Server.ScannerURL); err != nil {
+		return fmt.Errorf("could not init scanner: %w", err)
+	}
+	defer scanner.CloseScanner() //nolint:errcheck
 
 	// dotfilesPurchaseRepo := repository.NewDotfilesPurchaseRepository(dbPool)
 	// riceDotfilesRepo := repository.NewRiceDotfilesRepository(dbPool)

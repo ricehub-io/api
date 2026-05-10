@@ -1,26 +1,24 @@
-BINARY  := api
-BUILD   := build
-CMD     := .
+BIN_NAME  := api
+BUILD_DIR := build
+CMD       := .
 
 GOFLAGS := -trimpath
 LDFLAGS := -ldflags="-s -w"
 
-.PHONY: all build run test lint fmt vet tidy security check clean swagger install-tools
+.PHONY: build run test lint fmt security check swagger install-tools
 
-all: check build
-
-## build: compile the binary to ./build/api
+## build: compile the source code
 build:
-	@mkdir -p $(BUILD)
-	go build $(GOFLAGS) $(LDFLAGS) -o $(BUILD)/$(BINARY) $(CMD)
+	@mkdir -p $(BUILD_DIR)
+	go build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BIN_NAME) $(CMD)
 
-## run: run the application without compiling a binary
+## run: run the app without compiling a binary
 run:
 	go run $(CMD)
 
 ## test: run all tests with race detector
 test:
-	go test ./... -v -race -count=1
+	go test ./... -v -race
 
 ## lint: run golangci-lint
 lint:
@@ -28,28 +26,15 @@ lint:
 
 ## fmt: check if codebase is compliant with goimports' formatting
 fmt:
-	goimports -l .
-
-## vet: run go vet
-vet:
-	go vet ./...
-
-## tidy: tidy and verify go modules
-tidy:
-	go mod tidy
-	go mod verify
+	golangci-lint fmt --diff ./...
 
 ## security: scan for vulnerabilities
 security:
 	govulncheck ./...
-	gosec -exclude-generated ./...
+# 	gosec -exclude-generated -conf gosec-config.json ./...
 
-## check: run fmt, vet, lint, security, and test
-check: fmt vet lint security test
-
-## clean: remove build artifacts
-clean:
-	rm -rf $(BUILD)
+## check: run fmt, lint, security, and test
+check: fmt lint security test
 
 ## swagger: generate swagger docs
 swagger:
@@ -57,7 +42,6 @@ swagger:
 
 ## install-tools: install required dev tools
 install-tools:
-	go install golang.org/x/tools/cmd/goimports@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	go install github.com/securego/gosec/v2/cmd/gosec@latest

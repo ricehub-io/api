@@ -13,7 +13,7 @@ import (
 
 	"github.com/ricehub-io/api/internal/config"
 	"github.com/ricehub-io/api/internal/errs"
-	"github.com/ricehub-io/api/internal/grpc"
+	"github.com/ricehub-io/api/internal/scanner"
 	"github.com/ricehub-io/api/internal/validation"
 
 	"github.com/chai2010/webp"
@@ -42,20 +42,17 @@ func HandleDotfilesUpload(fileHeader *multipart.FileHeader) (string, errs.AppErr
 		return "", err.(errs.AppError)
 	}
 
-	// open file
 	file, err := fileHeader.Open()
 	if err != nil {
 		return "", errs.InternalError(err)
 	}
 	defer closeSilent(file)
 
-	// create new named temp file
 	tmp, err := os.CreateTemp("", "dotfiles-*.zip")
 	if err != nil {
 		return "", errs.InternalError(err)
 	}
 
-	// clean up
 	tmpPath := tmp.Name()
 	defer func() {
 		if err := os.Remove(tmpPath); err != nil {
@@ -66,15 +63,13 @@ func HandleDotfilesUpload(fileHeader *multipart.FileHeader) (string, errs.AppErr
 		}
 	}()
 
-	// copy dotfiles data into temp file
 	if _, err := io.Copy(tmp, file); err != nil {
 		closeLog(tmp)
 		return "", errs.InternalError(err)
 	}
 	closeLog(tmp)
 
-	// scan 'em
-	res, err := grpc.Scanner.ScanFile(tmpPath)
+	res, err := scanner.Scanner.ScanFile(tmpPath)
 	if err != nil {
 		return "", errs.InternalError(err)
 	}
@@ -88,7 +83,6 @@ func HandleDotfilesUpload(fileHeader *multipart.FileHeader) (string, errs.AppErr
 		)
 	}
 
-	// move to destination path if clean
 	tmpRoot, err := os.OpenRoot(os.TempDir())
 	if err != nil {
 		return "", errs.InternalError(err)

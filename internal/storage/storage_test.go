@@ -81,7 +81,7 @@ func writeToRoot(t *testing.T, root *os.Root, name, content string) {
 		t.Fatalf("root.Create(%s): %v", name, err)
 	}
 	if _, err := io.WriteString(f, content); err != nil {
-		_ = f.Close()
+		f.Close()
 		t.Fatalf("write %s: %v", name, err)
 	}
 	if err := f.Close(); err != nil {

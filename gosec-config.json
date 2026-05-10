@@ -1,0 +1,8 @@
+{
+  "exclude-rules": [
+    {
+      "path": "internal/testutil/.*",
+      "rules": ["*"]
+    }
+  ]
+}

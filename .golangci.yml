@@ -1,8 +1,25 @@
 version: "2"
 
 linters:
+  exclusions:
+    presets:
+      - common-false-positives
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+          - dupl
   settings:
     errcheck:
       exclude-functions:
         - (*github.com/gin-gonic/gin.Context).Error
         - (github.com/jackc/pgx/v5.Tx).Rollback
+
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/ricehub-io/api

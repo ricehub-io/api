@@ -20,14 +20,14 @@ import (
 	"testing"
 	"time"
 
+	scannerv1 "github.com/ricehub-io/proto/gen/go/scanner/v1"
+
 	"github.com/ricehub-io/api/internal/cache"
 	"github.com/ricehub-io/api/internal/config"
-	"github.com/ricehub-io/api/internal/grpc"
 	"github.com/ricehub-io/api/internal/repository"
 	"github.com/ricehub-io/api/internal/router"
+	"github.com/ricehub-io/api/internal/scanner"
 	"github.com/ricehub-io/api/internal/security"
-
-	pb "github.com/ricehub-io/api/proto"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
@@ -218,12 +218,12 @@ func MakeRefreshToken(t *testing.T, userID uuid.UUID) string {
 
 type cleanScanner struct{}
 
-func (cleanScanner) ScanFile(_ string) (*pb.ScanResult, error) {
-	return &pb.ScanResult{IsMalicious: false}, nil
+func (cleanScanner) ScanFile(_ string) (*scannerv1.ScanFileResponse, error) {
+	return &scannerv1.ScanFileResponse{IsMalicious: false}, nil
 }
 
 func MockCleanScanner() {
-	grpc.Scanner = cleanScanner{}
+	scanner.Scanner = cleanScanner{}
 }
 
 // DoRequest fires an HTTP request against the Gin engine and returns the recorded response.
