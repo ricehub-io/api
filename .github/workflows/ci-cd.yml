@@ -72,7 +72,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - run: go test ./... -shuffle=on -timeout=5m ${{ github.ref == 'refs/heads/main' && '-race' || '' }}
+      - name: Run go test
+        run: go test ./... -shuffle=on -timeout=5m ${{ github.ref == 'refs/heads/main' && '-race' || '' }}
 
   # deploy:
   #   name: Deploy via SSH
@@ -81,8 +82,6 @@ jobs:
   #   if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
   #   steps:
   #     - uses: actions/checkout@v6
-  #       with:
-  #         submodules: true
   #     - uses: actions/setup-go@v6
   #       with:
   #         go-version-file: go.mod

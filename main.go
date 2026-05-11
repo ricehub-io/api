@@ -43,12 +43,15 @@ func main() {
 }
 
 func run() error {
-	logger := initZapLogger()
-	defer logger.Sync() //nolint:errcheck
+	logger := initZapLogger(logLevel)
+	defer logger.Sync()
 
-	config.InitConfig(configPath)
-	// polar.Init(config.Config.Polar.Token, config.Config.Polar.Sandbox)
-	security.InitJWT(config.Config.Server.KeysDir)
+	if err := config.InitConfig(configPath); err != nil {
+		return fmt.Errorf("could not init config: %w", err)
+	}
+	if err := security.InitJWT(config.Config.Server.KeysDir); err != nil {
+		return fmt.Errorf("could not init jwt: %w", err)
+	}
 
 	if config.Config.App.DisableRateLimits {
 		logger.Warn("Rate limits disabled! Is it intentional?")
@@ -68,12 +71,7 @@ func run() error {
 	}
 	defer scanner.CloseScanner() //nolint:errcheck
 
-	// dotfilesPurchaseRepo := repository.NewDotfilesPurchaseRepository(dbPool)
-	// riceDotfilesRepo := repository.NewRiceDotfilesRepository(dbPool)
 	riceLeaderboardRepo := repository.NewRiceLeaderboardRepository(dbPool)
-	// userSubscriptionRepo := repository.NewUserSubscriptionRepository(dbPool)
-
-	// go polar.StartSyncThread(dbPool, riceDotfilesRepo, dotfilesPurchaseRepo, userSubscriptionRepo)
 	go startLeaderboardSync(dbPool, riceLeaderboardRepo)
 
 	r := router.New(dbPool, logger)
@@ -132,7 +130,7 @@ func updateLeaderboard(dbPool *pgxpool.Pool, leaderboard *repository.RiceLeaderb
 	}
 }
 
-func initZapLogger() *zap.Logger {
+func initZapLogger(level zapcore.Level) *zap.Logger {
 	encodeCfg := zap.NewDevelopmentEncoderConfig()
 	encodeCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	encodeCfg.EncodeTime = func(t time.Time, pae zapcore.PrimitiveArrayEncoder) {
@@ -140,7 +138,7 @@ func initZapLogger() *zap.Logger {
 	}
 
 	consoleEncoder := zapcore.NewConsoleEncoder(encodeCfg)
-	core := zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), logLevel)
+	core := zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), level)
 
 	logger := zap.New(core)
 	zap.ReplaceGlobals(logger)

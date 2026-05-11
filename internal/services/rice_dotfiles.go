@@ -10,7 +10,6 @@ import (
 
 	"github.com/ricehub-io/api/internal/errs"
 	"github.com/ricehub-io/api/internal/models"
-	"github.com/ricehub-io/api/internal/polar"
 	"github.com/ricehub-io/api/internal/repository"
 	"github.com/ricehub-io/api/internal/security"
 	"github.com/ricehub-io/api/internal/storage"
@@ -47,23 +46,26 @@ func (s *RiceDotfilesService) PurchaseDotfiles(
 	ctx context.Context,
 	userID, riceID uuid.UUID,
 ) (string, errs.AppError) {
-	rice, err := s.rices.FindRiceByID(ctx, &userID, riceID)
-	if err != nil {
-		return "", errs.FromDBError(err, errs.RiceNotFound)
-	}
-	if rice.Dotfiles.Type == models.Free {
-		return "", errs.FreeDotfilesNotPurchasable
-	}
-	if rice.IsOwned {
-		return "", errs.DotfilesAlreadyOwned
-	}
+	// TODO: call payments service via gRPC client
+	return "", nil
 
-	res, err := polar.CreateCheckoutSession(userID, *rice.Dotfiles.ProductID)
-	if err != nil {
-		return "", errs.InternalError(err)
-	}
+	// rice, err := s.rices.FindRiceByID(ctx, &userID, riceID)
+	// if err != nil {
+	// 	return "", errs.FromDBError(err, errs.RiceNotFound)
+	// }
+	// if rice.Dotfiles.Type == models.Free {
+	// 	return "", errs.FreeDotfilesNotPurchasable
+	// }
+	// if rice.IsOwned {
+	// 	return "", errs.DotfilesAlreadyOwned
+	// }
 
-	return res.Checkout.URL, nil
+	// res, err := polar.CreateCheckoutSession(userID, *rice.Dotfiles.ProductID)
+	// if err != nil {
+	// 	return "", errs.InternalError(err)
+	// }
+
+	// return res.Checkout.URL, nil
 }
 
 // DownloadDotfiles verifies access, increments the download counter, logs the
@@ -164,37 +166,38 @@ func (s *RiceDotfilesService) UpdateDotfilesType(
 
 	var productID *string
 
-	if dto.NewType == models.Free {
-		existingProdID, err := s.dotfiles.FindDotfilesProductID(ctx, riceID)
-		if err != nil {
-			return errs.InternalError(err)
-		}
-		if existingProdID != nil {
-			idStr := existingProdID.String()
-			productID = &idStr
-			if _, err = polar.HideProduct(idStr); err != nil {
-				return errs.InternalError(err)
-			}
-		}
-	} else {
-		data, err := s.rices.FindRiceWithDotfilesByID(ctx, riceID)
-		if err != nil {
-			return errs.InternalError(err)
-		}
-		if data.Dotfiles.ProductID != nil {
-			idStr := data.Dotfiles.ProductID.String()
-			if _, err := polar.ShowProduct(idStr); err != nil {
-				return errs.InternalError(err)
-			}
-			productID = &idStr
-		} else {
-			res, err := polar.CreateProduct(data.Rice.Title, data.Dotfiles.Price)
-			if err != nil {
-				return errs.InternalError(err)
-			}
-			productID = &res.Product.ID
-		}
-	}
+	// TODO: call payments service via gRPC
+	// if dto.NewType == models.Free {
+	// 	existingProdID, err := s.dotfiles.FindDotfilesProductID(ctx, riceID)
+	// 	if err != nil {
+	// 		return errs.InternalError(err)
+	// 	}
+	// 	if existingProdID != nil {
+	// 		idStr := existingProdID.String()
+	// 		productID = &idStr
+	// 		if _, err = polar.HideProduct(idStr); err != nil {
+	// 			return errs.InternalError(err)
+	// 		}
+	// 	}
+	// } else {
+	// 	data, err := s.rices.FindRiceWithDotfilesByID(ctx, riceID)
+	// 	if err != nil {
+	// 		return errs.InternalError(err)
+	// 	}
+	// 	if data.Dotfiles.ProductID != nil {
+	// 		idStr := data.Dotfiles.ProductID.String()
+	// 		if _, err := polar.ShowProduct(idStr); err != nil {
+	// 			return errs.InternalError(err)
+	// 		}
+	// 		productID = &idStr
+	// 	} else {
+	// 		res, err := polar.CreateProduct(data.Rice.Title, data.Dotfiles.Price)
+	// 		if err != nil {
+	// 			return errs.InternalError(err)
+	// 		}
+	// 		productID = &res.Product.ID
+	// 	}
+	// }
 
 	updated, err := s.dotfiles.UpdateDotfilesType(ctx, riceID, dto.NewType, productID)
 	if err != nil {
@@ -223,14 +226,15 @@ func (s *RiceDotfilesService) UpdateDotfilesPrice(
 		return err
 	}
 
-	productID, err := s.dotfiles.FindDotfilesProductID(ctx, riceID)
-	if err != nil {
-		return errs.FromDBError(err, errs.RiceNotFound)
-	}
+	// TODO: call payments service via gRPC
+	// productID, err := s.dotfiles.FindDotfilesProductID(ctx, riceID)
+	// if err != nil {
+	// 	return errs.FromDBError(err, errs.RiceNotFound)
+	// }
 
-	if _, err = polar.UpdatePrice(productID.String(), dto.NewPrice); err != nil {
-		return errs.InternalError(err)
-	}
+	// if _, err = polar.UpdatePrice(productID.String(), dto.NewPrice); err != nil {
+	// 	return errs.InternalError(err)
+	// }
 
 	if _, err := s.dotfiles.UpdateDotfilesPrice(ctx, riceID, dto.NewPrice); err != nil {
 		return errs.InternalError(err)

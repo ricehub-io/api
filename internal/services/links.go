@@ -5,9 +5,7 @@ import (
 
 	"github.com/ricehub-io/api/internal/errs"
 	"github.com/ricehub-io/api/internal/models"
-	"github.com/ricehub-io/api/internal/polar"
 	"github.com/ricehub-io/api/internal/repository"
-	"github.com/ricehub-io/api/internal/security"
 
 	"github.com/google/uuid"
 )
@@ -44,22 +42,24 @@ func (s *LinkService) GetSubscriptionLink(
 	ctx context.Context,
 	userID, productID uuid.UUID,
 ) (string, errs.AppError) {
-	if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
-		return "", err
-	}
+	// TODO: call payments service via gRPC client
+	return "", nil
+	// if _, err := security.VerifyUserID(ctx, s.users, s.bans, userID.String()); err != nil {
+	// 	return "", err
+	// }
 
-	subActive, err := s.userSubs.SubscriptionActive(ctx, userID)
-	if err != nil {
-		return "", errs.InternalError(err)
-	}
-	if subActive {
-		return "", errs.ActiveSubscription
-	}
+	// subActive, err := s.userSubs.SubscriptionActive(ctx, userID)
+	// if err != nil {
+	// 	return "", errs.InternalError(err)
+	// }
+	// if subActive {
+	// 	return "", errs.ActiveSubscription
+	// }
 
-	res, err := polar.CreateCheckoutSession(userID, productID)
-	if err != nil {
-		return "", errs.InternalError(err)
-	}
+	// res, err := polar.CreateCheckoutSession(userID, productID)
+	// if err != nil {
+	// 	return "", errs.InternalError(err)
+	// }
 
-	return res.Checkout.URL, nil
+	// return res.Checkout.URL, nil
 }

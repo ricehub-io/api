@@ -7,7 +7,6 @@ import (
 	"github.com/ricehub-io/api/internal/config"
 	"github.com/ricehub-io/api/internal/errs"
 	"github.com/ricehub-io/api/internal/handlers"
-	"github.com/ricehub-io/api/internal/polar"
 	"github.com/ricehub-io/api/internal/repository"
 	"github.com/ricehub-io/api/internal/security"
 	"github.com/ricehub-io/api/internal/services"
@@ -31,7 +30,6 @@ func New(pool *pgxpool.Pool, logger *zap.Logger) *gin.Engine {
 	adminRepo := repository.NewAdminRepository(pool)
 	commentRepo := repository.NewCommentRepository(pool)
 	linkRepo := repository.NewLinkRepository(pool)
-	dotfilesPurchaseRepo := repository.NewDotfilesPurchaseRepository(pool)
 	reportRepo := repository.NewReportRepository(pool)
 	riceDotfilesRepo := repository.NewRiceDotfilesRepository(pool)
 	riceLeaderboardRepo := repository.NewRiceLeaderboardRepository(pool)
@@ -41,10 +39,7 @@ func New(pool *pgxpool.Pool, logger *zap.Logger) *gin.Engine {
 	userBanRepo := repository.NewUserBanRepository(pool)
 	userSubscriptionRepo := repository.NewUserSubscriptionRepository(pool)
 	userRepo := repository.NewUserRepository(pool)
-	webhookEventRepo := repository.NewWebhookEventRepository(pool)
 	webVarRepo := repository.NewWebVarRepository(pool)
-
-	webhookListener := polar.NewWebhookListener(webhookEventRepo, userSubscriptionRepo, riceDotfilesRepo, dotfilesPurchaseRepo)
 
 	// services
 	adminService := services.NewAdminService(adminRepo)
@@ -120,7 +115,6 @@ func New(pool *pgxpool.Pool, logger *zap.Logger) *gin.Engine {
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "I'm working and responding!"})
 	})
-	r.POST("/webhook", webhookListener.Handler)
 
 	adminMw := security.AdminMiddleware(userRepo, userBanRepo)
 

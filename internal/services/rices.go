@@ -10,7 +10,6 @@ import (
 	"github.com/ricehub-io/api/internal/config"
 	"github.com/ricehub-io/api/internal/errs"
 	"github.com/ricehub-io/api/internal/models"
-	"github.com/ricehub-io/api/internal/polar"
 	"github.com/ricehub-io/api/internal/repository"
 	"github.com/ricehub-io/api/internal/security"
 	"github.com/ricehub-io/api/internal/storage"
@@ -22,7 +21,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.uber.org/zap"
 )
 
 type RiceService struct {
@@ -133,14 +131,15 @@ func (s *RiceService) CreateRice(
 
 	var productID *string
 
-	if dto.DotfilesType != nil && *dto.DotfilesType != models.Free {
-		res, err := polar.CreateProduct(dto.Title, *dto.DotfilesPrice)
-		if err != nil {
-			return errs.InternalError(err)
-		}
+	// TODO: call payments service via gRPC
+	// if dto.DotfilesType != nil && *dto.DotfilesType != models.Free {
+	// 	res, err := polar.CreateProduct(dto.Title, *dto.DotfilesPrice)
+	// 	if err != nil {
+	// 		return errs.InternalError(err)
+	// 	}
 
-		productID = &res.Product.ID
-	}
+	// 	productID = &res.Product.ID
+	// }
 
 	txDotfles := s.dotfiles.WithTx(tx)
 	if err = txDotfles.InsertRiceDotfiles(
@@ -323,10 +322,10 @@ func (s *RiceService) DeleteRice(
 		return err
 	}
 
-	productID, err := s.dotfiles.FindDotfilesProductID(ctx, riceID)
-	if err != nil {
-		return errs.FromDBError(err, errs.RiceNotFound)
-	}
+	// productID, err := s.dotfiles.FindDotfilesProductID(ctx, riceID)
+	// if err != nil {
+	// 	return errs.FromDBError(err, errs.RiceNotFound)
+	// }
 
 	deleted, err := s.rices.DeleteRice(ctx, riceID)
 	if err != nil {
@@ -336,15 +335,16 @@ func (s *RiceService) DeleteRice(
 		return errs.RiceNotFound
 	}
 
-	if productID != nil {
-		if _, err := polar.ArchiveProduct(productID.String()); err != nil {
-			zap.L().Error("Could not archive rice dotfiles product in Polar",
-				zap.Error(err),
-				zap.String("product_id", productID.String()),
-				zap.String("rice_id", riceID.String()),
-			)
-		}
-	}
+	// TODO: call payments service via gRPC
+	// if productID != nil {
+	// 	if _, err := polar.ArchiveProduct(productID.String()); err != nil {
+	// 		zap.L().Error("Could not archive rice dotfiles product in Polar",
+	// 			zap.Error(err),
+	// 			zap.String("product_id", productID.String()),
+	// 			zap.String("rice_id", riceID.String()),
+	// 		)
+	// 	}
+	// }
 
 	return nil
 }

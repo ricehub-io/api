@@ -17,10 +17,8 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/polarsource/polar-go v0.16.0
 	github.com/redis/go-redis/v9 v9.19.0
 	github.com/ricehub-io/proto v0.3.0
-	github.com/svix/svix-webhooks v1.93.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
@@ -121,7 +119,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
-	github.com/spyzhov/ajson v0.9.6 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.6.0 // indirect

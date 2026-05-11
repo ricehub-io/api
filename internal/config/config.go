@@ -1,11 +1,12 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 type (
@@ -69,24 +70,18 @@ type (
 
 var Config rootConfig
 
-func InitConfig(configPath string) {
-	log := zap.L()
-	log.Info(
-		"Reading config file...",
-		zap.String("path", configPath),
-	)
-
+func InitConfig(configPath string) error {
 	_, err := toml.DecodeFile(configPath, &Config)
 	if err != nil {
-		log.Fatal("Failed to decode config file", zap.Error(err))
+		return fmt.Errorf("toml decode file: %w", err)
 	}
 
 	if Config.Database.DatabaseUrl == "" || Config.Database.RedisUrl == "" || Config.Server.Port == 0 {
-		log.Fatal("Missing required config fields (database.database_url, database.redis_url, server.port)")
+		return errors.New("missing required config fields: database.database_url, database.redis_url, server.port")
 	}
 
 	if Config.Limits.MaxScreenshotsPerRice <= 0 {
-		log.Fatal("limits.max_screenshots_per_rice must be greater than zero")
+		return errors.New("limits.max_screenshots_per_rice must be greater than zero")
 	}
 
 	imgQuality := &Config.App.ImageQuality
@@ -96,5 +91,5 @@ func InitConfig(configPath string) {
 		*imgQuality = 100 // cap
 	}
 
-	log.Info("Config variables successfully loaded")
+	return nil
 }
