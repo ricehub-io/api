@@ -81,7 +81,9 @@ func init() {
 	writePEM("refresh_public.pem", refreshPubPEM)
 
 	config.Config.Server.KeysDir = dir
-	security.InitJWT(dir)
+	if err := security.InitJWT(dir); err != nil {
+		panic("testutil: init JWT: " + err.Error())
+	}
 
 	config.Config.App.DisableRateLimits = true
 	config.Config.App.PaginationLimit = 20

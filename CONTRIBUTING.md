@@ -56,7 +56,7 @@ Services contain all business logic. Keep them free of HTTP concerns.
 
 - Validate business rules (e.g. blacklist checks, ownership checks)
 - Coordinate multiple repository calls
-- Hash passwords, generate tokens, call external integrations (Polar, gRPC)
+- Hash passwords, generate tokens, call external integrations (gRPC)
 - Return domain models (`models.User`, `models.Rice`, etc.)
 - Return predefined errors from the `errs` package
 - Use a result struct when returning more than two values

@@ -32,23 +32,24 @@ func NewRiceDotfilesHandler(svc *services.RiceDotfilesService) *RiceDotfilesHand
 // @Security BearerAuth
 // @Router /rices/{id}/purchase [post]
 func (h *RiceDotfilesHandler) PurchaseDotfiles(c *gin.Context) {
-	var path ricesPath
-	if err := c.ShouldBindUri(&path); err != nil {
-		c.Error(errs.InvalidRiceID)
-		return
-	}
-	riceID, _ := uuid.Parse(path.RiceID)
+	c.Status(http.StatusNotImplemented)
+	// var path ricesPath
+	// if err := c.ShouldBindUri(&path); err != nil {
+	// 	c.Error(errs.InvalidRiceID)
+	// 	return
+	// }
+	// riceID, _ := uuid.Parse(path.RiceID)
 
-	token := c.MustGet("token").(*security.AccessToken)
-	userID, _ := uuid.Parse(token.Subject)
+	// token := c.MustGet("token").(*security.AccessToken)
+	// userID, _ := uuid.Parse(token.Subject)
 
-	checkoutURL, err := h.svc.PurchaseDotfiles(c.Request.Context(), userID, riceID)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	// checkoutURL, err := h.svc.PurchaseDotfiles(c.Request.Context(), userID, riceID)
+	// if err != nil {
+	// 	c.Error(err)
+	// 	return
+	// }
 
-	c.JSON(http.StatusOK, gin.H{"checkoutUrl": checkoutURL})
+	// c.JSON(http.StatusOK, gin.H{"checkoutUrl": checkoutURL})
 }
 
 // @Summary Download dotfiles for a rice

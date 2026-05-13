@@ -3,12 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/ricehub-io/api/internal/config"
-	"github.com/ricehub-io/api/internal/security"
 	"github.com/ricehub-io/api/internal/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type LinkHandler struct {
@@ -44,14 +41,16 @@ func (h *LinkHandler) GetLinkByName(c *gin.Context) {
 // @Security BearerAuth
 // @Router /links/subscription [get]
 func (h *LinkHandler) GetSubscriptionLink(c *gin.Context) {
-	token := c.MustGet("token").(*security.AccessToken)
-	userID, _ := uuid.Parse(token.Subject)
+	c.Status(http.StatusNotImplemented)
+	// TODO: call payments service via gRPC
+	// token := c.MustGet("token").(*security.AccessToken)
+	// userID, _ := uuid.Parse(token.Subject)
 
-	checkoutURL, err := h.svc.GetSubscriptionLink(c.Request.Context(), userID, config.Config.Polar.SubscriptionProductID)
-	if err != nil {
-		c.Error(err)
-		return
-	}
+	// checkoutURL, err := h.svc.GetSubscriptionLink(c.Request.Context(), userID, config.Config.Polar.SubscriptionProductID)
+	// if err != nil {
+	// 	c.Error(err)
+	// 	return
+	// }
 
-	c.JSON(http.StatusOK, gin.H{"checkoutUrl": checkoutURL})
+	// c.JSON(http.StatusOK, gin.H{"checkoutUrl": checkoutURL})
 }

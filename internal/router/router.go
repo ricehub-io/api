@@ -37,16 +37,15 @@ func New(pool *pgxpool.Pool, logger *zap.Logger) *gin.Engine {
 	riceRepo := repository.NewRiceRepository(pool)
 	tagRepo := repository.NewTagRepository(pool)
 	userBanRepo := repository.NewUserBanRepository(pool)
-	userSubscriptionRepo := repository.NewUserSubscriptionRepository(pool)
 	userRepo := repository.NewUserRepository(pool)
 	webVarRepo := repository.NewWebVarRepository(pool)
 
 	// services
 	adminService := services.NewAdminService(adminRepo)
-	authService := services.NewAuthService(userRepo, userBanRepo, userSubscriptionRepo)
+	authService := services.NewAuthService(userRepo, userBanRepo)
 	commentService := services.NewCommentService(commentRepo, userRepo, userBanRepo)
 	leaderboardService := services.NewLeaderboardService(riceLeaderboardRepo)
-	linkService := services.NewLinkService(linkRepo, userRepo, userSubscriptionRepo, userBanRepo)
+	linkService := services.NewLinkService(linkRepo, userRepo, userBanRepo)
 	profileService := services.NewProfileService(userRepo, riceRepo)
 	reportService := services.NewReportService(reportRepo)
 	riceDotfilesService := services.NewRiceDotfilesService(riceRepo, riceDotfilesRepo, userRepo, userBanRepo)

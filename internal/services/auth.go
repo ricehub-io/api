@@ -17,17 +17,15 @@ import (
 )
 
 type AuthService struct {
-	users    *repository.UserRepository
-	bans     *repository.UserBanRepository
-	userSubs *repository.UserSubscriptionRepository
+	users *repository.UserRepository
+	bans  *repository.UserBanRepository
 }
 
 func NewAuthService(
 	users *repository.UserRepository,
 	bans *repository.UserBanRepository,
-	userSubs *repository.UserSubscriptionRepository,
 ) *AuthService {
-	return &AuthService{users, bans, userSubs}
+	return &AuthService{users, bans}
 }
 
 type LoginResult struct {
@@ -88,10 +86,12 @@ func (s *AuthService) Login(ctx context.Context, dto models.LoginDTO) (LoginResu
 		return res, err
 	}
 
-	subActive, err := s.userSubs.SubscriptionActive(ctx, user.ID)
-	if err != nil {
-		return res, errs.InternalError(err)
-	}
+	// TODO: call payment service via gRPC
+	// subActive, err := s.userSubs.SubscriptionActive(ctx, user.ID)
+	// if err != nil {
+	// 	return res, errs.InternalError(err)
+	// }
+	subActive := false
 
 	access, refresh, err := s.issueTokenPair(user.ID, user.IsAdmin, subActive)
 	if err != nil {
@@ -125,10 +125,12 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshStr string) (stri
 		return "", err
 	}
 
-	subActive, err := s.userSubs.SubscriptionActive(ctx, user.ID)
-	if err != nil {
-		return "", errs.InternalError(err)
-	}
+	// TODO: call payment service via gRPC
+	// subActive, err := s.userSubs.SubscriptionActive(ctx, user.ID)
+	// if err != nil {
+	// 	return "", errs.InternalError(err)
+	// }
+	subActive := false
 
 	access, err := security.NewAccessToken(user.ID, user.IsAdmin, subActive)
 	if err != nil {

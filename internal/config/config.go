@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/google/uuid"
 )
 
 type (
@@ -15,7 +14,6 @@ type (
 		Database  databaseConfig
 		App       appConfig
 		JWT       jwtConfig
-		Polar     polarConfig
 		Limits    limitsConfig
 		Blacklist blacklistConfig
 	}
@@ -45,13 +43,6 @@ type (
 	jwtConfig struct {
 		AccessExpiration  time.Duration `toml:"access_exp"`
 		RefreshExpiration time.Duration `toml:"refresh_exp"`
-	}
-
-	polarConfig struct {
-		Sandbox               bool      `toml:"sandbox"`
-		Token                 string    `toml:"token"`
-		WebhookSecret         string    `toml:"webhook_secret"`
-		SubscriptionProductID uuid.UUID `toml:"subscription_product_id"`
 	}
 
 	limitsConfig struct {

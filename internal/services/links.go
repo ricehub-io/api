@@ -11,19 +11,17 @@ import (
 )
 
 type LinkService struct {
-	links    *repository.LinkRepository
-	users    *repository.UserRepository
-	userSubs *repository.UserSubscriptionRepository
-	bans     *repository.UserBanRepository
+	links *repository.LinkRepository
+	users *repository.UserRepository
+	bans  *repository.UserBanRepository
 }
 
 func NewLinkService(
 	links *repository.LinkRepository,
 	users *repository.UserRepository,
-	userSubs *repository.UserSubscriptionRepository,
 	bans *repository.UserBanRepository,
 ) *LinkService {
-	return &LinkService{links, users, userSubs, bans}
+	return &LinkService{links, users, bans}
 }
 
 // GetLinkByName fetches a link by its name.
